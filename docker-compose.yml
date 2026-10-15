@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: escape_user
+      POSTGRES_PASSWORD: escape_pass
+      POSTGRES_DB: escape_lab
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U escape_user -d escape_lab"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./server
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://escape_user:escape_pass@db:5432/escape_lab
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-cambia_esta_clave}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

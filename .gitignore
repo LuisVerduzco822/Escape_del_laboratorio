@@ -1,0 +1,10 @@
+# Godot
+.godot/
+.import/
+export_presets.cfg
+*.translation
+
+# Servidor
+node_modules/
+.env
+npm-debug.log*

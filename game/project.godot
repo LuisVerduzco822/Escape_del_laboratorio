@@ -1,0 +1,54 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="Escape del Laboratorio"
+config/description="Run and gun: recolecta ingredientes, derrota a 3 jefes y fabrica el antidoto."
+run/main_scene="res://scenes/LoginScreen.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Cfg="*res://scripts/Cfg.gd"
+Database="*res://scripts/Database.gd"
+Telemetry="*res://scripts/Telemetry.gd"
+GameManager="*res://scripts/GameManager.gd"
+AudioManager="*res://scripts/AudioManager.gd"
+Fx="*res://scripts/Fx.gd"
+
+[display]
+
+window/size/viewport_width=480
+window/size/viewport_height=270
+window/size/window_width_override=960
+window/size/window_height_override=540
+window/stretch/mode="viewport"
+
+[layer_names]
+
+2d_physics/layer_1="mundo"
+2d_physics/layer_2="plataformas"
+2d_physics/layer_3="jugador"
+2d_physics/layer_4="peligros"
+2d_physics/layer_5="enemigos"
+2d_physics/layer_6="disparos"
+2d_physics/layer_7="objetos"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escape del Laboratorio - Panel</title>
+<style>
+  :root {
+    --bg: #070b14; --panel: #0e1626; --panel2: #121c30; --line: #24344f;
+    --text: #e6edf7; --muted: #8aa0bd; --cyan: #5fe7ff; --gold: #ffd23f;
+    --green: #6bff8e; --red: #ff5d6c; --pink: #ff7ad9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(circle at 20% 0%, #0f1d38, var(--bg) 55%); color: var(--text);
+         font: 14px/1.45 "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+           padding: 14px 24px; border-bottom: 1px solid var(--line); background: rgba(7,11,20,.85); position: sticky; top: 0; z-index: 5; }
+  h1 { margin: 0; font: 700 18px "Courier New", monospace; letter-spacing: 1px; color: var(--gold); }
+  h1 span { color: var(--cyan); }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; }
+  nav button, .btn { background: var(--panel); color: var(--text); border: 1px solid var(--line); padding: 7px 14px;
+                     border-radius: 6px; cursor: pointer; font: inherit; }
+  nav button:hover, .btn:hover { border-color: var(--cyan); }
+  nav button.active { background: var(--cyan); color: #04101a; border-color: var(--cyan); font-weight: 600; }
+  .lock { color: var(--muted); font-size: 12px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 22px 24px 60px; }
+  h2 { margin: 0 0 14px; font-size: 16px; color: var(--cyan); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card .n { font: 700 26px "Courier New", monospace; color: var(--gold); }
+  .card .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .box h3 { margin: 0 0 10px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  tbody tr:hover { background: var(--panel2); }
+  tr.click { cursor: pointer; }
+  .scroll { overflow-x: auto; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  select, input { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font: inherit; }
+  .gold { color: var(--gold); } .green { color: var(--green); } .red { color: var(--red); } .pink { color: var(--pink); } .muted { color: var(--muted); }
+  .badge { padding: 2px 8px; border-radius: 10px; font-size: 12px; border: 1px solid var(--line); }
+  .badge.completed { color: var(--green); border-color: var(--green); }
+  .badge.abandoned { color: var(--red); border-color: var(--red); }
+  .badge.in_progress { color: var(--gold); border-color: var(--gold); }
+  .bars { display: flex; flex-direction: column; gap: 6px; }
+  .bar { display: grid; grid-template-columns: 150px 1fr 54px; gap: 8px; align-items: center; font-size: 12px; }
+  .bar .track { background: var(--panel2); border-radius: 4px; height: 14px; overflow: hidden; }
+  .bar .fill { height: 100%; background: linear-gradient(90deg, var(--cyan), #3b8bff); }
+  .bar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .bar .val { text-align: right; font-family: "Courier New", monospace; }
+  .msg { padding: 24px; text-align: center; color: var(--muted); }
+  .err { color: var(--red); }
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--cyan); border-radius: 10px; padding: 20px; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .kv div { background: var(--panel2); border-radius: 6px; padding: 8px 10px; }
+  .kv b { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .podium td:first-child { font-family: "Courier New", monospace; font-weight: 700; }
+  .rank1 td:first-child { color: var(--gold); } .rank2 td:first-child { color: #cfd8e6; } .rank3 td:first-child { color: #d9955f; }
+  code { color: var(--pink); }
+</style>
+</head>
+<body>
+<header>
+  <h1>ESCAPE DEL <span>LABORATORIO</span> · PANEL</h1>
+  <nav id="nav"></nav>
+  <div class="lock" id="lock"></div>
+</header>
+<main id="view"></main>
+
+<dialog id="login">
+  <form method="dialog" id="loginForm">
+    <h2>Acceso de administrador</h2>
+    <p class="muted">Escribe la clave <code>ADMIN_PASSWORD</code> definida en <code>server/.env</code>.</p>
+    <input type="password" id="adminKey" placeholder="Clave" autocomplete="current-password" style="width:100%">
+    <p class="err" id="loginErr"></p>
+    <div style="display:flex; gap:8px; justify-content:flex-end">
+      <button type="button" class="btn" id="loginCancel">Cancelar</button>
+      <button class="btn" value="ok" style="border-color:var(--cyan)">Entrar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="detail" style="max-width: 920px; width: 94vw;">
+  <div id="detailBody"></div>
+  <div style="text-align:right; margin-top:12px"><button class="btn" id="detailClose">Cerrar</button></div>
+</dialog>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtTime = (s) => { s = Math.max(0, Math.round(Number(s) || 0)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const fmtDate = (d) => d ? new Date(d).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+const LEVELS = { 1: 'Laboratorio', 2: 'Alcantarillas', 3: 'Azotea' };
+
+let adminKey = sessionStorage.getItem('adminKey') || '';
+let tab = 'leaderboard';
+let timer = null;
+const tabs = [
+  ['leaderboard', 'Leaderboard', false], ['summary', 'Resumen', true], ['players', 'Jugadores', true],
+  ['runs', 'Partidas', true], ['events', 'Eventos', true], ['export', 'Exportar', true],
+];
+
+async function api(path, admin) {
+  const res = await fetch(path, { headers: admin ? { 'x-admin-key': adminKey } : {} });
+  if (res.status === 401 && admin) { adminKey = ''; sessionStorage.removeItem('adminKey'); renderNav(); throw new Error('auth'); }
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Error ' + res.status);
+  return res;
+}
+const getJson = async (path, admin) => (await api(path, admin)).json();
+
+function ask() {
+  return new Promise((resolve) => {
+    const dlg = $('#login'); $('#loginErr').textContent = ''; $('#adminKey').value = '';
+    dlg.showModal();
+    const done = (v) => { dlg.close(); $('#loginForm').onsubmit = null; $('#loginCancel').onclick = null; resolve(v); };
+    $('#loginForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const key = $('#adminKey').value;
+      const r = await fetch('/api/admin/ping', { headers: { 'x-admin-key': key } });
+      if (r.ok) { adminKey = key; sessionStorage.setItem('adminKey', key); done(true); }
+      else { $('#loginErr').textContent = 'Clave incorrecta'; }
+    };
+    $('#loginCancel').onclick = () => done(false);
+  });
+}
+
+function renderNav() {
+  $('#nav').innerHTML = tabs.map(([id, name, locked]) =>
+    `<button data-tab="${id}" class="${tab === id ? 'active' : ''}">${name}${locked && !adminKey ? ' 🔒' : ''}</button>`).join('');
+  $('#lock').innerHTML = adminKey ? '<a href="#" id="logout" style="color:var(--muted)">Cerrar sesión de administrador</a>' : 'Modo público';
+  const lo = $('#logout'); if (lo) lo.onclick = (e) => { e.preventDefault(); adminKey = ''; sessionStorage.removeItem('adminKey'); go('leaderboard'); };
+  document.querySelectorAll('#nav button').forEach((b) => b.onclick = () => go(b.dataset.tab));
+}
+
+async function go(id, arg) {
+  clearInterval(timer);
+  const locked = tabs.find((t) => t[0] === id)[2];
+  if (locked && !adminKey) { if (!(await ask())) return go('leaderboard'); }
+  tab = id; renderNav();
+  $('#view').innerHTML = '<div class="msg">Cargando…</div>';
+  try { await views[id](arg); } catch (e) { if (e.message !== 'auth') $('#view').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; else go(id, arg); }
+}
+
+function table(head, rows, opts = {}) {
+  if (!rows.length) return '<div class="msg">Sin datos todavía</div>';
+  return `<div class="scroll"><table class="${opts.cls || ''}"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+}
+function bars(items, fmt = (v) => v) {
+  if (!items.length) return '<div class="msg">Sin datos</div>';
+  const max = Math.max(...items.map((i) => i.value), 1);
+  return `<div class="bars">${items.map((i) => `<div class="bar"><div class="name" title="${esc(i.label)}">${esc(i.label)}</div><div class="track"><div class="fill" style="width:${(i.value / max) * 100}%"></div></div><div class="val">${esc(fmt(i.value))}</div></div>`).join('')}</div>`;
+}
+const statusBadge = (s) => `<span class="badge ${esc(s)}">${{ completed: 'completada', abandoned: 'abandonada', in_progress: 'en curso' }[s] || esc(s)}</span>`;
+
+const views = {
+  async leaderboard() {
+    const kinds = [['score', 'Mayor puntuación'], ['time', 'Mejor tiempo'], ['coins', 'Más monedas'], ['parries', 'Más parrys'], ['streak', 'Mejor racha sin daño']];
+    const kind = sessionStorage.getItem('lbKind') || 'score';
+    const scope = sessionStorage.getItem('lbScope') || 'all';
+    const data = await getJson(`/api/leaderboard?type=${kind}&scope=${scope}&limit=20`);
+    const rows = data.entries.map((e) => `<tr class="rank${e.rank}"><td>#${e.rank}</td><td>${esc(e.username)}</td><td class="gold">${Number(e.score).toLocaleString('es-MX')}</td><td>${fmtTime(e.play_time)}</td><td>${e.coins}</td><td>${e.parries}</td><td>${e.deaths}</td><td>${fmtTime(e.best_streak)}</td><td>${e.status === 'completed' ? '<span class="badge completed">completada</span>' : `<span class="badge in_progress">nivel ${e.level_reached}</span>`}</td><td class="muted">${fmtDate(e.ended_at)}</td></tr>`);
+    $('#view').innerHTML = `<h2>Leaderboard</h2>
+      <div class="tabs">${kinds.map(([k, n]) => `<button class="btn ${k === kind ? 'active' : ''}" data-k="${k}" style="${k === kind ? 'background:var(--gold);color:#201800;border-color:var(--gold)' : ''}">${n}</button>`).join('')}<button class="btn" id="scopeBtn">${scope === 'all' ? 'Mostrar solo completadas' : 'Mostrar todas las partidas'}</button><span class="muted">Mejor partida de cada jugador · se actualiza cada 10 s</span></div>
+      <div class="box">${table(['#', 'Jugador', 'Puntos', 'Tiempo', 'Monedas', 'Parrys', 'Derrotas', 'Racha', 'Estado', 'Fecha'], rows, { cls: 'podium' })}</div>`;
+    document.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => { sessionStorage.setItem('lbKind', b.dataset.k); go('leaderboard'); });
+    $('#scopeBtn').onclick = () => { sessionStorage.setItem('lbScope', scope === 'all' ? 'completed' : 'all'); go('leaderboard'); };
+    timer = setInterval(() => { if (tab === 'leaderboard') views.leaderboard().catch(() => {}); }, 10000);
+  },
+
+  async summary() {
+    const s = await getJson('/api/admin/summary', true);
+    const r = s.runs;
+    const card = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+    $('#view').innerHTML = `<h2>Resumen general</h2>
+      <div class="cards">${card(s.players, 'Jugadores')}${card(r.total, 'Partidas')}${card(r.completed, 'Completadas')}${card(r.abandoned, 'Abandonadas')}${card(fmtTime(r.avg_time), 'Tiempo medio (completadas)')}${card(fmtTime(r.total_time), 'Tiempo total jugado')}${card(Number(r.total_score).toLocaleString('es-MX'), 'Puntos acumulados')}${card(Number(r.best_score).toLocaleString('es-MX'), 'Mejor puntuación')}${card(Math.round(r.avg_score).toLocaleString('es-MX'), 'Puntuación media')}${card(r.coins, 'Monedas')}${card(r.deaths, 'Derrotas')}${card(r.parries, 'Parrys')}${card(r.shots, 'Disparos')}${card(r.enemies_killed, 'Enemigos vencidos')}</div>
+      <div class="grid2">
+        <div class="box"><h3>Partidas por día (14 días)</h3>${bars(s.runs_per_day.map((d) => ({ label: d.day, value: d.n })))}</div>
+        <div class="box"><h3>Derrotas por nivel</h3>${bars(s.deaths_by_level.map((d) => ({ label: LEVELS[d.level] || 'Nivel ' + d.level, value: d.n })))}</div>
+        <div class="box"><h3>Tiempo medio para derrotar al jefe</h3>${bars(s.boss_times.map((d) => ({ label: LEVELS[d.level] || 'Nivel ' + d.level, value: Number(d.avg_time) })), fmtTime)}</div>
+        <div class="box"><h3>Enemigos vencidos por tipo</h3>${bars(s.kills_by_kind.map((k) => ({ label: `${k.kind} (${k.points} pts)`, value: k.n })))}</div>
+        <div class="box"><h3>Coleccionables recogidos</h3>${bars(s.collectibles.map((c) => ({ label: `${c.kind}: ${c.name}`, value: c.n })))}</div>
+        <div class="box"><h3>Eventos registrados por tipo</h3>${bars(s.event_types.map((e) => ({ label: e.event_type, value: e.n })))}</div>
+      </div>`;
+  },
+
+  async players() {
+    const { players } = await getJson('/api/admin/players', true);
+    const rows = players.map((p) => `<tr class="click" data-id="${p.id}"><td>${p.id}</td><td>${esc(p.username)}</td><td>${p.runs}</td><td>${p.completed}</td><td class="gold">${Number(p.best_score).toLocaleString('es-MX')}</td><td>${p.best_time == null ? '-' : fmtTime(p.best_time)}</td><td>${p.coins}</td><td>${p.parries}</td><td>${p.deaths}</td><td class="muted">${fmtDate(p.created_at)}</td><td class="muted">${fmtDate(p.last_run)}</td></tr>`);
+    $('#view').innerHTML = `<h2>Jugadores (${players.length})</h2><div class="muted" style="margin-bottom:8px">Haz clic en un jugador para ver sus partidas.</div><div class="box">${table(['ID', 'Usuario', 'Partidas', 'Completadas', 'Mejor puntuación', 'Mejor tiempo', 'Monedas', 'Parrys', 'Derrotas', 'Registro', 'Última partida'], rows)}</div>`;
+    document.querySelectorAll('tr[data-id]').forEach((tr) => tr.onclick = () => go('runs', { user_id: tr.dataset.id }));
+  },
+
+  async runs(arg = {}) {
+    const filter = { user_id: arg.user_id || '', status: arg.status || '' };
+    const qs = new URLSearchParams(Object.entries(filter).filter(([, v]) => v)).toString();
+    const { runs } = await getJson('/api/admin/runs?limit=100&' + qs, true);
+    const rows = runs.map((r) => `<tr class="click" data-id="${r.id}"><td>${r.id}</td><td>${esc(r.username)}</td><td>${statusBadge(r.status)}</td><td class="gold">${Number(r.score).toLocaleString('es-MX')}</td><td>${fmtTime(r.play_time)}</td><td>${r.level_reached}</td><td>${r.ingredients}/9</td><td>${r.coins}</td><td>${r.parries}</td><td>${r.deaths}</td><td>${fmtTime(r.best_streak)}</td><td>${r.continued ? 'sí' : 'no'}</td><td class="muted">${fmtDate(r.started_at)}</td></tr>`);
+    $('#view').innerHTML = `<h2>Partidas</h2>
+      <div class="tabs"><select id="fStatus"><option value="">Todos los estados</option><option value="completed">Completadas</option><option value="abandoned">Abandonadas</option><option value="in_progress">En curso</option></select>
+      ${filter.user_id ? `<span class="badge">Jugador #${esc(filter.user_id)}</span><button class="btn" id="fClear">Quitar filtro</button>` : ''}</div>
+      <div class="box">${table(['ID', 'Jugador', 'Estado', 'Puntos', 'Tiempo', 'Nivel', 'Ingred.', 'Monedas', 'Parrys', 'Derrotas', 'Racha', 'Continuada', 'Inicio'], rows)}</div>`;
+    $('#fStatus').value = filter.status;
+    $('#fStatus').onchange = (e) => go('runs', { ...filter, status: e.target.value });
+    const clear = $('#fClear'); if (clear) clear.onclick = () => go('runs', { status: filter.status });
+    document.querySelectorAll('tr[data-id]').forEach((tr) => tr.onclick = () => showRun(tr.dataset.id));
+  },
+
+  async events(arg = {}) {
+    const type = arg.type || '';
+    const { events } = await getJson('/api/admin/events?limit=200' + (type ? '&type=' + encodeURIComponent(type) : ''), true);
+    const rows = events.map((e) => `<tr><td>${e.id}</td><td>${e.run_id}</td><td>${esc(e.username)}</td><td>${fmtTime(e.game_time)}</td><td>${e.level ? esc(LEVELS[e.level] || e.level) : '-'}</td><td class="pink">${esc(e.event_type)}</td><td class="muted">${esc(JSON.stringify(e.data))}</td><td class="muted">${fmtDate(e.created_at)}</td></tr>`);
+    const types = ['', 'level_start', 'kill', 'ingredient', 'coin', 'heal', 'hurt', 'death', 'parry', 'super', 'ultra', 'boss_phase', 'boss_defeated', 'level_complete', 'level_failed', 'pause', 'retry'];
+    $('#view').innerHTML = `<h2>Bitácora de eventos</h2><div class="tabs"><select id="fType">${types.map((t) => `<option value="${t}">${t || 'Todos los tipos'}</option>`).join('')}</select><span class="muted">Últimos 200</span></div><div class="box">${table(['ID', 'Partida', 'Jugador', 'Tiempo de juego', 'Nivel', 'Evento', 'Datos', 'Fecha'], rows)}</div>`;
+    $('#fType').value = type; $('#fType').onchange = (e) => go('events', { type: e.target.value });
+  },
+
+  async export() {
+    const items = [['players', 'Jugadores'], ['runs', 'Partidas'], ['events', 'Eventos'], ['collectibles', 'Coleccionables']];
+    $('#view').innerHTML = `<h2>Exportar datos a CSV</h2><div class="box"><p class="muted">Archivos compatibles con Excel y Google Sheets.</p><div class="tabs">${items.map(([k, n]) => `<button class="btn" data-x="${k}">⬇ ${n}</button>`).join('')}</div></div>`;
+    document.querySelectorAll('[data-x]').forEach((b) => b.onclick = async () => {
+      const res = await api('/api/admin/export/' + b.dataset.x, true);
+      const url = URL.createObjectURL(await res.blob());
+      const a = Object.assign(document.createElement('a'), { href: url, download: b.dataset.x + '.csv' });
+      a.click(); URL.revokeObjectURL(url);
+    });
+  },
+};
+
+async function showRun(id) {
+  const d = await getJson('/api/admin/runs/' + id, true);
+  const r = d.run;
+  const kv = (l, v) => `<div><b>${l}</b>${v}</div>`;
+  const coll = {};
+  d.collectibles.forEach((c) => { const k = `${c.kind}: ${c.name}`; coll[k] = (coll[k] || 0) + c.value; });
+  const evRows = d.events.map((e) => `<tr><td>${fmtTime(e.game_time)}</td><td>${e.level ? esc(LEVELS[e.level] || e.level) : '-'}</td><td class="pink">${esc(e.event_type)}</td><td class="muted">${esc(JSON.stringify(e.data))}</td></tr>`);
+  $('#detailBody').innerHTML = `<h2>Partida #${r.id} · ${esc(r.username)} ${statusBadge(r.status)}</h2>
+    <div class="kv">${kv('Puntuación', Number(r.score).toLocaleString('es-MX'))}${kv('Tiempo de juego', fmtTime(r.play_time))}${kv('Mejor racha sin daño', fmtTime(r.best_streak))}${kv('Nivel alcanzado', r.level_reached)}${kv('Ingredientes', r.ingredients + '/9')}${kv('Monedas', r.coins)}${kv('Parrys', r.parries)}${kv('Derrotas', r.deaths)}${kv('Disparos', r.shots)}${kv('Saltos', r.jumps)}${kv('Dashes', r.dashes)}${kv('Súper / Ultra', r.supers + ' / ' + r.ultras)}${kv('Daño recibido', r.damage_taken)}${kv('Enemigos vencidos', r.enemies_killed)}${kv('Jefes derrotados', r.bosses_defeated)}${kv('Inicio', fmtDate(r.started_at))}${kv('Fin', fmtDate(r.ended_at))}</div>
+    <div class="box"><h3>Coleccionables</h3>${bars(Object.entries(coll).map(([label, value]) => ({ label, value })))}</div>
+    <div class="box"><h3>Línea de tiempo (${d.events.length} eventos)</h3><div class="scroll" style="max-height:300px; overflow-y:auto">${table(['Tiempo', 'Nivel', 'Evento', 'Datos'], evRows)}</div></div>`;
+  $('#detail').showModal();
+}
+$('#detailClose').onclick = () => $('#detail').close();
+
+renderNav();
+go('leaderboard');
+</script>
+</body>
+</html>
