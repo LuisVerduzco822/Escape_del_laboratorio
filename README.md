@@ -51,7 +51,8 @@ Si ya usaste una versión anterior del juego y quieres empezar limpio:
 ## Leaderboard
 Dentro del juego (menú **RANKING**) y en el panel web. Muestra la mejor partida de cada jugador, terminada o no
 (con su estado: nivel alcanzado o completada), y se puede ordenar por puntos, tiempo, monedas, parrys o mejor racha
-sin daño. En el panel hay un botón para ver solo las partidas completadas.
+sin daño. En el panel hay un botón para ver solo las partidas completadas. El criterio **Tiempo** solo cuenta
+partidas completadas, porque un tiempo corto en una partida perdida no es un récord.
 
 ## Panel web local
 `http://localhost:3000`

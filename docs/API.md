@@ -18,7 +18,7 @@ Base: `http://localhost:3000`. Cuerpos y respuestas en JSON. Las rutas marcadas 
 | `POST /api/runs` 🔒 | Abre una partida `{continued}` y devuelve `{run_id}`. Cierra como abandonada la anterior. |
 | `POST /api/runs/:id/events` 🔒 | Guarda hasta 500 eventos `{events:[{t, type, level, data}], summary}`. |
 | `POST /api/runs/:id/finish` 🔒 | Cierra la partida `{completed, summary}` y devuelve `{status, rank}`. |
-| `GET /api/leaderboard?type=score&scope=all&limit=10` | Mejor partida de cada jugador. `type`: `score`, `time`, `coins`, `parries`, `deaths`, `streak`. `scope`: `all` (por defecto, incluye partidas sin terminar) o `completed`. |
+| `GET /api/leaderboard?type=score&scope=all&limit=10` | Mejor partida de cada jugador. `type`: `score`, `time`, `coins`, `parries`, `deaths`, `streak`. `scope`: `all` (por defecto, incluye partidas sin terminar) o `completed`. Los criterios `time` y `deaths` solo consideran partidas completadas. |
 
 ## Administración
 | Ruta | Descripción |

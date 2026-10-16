@@ -256,8 +256,9 @@ router.get('/leaderboard', wrap(async (req, res) => {
   const type = Object.hasOwn(METRICS, req.query.type) ? req.query.type : 'score';
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
   const order = METRICS[type];
-  const scope = req.query.scope === 'completed' ? 'completed' : 'all';
-  const filter = scope === 'completed' ? "r.status = 'completed'" : "(r.status = 'completed' OR r.score > 0)";
+  const completedOnly = req.query.scope === 'completed' || type === 'time' || type === 'deaths';
+  const scope = completedOnly ? 'completed' : 'all';
+  const filter = completedOnly ? "r.status = 'completed'" : "(r.status = 'completed' OR r.score > 0)";
   const { rows } = await pool.query(
     `SELECT * FROM (
         SELECT DISTINCT ON (r.user_id)

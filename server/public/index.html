@@ -161,13 +161,14 @@ const views = {
     const kinds = [['score', 'Mayor puntuación'], ['time', 'Mejor tiempo'], ['coins', 'Más monedas'], ['parries', 'Más parrys'], ['streak', 'Mejor racha sin daño']];
     const kind = sessionStorage.getItem('lbKind') || 'score';
     const scope = sessionStorage.getItem('lbScope') || 'all';
+    const onlyDone = kind === 'time' || kind === 'deaths';
     const data = await getJson(`/api/leaderboard?type=${kind}&scope=${scope}&limit=20`);
     const rows = data.entries.map((e) => `<tr class="rank${e.rank}"><td>#${e.rank}</td><td>${esc(e.username)}</td><td class="gold">${Number(e.score).toLocaleString('es-MX')}</td><td>${fmtTime(e.play_time)}</td><td>${e.coins}</td><td>${e.parries}</td><td>${e.deaths}</td><td>${fmtTime(e.best_streak)}</td><td>${e.status === 'completed' ? '<span class="badge completed">completada</span>' : `<span class="badge in_progress">nivel ${e.level_reached}</span>`}</td><td class="muted">${fmtDate(e.ended_at)}</td></tr>`);
     $('#view').innerHTML = `<h2>Leaderboard</h2>
-      <div class="tabs">${kinds.map(([k, n]) => `<button class="btn ${k === kind ? 'active' : ''}" data-k="${k}" style="${k === kind ? 'background:var(--gold);color:#201800;border-color:var(--gold)' : ''}">${n}</button>`).join('')}<button class="btn" id="scopeBtn">${scope === 'all' ? 'Mostrar solo completadas' : 'Mostrar todas las partidas'}</button><span class="muted">Mejor partida de cada jugador · se actualiza cada 10 s</span></div>
-      <div class="box">${table(['#', 'Jugador', 'Puntos', 'Tiempo', 'Monedas', 'Parrys', 'Derrotas', 'Racha', 'Estado', 'Fecha'], rows, { cls: 'podium' })}</div>`;
+      <div class="tabs">${kinds.map(([k, n]) => `<button class="btn ${k === kind ? 'active' : ''}" data-k="${k}" style="${k === kind ? 'background:var(--gold);color:#201800;border-color:var(--gold)' : ''}">${n}</button>`).join('')}${onlyDone ? '' : `<button class="btn" id="scopeBtn">${scope === 'all' ? 'Mostrar solo completadas' : 'Mostrar todas las partidas'}</button>`}<span class="muted">${onlyDone ? 'El tiempo solo cuenta en partidas completadas' : 'Mejor partida de cada jugador'} · se actualiza cada 10 s</span></div>
+      <div class="box">${rows.length || !onlyDone ? table(['#', 'Jugador', 'Puntos', 'Tiempo', 'Monedas', 'Parrys', 'Derrotas', 'Racha', 'Estado', 'Fecha'], rows, { cls: 'podium' }) : '<div class="msg">Nadie ha completado el juego todavía</div>'}</div>`;
     document.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => { sessionStorage.setItem('lbKind', b.dataset.k); go('leaderboard'); });
-    $('#scopeBtn').onclick = () => { sessionStorage.setItem('lbScope', scope === 'all' ? 'completed' : 'all'); go('leaderboard'); };
+    if ($('#scopeBtn')) $('#scopeBtn').onclick = () => { sessionStorage.setItem('lbScope', scope === 'all' ? 'completed' : 'all'); go('leaderboard'); };
     timer = setInterval(() => { if (tab === 'leaderboard') views.leaderboard().catch(() => {}); }, 10000);
   },
 
