@@ -35,6 +35,7 @@ var on_platform := false
 var locked := false
 var parry_flash := 0.0
 var mute_flash := 0.0
+var weapon_power_t := 0.0
 
 
 func _ready() -> void:
@@ -77,6 +78,8 @@ func _physics_process(delta: float) -> void:
 	invuln = maxf(0.0, invuln - delta)
 	dash_cd = maxf(0.0, dash_cd - delta)
 	fire_cd = maxf(0.0, fire_cd - delta)
+	if weapon_power_t > 0.0 and get_parent().can_use_powerups():
+		weapon_power_t = maxf(0.0, weapon_power_t - delta)
 	flash_t = maxf(0.0, flash_t - delta)
 	parry_flash = maxf(0.0, parry_flash - delta)
 	buffer = maxf(0.0, buffer - delta)
@@ -191,6 +194,12 @@ func _shoot() -> void:
 	Telemetry.count("shots")
 	var dir := aim.rotated(randf_range(-0.025, 0.025))
 	var s := PlayerShot.new()
+	if weapon_power_t > 0.0:
+		var support: Dictionary = get_parent().data.get("boss_powerups", {})
+		s.kind = "boost"
+		s.damage = float(support.get("boost_damage", 3.0))
+		s.radius = 4.5
+		fire_cd = float(support.get("boost_fire_rate", FIRE_RATE))
 	s.position = global_position + Vector2(facing * 4, -2) + aim * 12.0
 	s.vel = dir * 360.0
 	get_parent().add_child(s)
@@ -288,5 +297,7 @@ func _draw() -> void:
 		draw_circle(tip + aim * 3.0, 3.0, Color(1.0, 0.95, 0.5, 0.9))
 	if locked:
 		draw_arc(Vector2(0, 3), 13.0, 0.0, TAU, 20, Color(1, 1, 1, 0.25), 1.0)
+	if weapon_power_t > 0.0:
+		draw_arc(Vector2(0, 3), 14.0, -0.6, PI + 0.6, 20, Color(0.3, 0.9, 1.0, 0.7), 1.5)
 	if parry_flash > 0.0:
 		draw_arc(Vector2.ZERO, 10.0 + (0.3 - parry_flash) * 60.0, 0.0, TAU, 24, Color(1, 0.5, 0.85, parry_flash * 3.0), 2.0)

@@ -178,13 +178,41 @@ func _run() -> void:
 	await main._continue_game()
 	check(main.level.boss.phase == 3 and main.level.process_mode != Node.PROCESS_MODE_DISABLED, "Continue restores boss phase after countdown")
 	paused = true
-	var retry_hp: int = main.level.boss_checkpoint.stats.hp
+	var retry_ingredients: Array = gm.ingredients.duplicate()
+	var previous_deaths: int = gm.deaths
 	main.level.player.dead = true
 	gm.hp = 0
 	gm.deaths += 1
 	main.level._fail("dead")
 	await main._retry()
-	check(main.level.boss.phase == 3 and gm.hp == retry_hp and not main.level.player.dead, "Death retry restores the current phase and player")
+	check(main.level.boss.phase == 1 and main.level.boss.hp == main.level.boss.max_hp and gm.hp == root.get_node("Cfg").MAX_HP and not main.level.player.dead, "Death retry restarts the whole boss with full player and boss health")
+	check(gm.ingredients == retry_ingredients and gm.deaths == previous_deaths + 1, "Death retry retains ingredients and the defeat count")
+	check(main.level.boss_t == 0.0 and gm.super_meter == 0.0, "Death retry resets the combat timer and super meter")
+	# The first boss must also reset powerups and keep its translated arena sealed.
+	for slot in 3:
+		gm.collect_ingredient(slot)
+	await main._start_level(0, "boss", false)
+	paused = true
+	main.level.st = main.level.S.BOSS
+	main.level.boss.phase = 3
+	main.level.boss.hp = 50.0
+	main.level.boss_t = 90.0
+	main.level.player.weapon_power_t = 6.0
+	main.level.cd.powerup = 1.0
+	main.level.cd.powerup_turn = 5
+	main.level.capture_boss_checkpoint()
+	main.level.player.dead = true
+	gm.hp = 0
+	gm.deaths += 1
+	main.level._fail("dead")
+	check(main.fail_info_label.text.contains("combate completo"), "Defeat screen explains the full combat restart")
+	await main._retry()
+	paused = true
+	check(main.level.boss.phase == 1 and main.level.boss.hp == main.level.boss.max_hp and gm.hp == root.get_node("Cfg").MAX_HP, "First boss restarts from phase one with full health")
+	check(main.level.player.weapon_power_t == 0.0 and not main.level.cd.has("powerup_turn"), "First boss retry removes active boosts and resets the support sequence")
+	check(main.level.view_left == main.level.arena_x and main.level.gate.collision_layer == 1 and main.level.player.position.x > main.level.arena_x, "First boss retry keeps the player and camera in the sealed arena")
+	check(gm.level_ingredients(0) == 3 and main.level.boss_t == 0.0, "First boss retry retains compounds and renews the time limit")
+	check(saves.load_saved().boss.phase == 1 and saves.load_saved().stats.hp == root.get_node("Cfg").MAX_HP, "New fight replaces the old phase checkpoint for subsequent saves")
 	paused = true
 	main.level.boss._die()
 	check(saves.load_saved().is_empty(), "Defeated boss checkpoint is invalidated")

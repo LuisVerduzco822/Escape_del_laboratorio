@@ -461,6 +461,7 @@ func _begin_warn() -> void:
 
 func _boss_phase(delta: float) -> void:
 	boss_t += delta
+	_tick_powerups(delta)
 	cd["heal"] -= delta
 	if cd["heal"] <= 0.0:
 		cd["heal"] = 45.0
@@ -469,11 +470,70 @@ func _boss_phase(delta: float) -> void:
 		_fail("time")
 
 
+func can_use_powerups() -> bool:
+	return st == S.BOSS and is_instance_valid(boss) and boss.st == Boss.St.FIGHT and not player.dead
+
+
+func _tick_powerups(delta: float) -> void:
+	var support: Dictionary = data.get("boss_powerups", {})
+	if support.is_empty() or not can_use_powerups():
+		return
+	cd["powerup"] = float(cd.get("powerup", support["first_delay"])) - delta
+	if cd["powerup"] > 0.0:
+		return
+	for child in get_children():
+		if child.get_script() == Pickup and child.is_powerup() and not child.is_queued_for_deletion():
+			return # Only one support item on the field at a time.
+	var turn := int(cd.get("powerup_turn", 0))
+	var sequence: Array = support["sequence"]
+	var kind: String = sequence[turn % sequence.size()]
+	var spots := [120.0, 270.0, 210.0]
+	var pk := Pickup.new()
+	pk.kind = kind
+	pk.col = Color(0.3, 0.9, 1.0) if kind == "overcharge" else Color(1.0, 0.65, 0.2)
+	pk.label = "DISPARO X3" if kind == "overcharge" else "BOMBA VIRAL"
+	pk.life = float(support["pickup_life"])
+	pk.position = Vector2(arena_x + spots[turn % spots.size()], Cfg.FLOOR_Y - 14.0)
+	add_child(pk)
+	cd["powerup_turn"] = turn + 1
+	cd["powerup"] = float(support["interval"])
+	hud.hint = pk.label + ": ¡RECOGE LA AYUDA!"
+	hud.hint_t = 3.0
+	Telemetry.event("powerup_spawn", {"kind": kind})
+
+
+func claim_powerup(kind: String) -> bool:
+	var support: Dictionary = data.get("boss_powerups", {})
+	if support.is_empty() or not can_use_powerups():
+		return false
+	if kind == "overcharge":
+		# Refresh the duration instead of stacking an unlimited damage multiplier.
+		player.weapon_power_t = float(support["boost_duration"])
+		Fx.popup(self, "DISPARO X3", player.position + Vector2(0, -24), Color(0.3, 0.9, 1.0))
+		AudioManager.sfx("pickup")
+	elif kind == "boss_bomb":
+		var damage := float(support["bomb_damage"])
+		if not boss.take_damage(damage):
+			return false
+		Fx.burst(self, boss.position, Color(1.0, 0.65, 0.2), 28, 140.0, 0.7, 3.0)
+		Fx.popup(self, "-%d" % int(damage), boss.position + Vector2(0, -30), Color(1.0, 0.8, 0.3))
+		Fx.shake(3.0, 0.3)
+		AudioManager.sfx("boom", -3.0)
+	else:
+		return false
+	Telemetry.event("powerup", {"kind": kind})
+	return true
+
+
 func _on_boss_defeated() -> void:
 	SaveGame.clear()
 	st = S.KO
 	st_t = 0.0
 	player.invuln = 99.0
+	player.weapon_power_t = 0.0
+	for child in get_children():
+		if child.get_script() == Pickup and child.is_powerup():
+			child.queue_free()
 	var bonus := 5000 + int(boss_left()) * 20
 	GameManager.add_score_raw(bonus)
 	GameManager.add_coin(100)

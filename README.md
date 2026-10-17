@@ -53,9 +53,12 @@ con una cuenta atrás de tres segundos durante la cual el juego está detenido.
 - **Fuera de los jefes:** se guardan posición y movimiento del jugador, vida, súper, estadísticas,
   ingredientes, monedas y curaciones presentes, enemigos, disparos, peligros, temporizadores y oleadas pendientes.
 - **Durante un jefe:** se guarda automáticamente un checkpoint al comenzar cada fase. Guardar durante un
-  ataque conserva únicamente ese checkpoint. Cargar o reintentar tras una derrota reinicia la fase completa:
+  ataque conserva únicamente ese checkpoint. Cargar con CONTINUAR reinicia la fase completa:
   vida y recursos del jugador, vida del jefe, puntuación y tiempo vuelven juntos al inicio de fase.
   La secuencia aleatoria de ataques también se conserva; los ataques dirigidos siguen respondiendo al jugador.
+- **Reintentar tras una derrota:** comienza el enfrentamiento completo desde la fase 1, con la vida del jefe
+  y las vidas del jugador al máximo, el tiempo renovado y las ayudas reiniciadas. Conservas los ingredientes
+  recogidos y el registro de la derrota. Esto también se aplica si se agota el tiempo del combate.
 - Los estados detallados se guardan **en este equipo**, tanto para invitados como para cuentas, separados por
   servidor y usuario (`user://resume_*.save`). El progreso entre niveles de las cuentas sigue en PostgreSQL.
   Si no hay un estado detallado válido, CONTINUAR usa el guardado entre niveles anterior.
@@ -130,6 +133,15 @@ Cada nivel tiene dos fases continuas, sin volver al menú:
 | 3 | Azotea | Gárgola Viral | 920 |
 
 Al derrotar al tercer jefe se fabrica el antídoto y se muestra tu puntuación final y tu puesto en el ranking.
+En la batalla contra **Gelatina Mutante** aparecen ayudas alternadas: **Disparo x3** aumenta el daño y la
+cadencia durante 10 segundos, y la **Bomba viral** inflige 110 puntos de daño al jefe al recogerla. La primera
+aparece tras 4 segundos de combate y las siguientes cada 14 segundos de combate activo, con un solo objeto
+disponible a la vez. Cada objeto desaparece si no se recoge en 12 segundos. El potenciador no gasta su duración
+durante pausas o transiciones de fase. Si tocas la bomba durante una transición, permanece disponible hasta
+que el jefe vuelva a ser vulnerable. El guardado por fase conserva ayudas, duración y calendario de aparición juntos.
+
+Por ahora las ayudas se habilitan únicamente en el primer jefe. Su configuración está en `boss_powerups`
+dentro de `game/scripts/Cfg.gd`; el sistema compartido permite habilitarlas y ajustar sus valores para otros jefes.
 La duración del primer nivel depende del recorrido y los saltos. El fondo tiene parallax animado con efectos propios de cada nivel.
 
 ### Puntuación

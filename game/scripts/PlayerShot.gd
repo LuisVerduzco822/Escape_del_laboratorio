@@ -39,7 +39,7 @@ func _on_area(a: Area2D) -> void:
 	if target.has_method("take_damage"):
 		var hit: bool = target.take_damage(damage)
 		if hit:
-			GameManager.add_super(0.28 if kind == "normal" else 0.0)
+			GameManager.add_super(0.28 if kind in ["normal", "boost"] else 0.0)
 		Fx.burst(get_parent(), global_position, Color(1, 0.95, 0.5), 3, 50.0, 0.25, 2.0)
 		if not pierce:
 			done = true
@@ -50,13 +50,18 @@ func _on_body(_b: Node) -> void:
 	if done:
 		return
 	Fx.burst(get_parent(), global_position, Color(0.9, 0.9, 1.0), 3, 40.0, 0.2, 1.5)
-	if kind == "normal":
+	if kind in ["normal", "boost"]:
 		done = true
 		queue_free()
 
 
 func _draw() -> void:
-	if kind == "super":
+	if kind == "boost":
+		draw_line(Vector2(-10, 0), Vector2.ZERO, Color(0.2, 0.8, 1.0, 0.4), 5.0)
+		draw_circle(Vector2.ZERO, radius + 2.0, Color(0.2, 0.8, 1.0, 0.3))
+		draw_circle(Vector2.ZERO, radius, Color(0.3, 0.9, 1.0))
+		draw_circle(Vector2.ZERO, radius * 0.5, Color.WHITE)
+	elif kind == "super":
 		draw_circle(Vector2.ZERO, radius + 3.0, Color(1, 0.8, 0.2, 0.35))
 		draw_circle(Vector2.ZERO, radius, Color(1, 0.9, 0.4))
 		draw_circle(Vector2.ZERO, radius * 0.55, Color(1, 1, 1))

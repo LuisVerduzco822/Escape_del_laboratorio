@@ -5,7 +5,7 @@ const VERSION := 1
 const FIELDS := {
 	"stats": ["hp", "super_meter", "ingredients", "play_time", "parries", "coins", "score", "combo", "combo_t", "streak", "best_streak", "hits_taken", "survive_acc", "current_level", "deaths"],
 	"level": ["index", "st", "st_t", "age", "collect_t", "boss_t", "reached_boss", "ing_spawned", "cd", "horde_remaining", "horde_wait", "horde_p"],
-	"player": ["position", "velocity", "facing", "aim", "invuln", "dash_t", "dash_cd", "dash_dir", "air_dash", "fire_cd", "coyote", "buffer", "drop_t", "on_platform"],
+	"player": ["position", "velocity", "facing", "aim", "invuln", "dash_t", "dash_cd", "dash_dir", "air_dash", "fire_cd", "coyote", "buffer", "drop_t", "on_platform", "weapon_power_t"],
 	"boss": ["hp", "phase", "t", "last_attack"],
 	"enemy": ["position", "kind", "hp", "speed", "dir", "pink", "age", "base_y", "wobble", "bound_l", "bound_r", "grounded"],
 	"pickup": ["position", "kind", "idx", "col", "label", "age", "life", "base_y", "value", "vy", "landed", "fall"],
@@ -13,6 +13,7 @@ const FIELDS := {
 	"zone": ["position", "size", "warn", "active", "col", "t", "struck"],
 	"shot": ["position", "vel", "damage", "radius", "pierce", "kind", "age"],
 }
+const OPTIONAL_FIELDS := {"player": {"weapon_power_t": 0.0}}
 const SCRIPTS := {
 	"enemy": preload("res://scripts/Enemy.gd"),
 	"pickup": preload("res://scripts/Pickup.gd"),
@@ -36,6 +37,9 @@ func read_fields(node: Object, category: String) -> Dictionary:
 
 func write_fields(node: Object, category: String, state: Dictionary) -> void:
 	for key in FIELDS[category]:
+		if not state.has(key) and OPTIONAL_FIELDS.get(category, {}).has(key):
+			node.set(key, OPTIONAL_FIELDS[category][key])
+			continue
 		node.set(key, state[key].duplicate(true) if state[key] is Array or state[key] is Dictionary else state[key])
 
 func capture(level: Node, boss_checkpoint: bool = false) -> Dictionary:
@@ -108,6 +112,8 @@ func _plain(value: Variant) -> bool:
 func _shape(state: Variant, category: String, sample: Object) -> bool:
 	if not state is Dictionary: return false
 	for key in FIELDS[category]:
+		if not state.has(key) and OPTIONAL_FIELDS.get(category, {}).has(key):
+			continue
 		if not state.has(key) or typeof(state[key]) != typeof(sample.get(key)):
 			return false
 	return true

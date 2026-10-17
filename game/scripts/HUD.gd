@@ -75,7 +75,12 @@ func _draw() -> void:
 	if GameManager.parries > 0:
 		UI.text(self, "PARRY x%d" % GameManager.parries, 474, 262, 8, Color(1.0, 0.55, 0.88), 2)
 
-	if level.index == 0 and level.age < 12.0 and level.st != ST_FAIL:
+	if level.player.weapon_power_t > 0.0:
+		var duration := float(level.data.get("boss_powerups", {}).get("boost_duration", 10.0))
+		draw_rect(Rect2(176, 200, 128, 23), Color(0.02, 0.06, 0.1, 0.9))
+		UI.text(self, "DISPARO X3  %ds" % ceili(level.player.weapon_power_t), 240, 214, 8, Color(0.3, 0.9, 1.0), 1)
+		draw_rect(Rect2(180, 218, 120 * clampf(level.player.weapon_power_t / duration, 0.0, 1.0), 3), Color(0.3, 0.9, 1.0))
+	if level.index == 0 and level.age < 12.0 and not level.reached_boss and level.st != ST_FAIL:
 		var a := clampf(12.0 - level.age, 0.0, 1.0)
 		UI.text(self, "MOVER A/D  SALTAR ESPACIO  APUNTAR W/S+A/D", 240, 226, 8, Color(1, 1, 1, a), 1)
 		UI.text(self, "DISPARO J  SUPER K  DASH SHIFT  FIJAR CTRL", 240, 238, 8, Color(1, 1, 1, a), 1)

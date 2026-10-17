@@ -1,5 +1,7 @@
 extends Area2D
 
+const UI := preload("res://scripts/UI.gd")
+
 var kind := "ingredient"
 var idx := 0
 var col := Color.WHITE
@@ -36,7 +38,15 @@ func _physics_process(delta: float) -> void:
 		position.y = base_y + sin(age * 3.0) * 3.0
 	if life > 0.0 and age > life:
 		queue_free()
+	# A bomb touched during a phase transition waits until the boss is vulnerable.
+	if is_powerup() and not is_queued_for_deletion():
+		for body in get_overlapping_bodies():
+			_on_body(body)
 	queue_redraw()
+
+
+func is_powerup() -> bool:
+	return kind in ["overcharge", "boss_bomb"]
 
 
 func _coin_motion(delta: float) -> void:
@@ -59,7 +69,12 @@ func _coin_motion(delta: float) -> void:
 
 
 func _on_body(b: Node) -> void:
-	if not b.is_in_group("player") or b.dead:
+	if is_queued_for_deletion() or not b.is_in_group("player") or b.dead:
+		return
+	if is_powerup():
+		if get_parent().claim_powerup(kind):
+			Fx.burst(get_parent(), global_position, col, 14, 80.0, 0.5, 2.0)
+			queue_free()
 		return
 	if kind == "coin":
 		GameManager.add_coin(value)
@@ -105,7 +120,20 @@ func _draw() -> void:
 		return
 	if life > 0.0 and life - age < 3.0 and int(age * 8.0) % 2 == 0:
 		return
-	if kind == "ingredient":
+	if is_powerup():
+		var entrance := smoothstep(0.0, 0.4, age)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * lerpf(0.3, 1.0, entrance))
+		draw_circle(Vector2.ZERO, 16.0 + sin(age * 5.0) * 2.0, Color(col, 0.18))
+		draw_arc(Vector2.ZERO, 12.0, age * 2.0, age * 2.0 + TAU * 0.8, 24, col, 1.5)
+		if kind == "overcharge":
+			draw_colored_polygon(PackedVector2Array([Vector2(1, -9), Vector2(-6, 1), Vector2(-1, 1), Vector2(-3, 9), Vector2(7, -2), Vector2(2, -2)]), col)
+		else:
+			draw_circle(Vector2(0, 2), 6.0, col)
+			draw_line(Vector2(2, -4), Vector2(5, -8), Color.WHITE, 2.0)
+			draw_circle(Vector2(5, -8), 2.0, Color(1, 0.95, 0.5))
+		draw_set_transform(Vector2.ZERO)
+		UI.text(self, label, 0, -23, 8, col, 1)
+	elif kind == "ingredient":
 		var pulse := 0.5 + 0.5 * sin(age * 4.0)
 		draw_circle(Vector2.ZERO, 12.0 + pulse * 2.0, Color(col.r, col.g, col.b, 0.18))
 		draw_circle(Vector2.ZERO, 9.0, Color(col.r, col.g, col.b, 0.22))

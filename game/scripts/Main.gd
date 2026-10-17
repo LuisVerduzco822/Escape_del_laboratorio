@@ -580,7 +580,7 @@ func _on_level_failed(info: Dictionary) -> void:
 	in_game = false
 	fail_title.text = "TIEMPO AGOTADO" if info["reason"] == "time" else "DERROTADO"
 	if info["phase"] == "boss":
-		fail_info_label.text = "El jefe sigue en pie.\nReintentas desde el inicio\nde esta fase."
+		fail_info_label.text = "Reintentas el combate completo\ncon todas tus vidas\ny tus ingredientes."
 	else:
 		fail_info_label.text = "Reintentas el nivel\ndesde la recoleccion."
 	fail_layer.visible = true
@@ -590,16 +590,11 @@ func _on_level_failed(info: Dictionary) -> void:
 func _retry() -> void:
 	if busy:
 		return
-	if last_fail["phase"] == "boss" and is_instance_valid(level) and not level.boss_checkpoint.is_empty():
-		var snapshot: Dictionary = level.boss_checkpoint.duplicate(true)
-		snapshot.stats.deaths = GameManager.deaths
-		Telemetry.counters = snapshot.counters.duplicate(true)
-		await _start_level(last_fail["level"], "boss", false, snapshot)
-		return
 	if last_fail["phase"] == "collect":
 		GameManager.reset_level_ingredients(last_fail["level"])
 	Telemetry.event("retry", {"phase": last_fail["phase"], "reason": last_fail["reason"]})
-	_start_level(last_fail["level"], last_fail["phase"], false)
+	# Defeat starts a fresh fight. Phase snapshots are reserved for Continue.
+	await _start_level(last_fail["level"], last_fail["phase"], false)
 
 
 func _restart_level() -> void:

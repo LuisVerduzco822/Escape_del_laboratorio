@@ -19,6 +19,13 @@ const LEVELS := [
 		"boss_name": "GELATINA MUTANTE",
 		"boss_hp": 880.0,
 		"boss_time": 240.0,
+		# Opt-in per boss: other levels can enable and tune this same support system.
+		"boss_powerups": {
+			"first_delay": 4.0, "interval": 14.0, "pickup_life": 12.0,
+			"sequence": ["overcharge", "boss_bomb"],
+			"boost_duration": 10.0, "boost_damage": 3.0, "boost_fire_rate": 0.075,
+			"bomb_damage": 110.0,
+		},
 		"world_width": 1920.0,
 		"arena_x": 1440.0,
 		"ingredient_spots": [Vector2(352, 56), Vector2(856, 44), Vector2(1280, 48)],
