@@ -1,6 +1,7 @@
 extends Node
 
 const CONFIG_FILE := "user://config.cfg"
+const OFFLINE_SAVE := "user://offline_progress.cfg"
 const DEFAULT_URL := "http://localhost:3000"
 var timeout := 8.0
 
@@ -9,6 +10,7 @@ var token := ""
 var username := ""
 var user_id := -1
 var online := false
+var offline_mode := false
 var progress_cache := {}
 
 
@@ -53,7 +55,22 @@ func logged_in() -> bool:
 	return token != ""
 
 
+func can_play() -> bool:
+	return offline_mode or logged_in()
+
+
+func start_offline() -> void:
+	offline_mode = true
+	online = false
+	token = ""
+	username = "INVITADO"
+	user_id = -1
+	progress_cache = {}
+
+
 func request(method: int, path: String, body: Variant = null, auth: bool = true) -> Dictionary:
+	if offline_mode:
+		return {"ok": false, "status": 0, "data": {}, "error": "Disponible solo al iniciar sesión"}
 	var req := HTTPRequest.new()
 	req.timeout = timeout
 	add_child(req)
@@ -118,6 +135,7 @@ func login(name: String, password: String) -> Dictionary:
 	token = str(r["data"]["token"])
 	username = str(r["data"]["user"]["username"])
 	user_id = int(r["data"]["user"]["id"])
+	offline_mode = false
 	_remember(username)
 	progress_cache = {}
 	return {"ok": true, "msg": "Bienvenido, " + username}
@@ -130,9 +148,18 @@ func logout() -> void:
 	username = ""
 	user_id = -1
 	progress_cache = {}
+	offline_mode = false
 
 
 func refresh_progress() -> void:
+	if offline_mode:
+		progress_cache = {}
+		var save := ConfigFile.new()
+		if save.load(OFFLINE_SAVE) == OK:
+			var saved: Variant = save.get_value("game", "progress", {})
+			if saved is Dictionary and _valid_offline_progress(saved):
+				progress_cache = saved
+		return
 	var r := await request(HTTPClient.METHOD_GET, "/api/progress")
 	if not r["ok"]:
 		return
@@ -158,7 +185,34 @@ func load_progress() -> Dictionary:
 	return progress_cache
 
 
+func _valid_offline_progress(saved: Dictionary) -> bool:
+	if typeof(saved.get("level_done")) != TYPE_INT:
+		return false
+	if saved["level_done"] < 1 or saved["level_done"] > 2:
+		return false
+	var flags: Variant = saved.get("ingredients")
+	if not flags is Array or flags.size() != 9:
+		return false
+	for flag in flags:
+		if typeof(flag) != TYPE_BOOL:
+			return false
+	for key in ["play_time", "parries", "deaths", "coins", "score"]:
+		var value: Variant = saved.get(key)
+		if typeof(value) != TYPE_INT and typeof(value) != TYPE_FLOAT:
+			return false
+		if not is_finite(float(value)) or value < 0:
+			return false
+	return true
+
+
 func save_progress(level_done: int, ingredients: Array, play_time: float, parries: int, deaths: int, coins: int, score: int) -> void:
+	if offline_mode:
+		progress_cache = {"level_done": level_done, "ingredients": ingredients.duplicate(), "play_time": play_time, "parries": parries, "deaths": deaths, "coins": coins, "score": score}
+		var save := ConfigFile.new()
+		save.set_value("game", "progress", progress_cache)
+		if save.save(OFFLINE_SAVE) != OK:
+			push_warning("No se pudo guardar el progreso offline")
+		return
 	var flags := ""
 	for v in ingredients:
 		flags += "1" if v else "0"
@@ -170,6 +224,11 @@ func save_progress(level_done: int, ingredients: Array, play_time: float, parrie
 
 func clear_progress() -> void:
 	progress_cache = {}
+	if offline_mode:
+		if FileAccess.file_exists(OFFLINE_SAVE):
+			if DirAccess.remove_absolute(OFFLINE_SAVE) != OK:
+				push_warning("No se pudo borrar el progreso offline")
+		return
 	await request(HTTPClient.METHOD_DELETE, "/api/progress")
 
 

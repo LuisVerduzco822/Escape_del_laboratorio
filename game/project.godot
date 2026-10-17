@@ -28,6 +28,7 @@ Telemetry="*res://scripts/Telemetry.gd"
 GameManager="*res://scripts/GameManager.gd"
 AudioManager="*res://scripts/AudioManager.gd"
 Fx="*res://scripts/Fx.gd"
+SaveGame="*res://scripts/SaveGame.gd"
 
 [display]
 
@@ -36,6 +37,10 @@ window/size/viewport_height=270
 window/size/window_width_override=960
 window/size/window_height_override=540
 window/stretch/mode="viewport"
+
+[dotnet]
+
+project/assembly_name="Escape del Laboratorio"
 
 [layer_names]
 

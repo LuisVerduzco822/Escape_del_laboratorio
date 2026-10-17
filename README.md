@@ -36,6 +36,47 @@ Guía completa paso a paso, con Docker y solución de problemas: **[docs/GUIA_PO
 4. Abre `game/project.godot` en Godot 4.7, presiona **F5**, regístrate y juega.
 
 Alternativa con Docker: `docker compose up --build`.
+
+### Jugar sin conexión
+
+En la pantalla de acceso, pulsa **Jugar sin conexión** para entrar como invitado, sin cuenta ni servidor.
+El juego guarda el progreso localmente al superar los niveles 1 y 2; puedes recuperarlo con **CONTINUAR**
+al volver a entrar como invitado. El archivo es `user://offline_progress.cfg` en la carpeta de datos de Godot.
+Al completar el juego se borra ese punto de continuación. Las partidas offline no se suben al ranking ni
+se sincronizan con cuentas. El botón **INICIAR SESION** del menú permite volver al acceso en línea.
+
+### Guardar y continuar una partida
+
+Abre **PAUSA → GUARDAR Y SALIR** para guardar y regresar al menú. **CONTINUAR** carga ese estado
+con una cuenta atrás de tres segundos durante la cual el juego está detenido.
+
+- **Fuera de los jefes:** se guardan posición y movimiento del jugador, vida, súper, estadísticas,
+  ingredientes, monedas y curaciones presentes, enemigos, disparos, peligros, temporizadores y oleadas pendientes.
+- **Durante un jefe:** se guarda automáticamente un checkpoint al comenzar cada fase. Guardar durante un
+  ataque conserva únicamente ese checkpoint. Cargar o reintentar tras una derrota reinicia la fase completa:
+  vida y recursos del jugador, vida del jefe, puntuación y tiempo vuelven juntos al inicio de fase.
+  La secuencia aleatoria de ataques también se conserva; los ataques dirigidos siguen respondiendo al jugador.
+- Los estados detallados se guardan **en este equipo**, tanto para invitados como para cuentas, separados por
+  servidor y usuario (`user://resume_*.save`). El progreso entre niveles de las cuentas sigue en PostgreSQL.
+  Si no hay un estado detallado válido, CONTINUAR usa el guardado entre niveles anterior.
+- Empezar con **JUGAR** reemplaza el guardado anterior. Se crea un punto de continuación al entrar a cada nivel;
+  al derrotar al jefe se descarta su checkpoint y al terminar el juego se limpia el guardado.
+
+Prueba del sistema de guardado en PowerShell, desde la raíz del repositorio (ajusta la ruta de Godot):
+
+```powershell
+$previousAppData = $env:APPDATA
+try {
+    $env:APPDATA = Join-Path (Get-Location) '.save-check'
+    New-Item -ItemType Directory -Force $env:APPDATA | Out-Null
+    godot --headless --path game --script res://tests/save_game_test.gd
+} finally {
+    $env:APPDATA = $previousAppData
+}
+```
+
+La prueba exige esa carpeta de datos aislada y no usa partidas reales ni requiere servidor.
+
 Si ya usaste una versión anterior del juego y quieres empezar limpio:
 **[docs/LIMPIAR_JUEGO_ANTERIOR.md](docs/LIMPIAR_JUEGO_ANTERIOR.md)**.
 

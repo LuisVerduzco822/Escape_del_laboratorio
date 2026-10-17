@@ -52,9 +52,11 @@ var radius := 46.0
 var boom_t := 0.0
 var sp := 1.0
 var ox := 0.0
+var attack_rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	attack_rng.randomize()
 	add_to_group("boss")
 	z_index = -10
 	ox = level.arena_x if level else 0.0
@@ -110,7 +112,7 @@ func _physics_process(delta: float) -> void:
 			var p := clampf(st_t / 2.6, 0.0, 1.0)
 			p = 1.0 - pow(1.0 - p, 3.0)
 			position = start_pos.lerp(home, p) + Vector2(0, sin(t * 3.0) * 4.0)
-			if st_t >= 2.6:
+			if st_t >= 2.6 and level.st == level.S.BOSS:
 				_enter_fight()
 		St.FIGHT:
 			if not moving:
@@ -147,6 +149,7 @@ func _enter_fight() -> void:
 	busy = false
 	moving = false
 	rest = 1.0
+	level.capture_boss_checkpoint.call_deferred()
 
 
 func take_damage(d: float) -> bool:
@@ -221,7 +224,7 @@ func _pick_attack() -> void:
 	var pool: Array = POOLS[kind][phase].duplicate()
 	if pool.size() > 1:
 		pool.erase(last_attack)
-	var a: String = pool[randi() % pool.size()]
+	var a: String = pool[attack_rng.randi_range(0, pool.size() - 1)]
 	last_attack = a
 	_new_tw()
 	match a:
@@ -294,9 +297,9 @@ func _atk_rain() -> void:
 
 
 func _fire_drop(i: int) -> void:
-	var x := _target().x + randf_range(-70.0, 70.0) if i % 2 == 0 else ox + randf_range(20.0, 460.0)
+	var x := _target().x + attack_rng.randf_range(-70.0, 70.0) if i % 2 == 0 else ox + attack_rng.randf_range(20.0, 460.0)
 	x = clampf(x, ox + 14.0, ox + 466.0)
-	level.add_hazard(Vector2(x, -10.0), Vector2(0, 70.0 * sp + randf_range(0, 30.0)), {"style": "drop", "radius": 5.0, "col": _col(), "accel": Vector2(0, 70.0), "pink": phase >= 2 and i % 7 == 3})
+	level.add_hazard(Vector2(x, -10.0), Vector2(0, 70.0 * sp + attack_rng.randf_range(0, 30.0)), {"style": "drop", "radius": 5.0, "col": _col(), "accel": Vector2(0, 70.0), "pink": phase >= 2 and i % 7 == 3})
 
 
 func _atk_zones(cnt: int, random: bool) -> void:
@@ -308,7 +311,7 @@ func _atk_zones(cnt: int, random: bool) -> void:
 
 
 func _fire_zone(random: bool) -> void:
-	var x := ox + randf_range(30.0, 450.0) if random else clampf(_target().x + randf_range(-18.0, 18.0), ox + 20.0, ox + 460.0)
+	var x := ox + attack_rng.randf_range(30.0, 450.0) if random else clampf(_target().x + attack_rng.randf_range(-18.0, 18.0), ox + 20.0, ox + 460.0)
 	var w := 22.0 if random else 30.0
 	level.add_zone(Vector2(x, Cfg.FLOOR_Y * 0.5), Vector2(w, Cfg.FLOOR_Y), 0.85 if not random else 0.7, 0.4, _col())
 
@@ -399,7 +402,7 @@ func _summon() -> void:
 		0:
 			level.add_enemy("fireball", Vector2(global_position.x - radius, Cfg.FLOOR_Y - 9.0), {"speed": 130.0, "dir": -1})
 		1:
-			level.add_enemy("spore", Vector2(ox + randf_range(40.0, 440.0), -10.0), {"speed": 80.0, "hp": 2.0})
+			level.add_enemy("spore", Vector2(ox + attack_rng.randf_range(40.0, 440.0), -10.0), {"speed": 80.0, "hp": 2.0})
 		2:
 			level.add_enemy("bat", global_position + Vector2(-radius, 0), {"speed": 95.0, "hp": 2.0, "dir": -1})
 	AudioManager.sfx("select", -2.0, 0.5)

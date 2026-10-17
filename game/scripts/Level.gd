@@ -33,6 +33,11 @@ var ing_spawned := [false, false, false]
 var cd := {}
 var view_left := 0.0
 var arena_x := 0.0
+var restore_data := {}
+var boss_checkpoint := {}
+var horde_remaining := 0
+var horde_wait := 0.0
+var horde_p := 0.0
 
 
 func _ready() -> void:
@@ -61,6 +66,9 @@ func _ready() -> void:
 	GameManager.current_level = index
 	Telemetry.event("level_start", {"name": data["name"], "phase": start_phase})
 	cd = {"fire": 2.0, "bat": 24.0, "spore": 16.0, "bolt": 45.0, "heal": 50.0, "horde": 42.0}
+	if not restore_data.is_empty():
+		_restore_snapshot(restore_data)
+		return
 	if start_phase == "boss":
 		_begin_warn()
 	else:
@@ -229,6 +237,7 @@ func _debug() -> void:
 
 func _collect(delta: float) -> void:
 	collect_t += delta
+	_tick_horde(delta)
 	var total := Cfg.collect_time(index)
 	var p := clampf(collect_t / total, 0.0, 1.0)
 	var sp: Dictionary = data["spawn"]
@@ -263,12 +272,9 @@ func _collect(delta: float) -> void:
 	cd["horde"] -= delta
 	if cd["horde"] <= 0.0:
 		cd["horde"] = 45.0
-		var tw := create_tween()
-		for i in 5:
-			tw.tween_callback(_spawn_fireball.bind(p))
-			tw.tween_interval(0.45)
-		tw.tween_callback(_spawn_bat.bind(p))
-		tw.tween_callback(_spawn_bat.bind(p))
+		horde_remaining = 7
+		horde_wait = 0.0
+		horde_p = p
 	if collect_t >= total and GameManager.level_ingredients(index) >= 3:
 		_begin_warn()
 
@@ -332,8 +338,10 @@ func _begin_warn() -> void:
 	reached_boss = true
 	Telemetry.event("boss_warning", {"boss": data["boss_name"], "collect_time": snappedf(collect_t, 0.1)})
 	clear_threats()
+	horde_remaining = 0
+	clear_shots()
 	AudioManager.stop_music(0.3)
-	AudioManager.sfx("warn")
+	AudioManager.sfx("warn", -12.0)
 	Fx.shake(2.0, 0.6)
 	banner("¡ADVERTENCIA!", Color(1.0, 0.3, 0.25), 3.0, 16)
 	hud.hint = data["boss_name"]
@@ -344,6 +352,8 @@ func _begin_warn() -> void:
 	boss.max_hp = data["boss_hp"]
 	add_child(boss)
 	boss.defeated.connect(_on_boss_defeated)
+	# Also supports saving during the entrance warning.
+	capture_boss_checkpoint.call_deferred()
 
 
 func _boss_phase(delta: float) -> void:
@@ -357,6 +367,7 @@ func _boss_phase(delta: float) -> void:
 
 
 func _on_boss_defeated() -> void:
+	SaveGame.clear()
 	st = S.KO
 	st_t = 0.0
 	player.invuln = 99.0
@@ -384,4 +395,79 @@ func _fail(reason: String) -> void:
 	AudioManager.stop_music(0.3)
 	Telemetry.event("level_failed", {"reason": reason, "phase": "boss" if reached_boss else "collect", "level_time": snappedf(age, 0.1)})
 	failed.emit({"reason": reason, "phase": "boss" if reached_boss else "collect", "level": index})
+	process_mode = Node.PROCESS_MODE_DISABLED
+
+
+func _tick_horde(delta: float) -> void:
+	if horde_remaining <= 0:
+		return
+	horde_wait -= delta
+	if horde_wait <= 0.0:
+		if horde_remaining > 2:
+			_spawn_fireball(horde_p)
+		else:
+			_spawn_bat(horde_p)
+		horde_remaining -= 1
+		horde_wait += 0.45 if horde_remaining >= 2 else 0.0
+
+
+func clear_shots() -> void:
+	for child in get_children():
+		if child.get_script() == SaveGame.SCRIPTS.shot:
+			child.queue_free()
+
+
+func capture_boss_checkpoint() -> void:
+	if player.dead or not is_instance_valid(boss) or boss.st == Boss.St.DEAD:
+		return
+	# Remove the player's old bullets as well: both timelines start clean.
+	clear_shots()
+	boss_checkpoint = SaveGame.capture(self, true)
+	if not SaveGame.store(boss_checkpoint):
+		hud.hint = SaveGame.error
+		hud.hint_t = 5.0
+
+
+func save_current() -> bool:
+	if player.dead or st > S.BOSS:
+		SaveGame.error = "No se puede guardar en este momento."
+		return false
+	if reached_boss:
+		if boss_checkpoint.is_empty():
+			SaveGame.error = "Espera al inicio de la fase del jefe."
+			return false
+		return SaveGame.store(boss_checkpoint)
+	return SaveGame.store(SaveGame.capture(self))
+
+
+func _restore_snapshot(saved: Dictionary) -> void:
+	SaveGame.write_fields(self, "level", saved.level)
+	SaveGame.write_fields(GameManager, "stats", saved.stats)
+	SaveGame.write_fields(player, "player", saved.player)
+	player.set_collision_mask_value(2, player.drop_t <= 0.0)
+	for actor in saved.actors:
+		var node: Node = SaveGame.SCRIPTS[actor.type].new()
+		SaveGame.write_fields(node, actor.type, actor.state)
+		add_child(node)
+		# _ready builds shapes from the saved configuration, but initializes motion.
+		SaveGame.write_fields(node, actor.type, actor.state)
+	if not saved.boss.is_empty():
+		boss = Boss.new()
+		boss.level = self
+		boss.kind = index
+		boss.max_hp = data.boss_hp
+		add_child(boss)
+		SaveGame.write_fields(boss, "boss", saved.boss)
+		boss.attack_rng.seed = saved.boss.rng_seed
+		boss.attack_rng.state = saved.boss.rng_state
+		boss.position = boss.home + Vector2(sin(boss.t * 1.3) * 14.0, sin(boss.t * 2.1) * 9.0)
+		boss.st = Boss.St.FIGHT
+		boss.rest = 1.0
+		boss.defeated.connect(_on_boss_defeated)
+		boss_checkpoint = saved.duplicate(true)
+	AudioManager.play_music(data.boss_music if reached_boss else data.music)
+	GameManager.hp_changed.emit()
+	GameManager.super_changed.emit()
+	GameManager.score_changed.emit()
+	# Main displays a countdown before enabling physics and all actors together.
 	process_mode = Node.PROCESS_MODE_DISABLED

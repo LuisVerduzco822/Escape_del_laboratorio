@@ -3,6 +3,7 @@
 .import/
 export_presets.cfg
 *.translation
+.save-check/
 
 # Servidor
 node_modules/

@@ -16,6 +16,8 @@ var menu_bg: Node
 var how_layer: CanvasLayer
 var story_layer: CanvasLayer
 var story_label: Label
+var story_hint: Label
+var story_tween: Tween
 var pause_layer: CanvasLayer
 var fail_layer: CanvasLayer
 var fail_title: Label
@@ -36,6 +38,9 @@ var resume_btn: Button
 var retry_btn: Button
 var again_btn: Button
 var how_back: Button
+var how_return_focus: Control
+var save_notice: Label
+var save_btn: Button
 
 var busy := false
 var in_game := false
@@ -46,7 +51,7 @@ var crafting: Node2D
 
 
 func _ready() -> void:
-	if not Database.logged_in():
+	if not Database.can_play():
 		get_tree().change_scene_to_file.call_deferred("res://scenes/LoginScreen.tscn")
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -143,7 +148,7 @@ func _build_menu() -> void:
 	row.add_theme_constant_override("separation", 6)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
-	var out := _btn(row, "CERRAR SESION", _logout)
+	var out := _btn(row, "INICIAR SESION" if Database.offline_mode else "CERRAR SESION", _logout)
 	out.custom_minimum_size = Vector2(100, 0)
 	var quit := _btn(row, "SALIR", _quit)
 	quit.custom_minimum_size = Vector2(44, 0)
@@ -162,7 +167,10 @@ func _build_how() -> void:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	l.add_theme_constant_override("line_spacing", 4)
 	box.add_child(l)
-	how_back = _btn(box, "VOLVER", func(): how_layer.visible = false)
+	how_back = _btn(box, "VOLVER", _hide_how)
+	# Keep keyboard navigation inside the controls overlay.
+	for direction in ["focus_neighbor_top", "focus_neighbor_bottom", "focus_neighbor_left", "focus_neighbor_right", "focus_next", "focus_previous"]:
+		how_back.set(direction, how_back.get_path())
 	how_layer.visible = false
 
 
@@ -196,11 +204,12 @@ func _build_story() -> void:
 	story_label = _label(STORY, 8, Color(0.85, 0.95, 1.0), 2)
 	story_label.add_theme_constant_override("line_spacing", 6)
 	box.add_child(story_label)
-	var hint := _label("PULSA ESPACIO", 8, Color(1, 0.9, 0.4), 2)
-	box.add_child(hint)
+	story_hint = _label("PULSA ESPACIO", 8, Color(1, 0.9, 0.4), 2)
+	story_hint.visible = false
+	box.add_child(story_hint)
 	var tw := create_tween().set_loops()
-	tw.tween_property(hint, "modulate:a", 0.2, 0.6)
-	tw.tween_property(hint, "modulate:a", 1.0, 0.6)
+	tw.tween_property(story_hint, "modulate:a", 0.2, 0.6)
+	tw.tween_property(story_hint, "modulate:a", 1.0, 0.6)
 	story_layer.visible = false
 
 
@@ -213,6 +222,9 @@ func _build_pause() -> void:
 	sp.custom_minimum_size = Vector2(0, 6)
 	box.add_child(sp)
 	resume_btn = _btn(box, "CONTINUAR", func(): _set_pause(false))
+	save_notice = _label("", 8, Color(0.8, 0.95, 1.0), 2)
+	box.add_child(save_notice)
+	save_btn = _btn(box, "GUARDAR Y SALIR", _save_and_exit)
 	_btn(box, "CONTROLES", _show_how)
 	_btn(box, "REINICIAR NIVEL", _restart_level)
 	_btn(box, "MENU PRINCIPAL", _to_menu)
@@ -305,19 +317,30 @@ func _show_menu() -> void:
 	await Database.refresh_progress()
 	if not is_instance_valid(net_label):
 		return
-	net_label.text = "SERVIDOR EN LINEA" if Database.online else "SIN CONEXION AL SERVIDOR"
+	net_label.text = "MODO OFFLINE - GUARDADO LOCAL" if Database.offline_mode else ("SERVIDOR EN LINEA" if Database.online else "SIN CONEXION AL SERVIDOR")
 	net_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55) if Database.online else Color(1.0, 0.45, 0.4))
 	var prog := Database.load_progress()
+	var snapshot := SaveGame.load_saved()
+	if not snapshot.is_empty():
+		continue_btn.visible = true
+		continue_btn.text = "CONTINUAR (NIVEL %d)" % (snapshot.level.index + 1)
+		if not how_layer.visible and not rank_layer.visible and menu_layer.visible:
+			continue_btn.grab_focus()
+		return
 	continue_btn.visible = not prog.is_empty()
 	if not prog.is_empty():
 		continue_btn.text = "CONTINUAR (NIVEL %d)" % (mini(prog["level_done"], 2) + 1)
-		continue_btn.grab_focus()
+		if not how_layer.visible and not rank_layer.visible and menu_layer.visible:
+			continue_btn.grab_focus()
 
 
 func _show_rank(kind: String = "score") -> void:
 	rank_layer.visible = true
 	rank_label.text = "CARGANDO..."
 	rank_back.grab_focus()
+	if Database.offline_mode:
+		rank_label.text = "EL RANKING REQUIERE INICIAR SESION.\nLAS PARTIDAS OFFLINE NO SE SUBEN."
+		return
 	var res := await Database.leaderboard(kind, 8)
 	if not res["ok"]:
 		rank_label.text = res["error"]
@@ -367,8 +390,21 @@ func _logout() -> void:
 
 
 func _show_how() -> void:
+	if not how_layer.visible:
+		how_return_focus = get_viewport().gui_get_focus_owner()
 	how_layer.visible = true
 	how_back.grab_focus()
+
+
+func _hide_how() -> void:
+	how_layer.visible = false
+	if is_instance_valid(how_return_focus) and how_return_focus.is_visible_in_tree():
+		how_return_focus.grab_focus()
+	elif pause_layer.visible:
+		resume_btn.grab_focus()
+	elif menu_layer.visible:
+		play_btn.grab_focus()
+	how_return_focus = null
 
 
 func _clear_level() -> void:
@@ -397,6 +433,8 @@ func _start_game() -> void:
 	if busy:
 		return
 	busy = true
+	SaveGame.clear()
+	await Database.clear_progress()
 	GameManager.reset_run()
 	await _fade(1.0, 0.5)
 	menu_layer.visible = false
@@ -405,14 +443,16 @@ func _start_game() -> void:
 	AudioManager.stop_music(0.3)
 	story_layer.visible = true
 	story_label.visible_ratio = 0.0
+	story_hint.visible = false
 	Telemetry.start_run(false)
 	await _fade(0.0, 0.4)
-	var tw := create_tween()
-	tw.tween_property(story_label, "visible_ratio", 1.0, 9.0)
+	story_tween = create_tween()
+	story_tween.tween_property(story_label, "visible_ratio", 1.0, 9.0)
+	story_tween.tween_callback(func(): story_hint.visible = true)
 	waiting_story = true
 	await story_done
 	waiting_story = false
-	tw.kill()
+	story_tween.kill()
 	await _fade(1.0, 0.4)
 	story_layer.visible = false
 	busy = false
@@ -421,6 +461,18 @@ func _start_game() -> void:
 
 func _continue_game() -> void:
 	if busy:
+		return
+	var snapshot := SaveGame.load_saved()
+	if not snapshot.is_empty():
+		busy = true
+		await Telemetry.start_run(true)
+		Telemetry.counters = snapshot.counters.duplicate(true)
+		Telemetry.max_level = snapshot.level.index + 1
+		await _fade(1.0, 0.5)
+		menu_layer.visible = false
+		end_layer.visible = false
+		_clear_level()
+		await _start_level(snapshot.level.index, "collect", false, snapshot)
 		return
 	var prog := Database.load_progress()
 	if prog.is_empty():
@@ -436,7 +488,7 @@ func _continue_game() -> void:
 	_start_level(mini(prog["level_done"], 2), "collect", true)
 
 
-func _start_level(index: int, phase: String, card: bool) -> void:
+func _start_level(index: int, phase: String, card: bool, snapshot: Dictionary = {}) -> void:
 	busy = true
 	cur_index = index
 	if get_tree().paused:
@@ -457,11 +509,22 @@ func _start_level(index: int, phase: String, card: bool) -> void:
 	level = Level.new()
 	level.index = index
 	level.start_phase = phase
+	level.restore_data = snapshot
 	level.finished.connect(_on_level_finished)
 	level.failed.connect(_on_level_failed)
 	holder.add_child(level)
+	if snapshot.is_empty() and phase == "collect":
+		SaveGame.store(SaveGame.capture(level))
 	in_game = true
 	await _fade(0.0, 0.6)
+	if not snapshot.is_empty():
+		card_layer.visible = true
+		card_label.add_theme_color_override("font_color", Color(0.8, 0.95, 1.0))
+		for count in [3, 2, 1]:
+			card_label.text = "CONTINUANDO EN %d" % count
+			await _wait(1.0)
+		card_layer.visible = false
+		level.process_mode = Node.PROCESS_MODE_INHERIT
 	busy = false
 
 
@@ -500,8 +563,11 @@ func _on_crafting_done() -> void:
 	AudioManager.sfx("victory")
 	var res: Dictionary = await Telemetry.finish(true)
 	Database.clear_progress()
+	SaveGame.clear()
 	var rank := int(res.get("rank", 0)) if res.get("rank") != null else 0
 	var rank_text := "PUESTO EN RANKING #%d" % rank if rank > 0 else "SIN CONEXION: PARTIDA NO SUBIDA"
+	if Database.offline_mode:
+		rank_text = "PARTIDA OFFLINE COMPLETADA"
 	end_stats.text = "PUNTUACION       %d\nTIEMPO DE JUEGO  %s\nINGREDIENTES      %d / 9\nMONEDAS           %d\nPARRYS            %d\nDERROTAS          %d\nMEJOR RACHA       %s\n%s" % [GameManager.score, GameManager.format_time(GameManager.play_time), GameManager.total_ingredients(), GameManager.coins, GameManager.parries, GameManager.deaths, GameManager.format_time(GameManager.best_streak), rank_text]
 	end_layer.visible = true
 	again_btn.grab_focus()
@@ -514,7 +580,7 @@ func _on_level_failed(info: Dictionary) -> void:
 	in_game = false
 	fail_title.text = "TIEMPO AGOTADO" if info["reason"] == "time" else "DERROTADO"
 	if info["phase"] == "boss":
-		fail_info_label.text = "El jefe sigue en pie.\nReintentas el combate\ncon tus ingredientes."
+		fail_info_label.text = "El jefe sigue en pie.\nReintentas desde el inicio\nde esta fase."
 	else:
 		fail_info_label.text = "Reintentas el nivel\ndesde la recoleccion."
 	fail_layer.visible = true
@@ -523,6 +589,12 @@ func _on_level_failed(info: Dictionary) -> void:
 
 func _retry() -> void:
 	if busy:
+		return
+	if last_fail["phase"] == "boss" and is_instance_valid(level) and not level.boss_checkpoint.is_empty():
+		var snapshot: Dictionary = level.boss_checkpoint.duplicate(true)
+		snapshot.stats.deaths = GameManager.deaths
+		Telemetry.counters = snapshot.counters.duplicate(true)
+		await _start_level(last_fail["level"], "boss", false, snapshot)
 		return
 	if last_fail["phase"] == "collect":
 		GameManager.reset_level_ingredients(last_fail["level"])
@@ -545,28 +617,52 @@ func _set_pause(on: bool) -> void:
 	AudioManager.duck(on)
 	AudioManager.sfx("pause")
 	if on:
+		save_btn.disabled = not is_instance_valid(level) or level.player.dead or level.st > Level.S.BOSS
+		save_notice.text = "Al cargar: inicio de esta fase del jefe." if is_instance_valid(level) and level.reached_boss else "Se guardara el estado actual del nivel."
 		resume_btn.grab_focus()
 	else:
 		how_layer.visible = false
 
 
-func _unhandled_input(e: InputEvent) -> void:
-	if waiting_story and e.is_pressed() and not e.is_echo() and (e is InputEventKey or e is InputEventMouseButton):
+func _save_and_exit() -> void:
+	if busy or not is_instance_valid(level):
+		return
+	busy = true
+	# Flush deferred deaths/coin drops before taking the paused snapshot.
+	get_tree().paused = true
+	await get_tree().process_frame
+	if not level.save_current():
+		save_notice.text = SaveGame.error
+		busy = false
+		return
+	await _fade(1.0, 0.35)
+	_clear_level()
+	await Telemetry.finish(false)
+	_show_menu()
+	await _fade(0.0, 0.35)
+	busy = false
+
+
+func _input(e: InputEvent) -> void:
+	if waiting_story and e is InputEventKey and e.keycode == KEY_SPACE and e.is_pressed() and not e.is_echo():
+		get_viewport().set_input_as_handled()
 		if story_label.visible_ratio < 1.0:
+			if story_tween:
+				story_tween.kill()
 			story_label.visible_ratio = 1.0
-			get_viewport().set_input_as_handled()
+			story_hint.visible = true
 		else:
 			waiting_story = false
 			story_done.emit()
-		return
+
+
+func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("pause"):
 		if rank_layer.visible:
 			rank_layer.visible = false
 			return
 		if how_layer.visible:
-			how_layer.visible = false
-			if not in_game and not pause_layer.visible:
-				play_btn.grab_focus()
+			_hide_how()
 			return
 		if in_game and not busy and not fail_layer.visible:
 			_set_pause(not get_tree().paused)

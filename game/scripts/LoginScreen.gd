@@ -38,9 +38,16 @@ func _ready() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
 
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.offset_top = 30
+	scroll.offset_bottom = -4
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(center)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -71,6 +78,9 @@ func _ready() -> void:
 	alt_btn.pressed.connect(_toggle_mode)
 	box.add_child(main_btn)
 	box.add_child(alt_btn)
+	var offline_btn := _button("Jugar sin conexión", Color(0.6, 0.9, 1.0))
+	offline_btn.pressed.connect(_play_offline)
+	box.add_child(offline_btn)
 
 	var small := StyleBoxFlat.new()
 	small.bg_color = Color(0.03, 0.05, 0.1, 0.85)
@@ -102,6 +112,15 @@ func _ready() -> void:
 	else:
 		user_edit.grab_focus()
 	_check_server()
+
+
+func _play_offline() -> void:
+	if busy:
+		return
+	busy = true
+	Database.start_offline()
+	AudioManager.sfx("confirm")
+	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 
 func _check_server() -> void:
