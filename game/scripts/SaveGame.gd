@@ -4,7 +4,7 @@ extends Node
 const VERSION := 1
 const FIELDS := {
 	"stats": ["hp", "super_meter", "ingredients", "play_time", "parries", "coins", "score", "combo", "combo_t", "streak", "best_streak", "hits_taken", "survive_acc", "current_level", "deaths"],
-	"level": ["index", "st", "st_t", "age", "collect_t", "boss_t", "reached_boss", "ing_spawned", "cd", "horde_remaining", "horde_wait", "horde_p"],
+	"level": ["index", "st", "st_t", "age", "collect_t", "boss_t", "reached_boss", "ing_spawned", "cd", "horde_remaining", "horde_wait", "horde_p", "enemies_started", "is_tutorial", "tutorial_state"],
 	"player": ["position", "velocity", "facing", "aim", "invuln", "dash_t", "dash_cd", "dash_dir", "air_dash", "fire_cd", "coyote", "buffer", "drop_t", "on_platform", "weapon_power_t"],
 	"boss": ["hp", "phase", "t", "last_attack", "heart_dropped", "pending_hearts"],
 	"enemy": ["position", "kind", "hp", "speed", "dir", "pink", "age", "base_y", "wobble", "bound_l", "bound_r", "grounded", "fall_velocity"],
@@ -13,7 +13,7 @@ const FIELDS := {
 	"zone": ["position", "size", "warn", "active", "col", "t", "struck"],
 	"shot": ["position", "vel", "damage", "radius", "pierce", "kind", "age"],
 }
-const OPTIONAL_FIELDS := {"player": {"weapon_power_t": 0.0}, "enemy": {"fall_velocity": Vector2.ZERO}, "boss": {"heart_dropped": [false, false, false], "pending_hearts": 0}}
+const OPTIONAL_FIELDS := {"level": {"enemies_started": false, "is_tutorial": false, "tutorial_state": {}}, "player": {"weapon_power_t": 0.0}, "enemy": {"fall_velocity": Vector2.ZERO}, "boss": {"heart_dropped": [false, false, false], "pending_hearts": 0}}
 const SCRIPTS := {
 	"enemy": preload("res://scripts/Enemy.gd"),
 	"pickup": preload("res://scripts/Pickup.gd"),
@@ -150,6 +150,12 @@ func valid(saved: Variant) -> bool:
 				ok = saved.boss.pending_hearts >= 0 and saved.boss.pending_hearts <= 3
 		else:
 			ok = ok and saved.boss.is_empty()
+		if saved.level.get("is_tutorial", false):
+			var training: Dictionary = saved.level.get("tutorial_state", {})
+			ok = ok and saved.level.index == 0 and saved.level.st == 1
+			ok = ok and training.get("step") is int and training.get("step", -1) in range(10)
+			ok = ok and training.get("kills") is int and training.get("kills", -1) >= 0
+			ok = ok and training.get("used") is bool and training.get("sample") is bool
 	for category in ["level", "player", "boss"]:
 		samples[category].free()
 	for actor in saved.actors:

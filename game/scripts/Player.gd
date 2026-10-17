@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+signal action_performed(action: String)
+
 const SpriteBuilder := preload("res://scripts/SpriteBuilder.gd")
 const PlayerShot := preload("res://scripts/PlayerShot.gd")
 const IDLE_TEX := preload("res://assets/characters/Adam_idle_anim_16x16.png")
@@ -69,13 +71,24 @@ func _ready() -> void:
 
 	parry_area = Area2D.new()
 	parry_area.collision_layer = 0
-	parry_area.collision_mask = 8
+	parry_area.collision_mask = 8 | 16 # Pink hazards and pink enemies.
 	var pc := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = 16.0
 	pc.shape = circle
 	parry_area.add_child(pc)
 	add_child(parry_area)
+
+
+func freeze_in_place() -> void:
+	# Cancel pending movement instead of replaying a dash or buffered jump on release.
+	velocity = Vector2.ZERO
+	dash_t = 0.0
+	buffer = 0.0
+	coyote = 0.0
+	modulate.a = 1.0
+	_animate(0.0)
+	queue_redraw()
 
 
 func _physics_process(delta: float) -> void:
@@ -85,6 +98,10 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		_animate_death()
 		queue_redraw()
+		return
+
+	if get_parent().is_player_frozen():
+		freeze_in_place()
 		return
 
 	invuln = maxf(0.0, invuln - delta)
@@ -177,6 +194,7 @@ func _start_dash(ax: float) -> void:
 	if not is_on_floor():
 		air_dash = false
 	Telemetry.count("dashes")
+	action_performed.emit("dash")
 	AudioManager.sfx("dash", -4.0)
 	Fx.burst(get_parent(), global_position + Vector2(0, 8), Color(0.8, 0.95, 1.0, 0.8), 6, 40.0, 0.3, 2.0)
 
@@ -189,7 +207,9 @@ func _try_parry() -> bool:
 			air_dash = true
 			dash_cd = 0.0
 			invuln = maxf(invuln, 0.25)
-			GameManager.parries += 1
+			if not GameManager.training:
+				GameManager.parries += 1
+			action_performed.emit("parry")
 			var pts := GameManager.add_score(250)
 			Telemetry.event("parry", {"total": GameManager.parries, "points": pts})
 			GameManager.add_super(12.0)
@@ -234,6 +254,7 @@ func _super() -> void:
 		s.pierce = true
 		get_parent().add_child(s)
 		Telemetry.count("supers")
+		action_performed.emit("super")
 		Telemetry.event("super")
 		AudioManager.sfx("super")
 		Fx.shake(2.5, 0.2)
@@ -242,6 +263,7 @@ func _super() -> void:
 
 func _ultra() -> void:
 	Telemetry.count("ultras")
+	action_performed.emit("ultra")
 	Telemetry.event("ultra")
 	AudioManager.sfx("ultra")
 	invuln = 1.8

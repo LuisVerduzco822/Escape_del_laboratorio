@@ -153,6 +153,10 @@ func _die(scored: bool, super_gain: float = 0.0, how: String = "shot") -> void:
 	Fx.burst(get_parent(), global_position, _color(), 10, 100.0, 0.5, 2.5)
 	AudioManager.sfx("boom", -8.0)
 	if scored:
+		if GameManager.training:
+			get_parent().enemy_killed(kind)
+			queue_free()
+			return
 		GameManager.add_super(super_gain)
 		var base: int = POINTS.get(kind, 100) * (2 if pink else 1)
 		var pts := GameManager.on_kill(base)
@@ -195,6 +199,8 @@ func _color() -> Color:
 
 
 func _on_body(b: Node) -> void:
+	if kind == "dummy" or GameManager.training:
+		return
 	if dead or age < SPAWN_TIME or not b.is_in_group("player"):
 		return
 	var feet: float = b.global_position.y + 12.0
@@ -219,7 +225,12 @@ func _draw() -> void:
 		# Procedural enemies grow like the textured fireball, without scaling hitboxes.
 		var visual_scale := lerpf(0.35, 1.0, smoothstep(0.0, SPAWN_TIME, age))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
-	if kind == "bat":
+	if kind == "dummy":
+		draw_rect(Rect2(-12, -12, 24, 24), Color(0.07, 0.16, 0.2))
+		draw_rect(Rect2(-12, -12, 24, 24), Color(0.4, 0.95, 1), false, 2)
+		draw_circle(Vector2.ZERO, 7, Color(1, 0.65, 0.2))
+		draw_circle(Vector2.ZERO, 3, Color(1, 0.95, 0.6))
+	elif kind == "bat":
 		var f := sin(age * 18.0)
 		var body := Color(0.35, 0.22, 0.55)
 		var wing := Color(0.55, 0.35, 0.8) if not pink else Color(1.0, 0.5, 0.85)

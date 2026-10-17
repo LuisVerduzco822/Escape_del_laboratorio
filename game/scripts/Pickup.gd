@@ -71,6 +71,11 @@ func _coin_motion(delta: float) -> void:
 func _on_body(b: Node) -> void:
 	if is_queued_for_deletion() or not b.is_in_group("player") or b.dead:
 		return
+	if kind == "training":
+		get_parent().collect_training_sample()
+		AudioManager.sfx("pickup")
+		queue_free()
+		return
 	if kind == "boss_heart":
 		if GameManager.hp < Cfg.MAX_HP:
 			Telemetry.event("heal", {"hp": GameManager.hp, "source": "boss_heart"})
@@ -149,7 +154,7 @@ func _draw() -> void:
 			draw_circle(Vector2(5, -8), 2.0, Color(1, 0.95, 0.5))
 		draw_set_transform(Vector2.ZERO)
 		UI.text(self, label, 0, -23, 8, col, 1)
-	elif kind == "ingredient":
+	elif kind in ["ingredient", "training"]:
 		var pulse := 0.5 + 0.5 * sin(age * 4.0)
 		draw_circle(Vector2.ZERO, 12.0 + pulse * 2.0, Color(col.r, col.g, col.b, 0.18))
 		draw_circle(Vector2.ZERO, 9.0, Color(col.r, col.g, col.b, 0.22))

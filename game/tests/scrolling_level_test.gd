@@ -35,6 +35,16 @@ func walk_to(x: float, limit: int = 240) -> bool:
 	Input.action_release("move_right")
 	return false
 
+func enter_arena() -> void:
+	Input.action_press("move_right")
+	for i in 500:
+		await frames(1)
+		if level.st == level.S.WARN:
+			break
+	Input.action_release("move_right")
+	check(level.st == level.S.WARN, "Walking into the arena freezes the player for the warning")
+
+
 func jump_to(x: float, surface_y: float) -> void:
 	Input.action_press("jump")
 	Input.action_press("move_right")
@@ -152,14 +162,15 @@ func _run() -> void:
 	var open_save: Dictionary = saves.capture(level)
 	await fresh(open_save)
 	check(level.gate_open and level.gate.collision_layer == 0, "The open passage survives loading")
-	await walk_to(1478)
+	await enter_arena()
 	await frames(4)
 	check(level.reached_boss and level.st == level.S.WARN, "Crossing the passage starts the boss warning")
-	check(level.view_left == level.arena_x and level.gate.collision_layer == 1, "Arena locks the camera and closes its left boundary")
+	check(level.view_left <= level.arena_x and level.gate.collision_layer == 1, "Arena begins the camera transition and closes its left boundary")
 	check(level.boss.home.x > level.arena_x, "Boss spawns inside the translated arena")
 	Input.action_press("move_left")
 	await frames(60)
 	Input.action_release("move_left")
+	check(level.view_left == level.arena_x, "Camera finishes its smooth transition during the warning")
 	check(level.player.position.x > level.arena_x, "Player cannot leave the arena to the left")
 	check(not level.boss_checkpoint.is_empty(), "Boss checkpoint is captured at the arena entrance")
 	await fresh(level.boss_checkpoint.duplicate(true))
@@ -285,13 +296,14 @@ func remaining_route(index: int) -> void:
 	var unlocked: Dictionary = saves.capture(level)
 	await fresh(unlocked)
 	check(level.gate_open and level.gate.collision_layer == 0, "Unlocked passage survives loading")
-	await walk_to(level.arena_x + 38.0)
+	await enter_arena()
 	await frames(4)
 	check(level.reached_boss and level.st == level.S.WARN and level.boss.kind == index, "Crossing starts the correct boss")
-	check(level.view_left == level.arena_x and level.gate.collision_layer == 1, "Camera and gate lock at this arena's origin")
+	check(level.view_left <= level.arena_x and level.gate.collision_layer == 1, "Camera moves toward the arena while the gate locks")
 	Input.action_press("move_left")
 	await frames(45)
 	Input.action_release("move_left")
+	check(level.view_left == level.arena_x, "Camera finishes its smooth transition at this arena's origin")
 	check(level.player.position.x > level.arena_x, "Arena blocks retreat")
 	var checkpoint: Dictionary = level.boss_checkpoint.duplicate(true)
 	check(saves.valid(checkpoint), "Translated boss checkpoint validates")

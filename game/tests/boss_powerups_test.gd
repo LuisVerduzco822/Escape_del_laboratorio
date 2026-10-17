@@ -222,9 +222,23 @@ func opening_encounters() -> void:
 		level.player.set_physics_process(false)
 		# Let the real introduction and scheduler run; do not fast-forward cooldowns.
 		await frames(210)
-		check(get_nodes_in_group("enemy").any(func(n): return n.kind == "fireball"), "Level %d spawns fire within half a second after its intro" % (index + 1))
+		if index == 0:
+			check(get_nodes_in_group("enemy").is_empty() and not level.enemies_started, "Level 1 stays safe while the player waits at the start")
+			check(level.cd == root.get_node("Cfg").START_DELAYS, "Waiting in the safe area does not consume spawn delays")
+			level.player.position.x = 60.0 + root.get_node("Cfg").W / 3.0 - 1.0
+			await frames(60)
+			check(get_nodes_in_group("enemy").is_empty() and not level.enemies_started, "Level 1 stays safe just before the travel threshold")
+			level.player.position.x += 1.0
+			await frames(30)
+			check(level.enemies_started, "Reaching the travel threshold starts level 1 encounters")
+		check(get_nodes_in_group("enemy").any(func(n): return n.kind == "fireball"), "Level %d spawns fire within half a second after encounters start" % (index + 1))
+		if index == 0:
+			# Returning to the safe area must not suspend the running scheduler.
+			level.player.position.x = 60.0
 		await frames(75)
-		check(get_nodes_in_group("enemy").any(func(n): return n.kind == "bat"), "Level %d spawns a bat within two seconds after its intro" % (index + 1))
+		check(get_nodes_in_group("enemy").any(func(n): return n.kind == "bat"), "Level %d spawns a bat within two seconds after encounters start" % (index + 1))
+		if index == 0:
+			check(level.enemies_started, "Returning to the start keeps level 1 encounters active")
 		if index > 0:
 			await frames(120)
 			check(get_nodes_in_group("enemy").any(func(n): return n.kind == "spore"), "Level %d also starts spores early" % (index + 1))

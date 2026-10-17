@@ -42,12 +42,12 @@ func _open_run() -> void:
 
 
 func count(key: String, n: int = 1) -> void:
-	if active:
+	if active and not GameManager.training:
 		counters[key] = int(counters.get(key, 0)) + n
 
 
 func event(type: String, data: Dictionary = {}) -> void:
-	if not active:
+	if not active or GameManager.training:
 		return
 	var lv := GameManager.current_level + 1
 	max_level = maxi(max_level, lv)

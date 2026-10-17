@@ -33,6 +33,7 @@ var reached_boss := false
 var ing_spawned := [false, false, false]
 var cd := {}
 var view_left := 0.0
+var warning_view_start := 0.0
 var arena_x := 0.0
 var world_width := float(Cfg.W)
 var scrolling := false
@@ -43,11 +44,23 @@ var boss_checkpoint := {}
 var horde_remaining := 0
 var horde_wait := 0.0
 var horde_p := 0.0
+var enemies_started := false
+var is_tutorial := false
+var tutorial_state := {}
+
+
+func level_data() -> Dictionary:
+	return Cfg.LEVELS[index]
+
+
+func create_hud() -> Control:
+	return HUD.new()
 
 
 func _ready() -> void:
 	add_to_group("level")
-	data = Cfg.LEVELS[index]
+	data = level_data()
+	enemies_started = index != 0
 	scrolling = data.has("world_width")
 	world_width = float(data.get("world_width", Cfg.W))
 	arena_x = float(data.get("arena_x", 0.0))
@@ -68,7 +81,7 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	hud = HUD.new()
+	hud = create_hud()
 	hud.level = self
 	layer.add_child(hud)
 	GameManager.start_level()
@@ -84,7 +97,7 @@ func _ready() -> void:
 		_begin_warn()
 	else:
 		AudioManager.play_music(data["music"])
-		if scrolling:
+		if scrolling and not is_tutorial:
 			for slot in 3:
 				ing_spawned[slot] = true
 				if not GameManager.ingredients[index * 3 + slot]:
@@ -177,7 +190,10 @@ func _sync_gate() -> void:
 
 func _update_camera() -> void:
 	if scrolling:
-		view_left = arena_x if reached_boss else clampf(player.position.x - 190.0, 0.0, world_width - Cfg.W)
+		if st == S.WARN:
+			view_left = lerpf(warning_view_start, arena_x, smoothstep(0.0, 0.65, st_t))
+		else:
+			view_left = arena_x if reached_boss else clampf(player.position.x - 190.0, 0.0, world_width - Cfg.W)
 		cam.position.x = roundf(view_left)
 		# Backgrounds draw in viewport coordinates; foreground platforms stay in world space.
 		bg.position.x = cam.position.x
@@ -299,7 +315,6 @@ func _debug() -> void:
 
 func _collect(delta: float) -> void:
 	collect_t += delta
-	_tick_horde(delta)
 	var total := Cfg.collect_time(index)
 	var p := clampf(collect_t / total, 0.0, 1.0)
 	if scrolling:
@@ -321,6 +336,13 @@ func _collect(delta: float) -> void:
 			ing_spawned[s] = true
 			if not GameManager.ingredients[index * 3 + s]:
 				_spawn_ingredient(s)
+	# The first third of a screen is safe in level 1, even if the player waits.
+	# Latch this once: walking back must never reset or suspend encounters.
+	if not enemies_started:
+		if player.position.x < 60.0 + Cfg.W / 3.0:
+			return
+		enemies_started = true
+	_tick_horde(delta)
 	cd["fire"] -= delta
 	if cd["fire"] <= 0.0:
 		cd["fire"] = lerpf(sp["fire"][0], sp["fire"][1], p) * randf_range(0.8, 1.25)
@@ -456,8 +478,11 @@ func _spawn_boss_heart(slot: int) -> void:
 
 
 func _begin_warn() -> void:
+	# A fresh boss retry already starts inside the arena; traversal enters smoothly.
+	warning_view_start = arena_x if start_phase == "boss" else view_left
 	st = S.WARN
 	st_t = 0.0
+	player.freeze_in_place()
 	reached_boss = true
 	_sync_gate()
 	_update_camera()
@@ -467,7 +492,6 @@ func _begin_warn() -> void:
 	clear_shots()
 	AudioManager.stop_music(0.3)
 	AudioManager.sfx("warn", -12.0)
-	Fx.shake(2.0, 0.6)
 	banner("¡ADVERTENCIA!", Color(1.0, 0.3, 0.25), 3.0, 16)
 	boss = Boss.new()
 	boss.level = self
@@ -477,6 +501,10 @@ func _begin_warn() -> void:
 	boss.defeated.connect(_on_boss_defeated)
 	# Also supports saving during the entrance warning.
 	capture_boss_checkpoint.call_deferred()
+
+
+func is_player_frozen() -> bool:
+	return st == S.WARN or (st == S.BOSS and is_instance_valid(boss) and boss.st == Boss.St.ENTER)
 
 
 func _boss_phase(delta: float) -> void:
@@ -619,6 +647,9 @@ func save_current() -> bool:
 
 func _restore_snapshot(saved: Dictionary) -> void:
 	SaveGame.write_fields(self, "level", saved.level)
+	if not saved.level.has("enemies_started"):
+		# Older saves already had encounters running after the introduction.
+		enemies_started = index != 0 or collect_t > 0.0
 	SaveGame.write_fields(GameManager, "stats", saved.stats)
 	SaveGame.write_fields(player, "player", saved.player)
 	# Previous saves used a boss arena at x=0; retain their phase checkpoint.
@@ -628,7 +659,7 @@ func _restore_snapshot(saved: Dictionary) -> void:
 	_sync_gate()
 	_update_camera()
 	player.set_collision_mask_value(2, player.drop_t <= 0.0)
-	var old_collection: bool = scrolling and not reached_boss and ing_spawned != [true, true, true]
+	var old_collection: bool = scrolling and not is_tutorial and not reached_boss and ing_spawned != [true, true, true]
 	for actor in saved.actors:
 		var node: Node = SaveGame.SCRIPTS[actor.type].new()
 		SaveGame.write_fields(node, actor.type, actor.state)

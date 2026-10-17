@@ -21,6 +21,7 @@ var survive_acc := 0.0
 var current_level := 0
 var deaths := 0
 var god := false
+var training := false
 
 
 func _ready() -> void:
@@ -107,7 +108,7 @@ func start_level() -> void:
 
 
 func damage(n: int = 1) -> void:
-	if god:
+	if god or training:
 		return
 	hp = maxi(0, hp - n)
 	hits_taken += 1
@@ -137,6 +138,8 @@ func multiplier() -> int:
 
 
 func add_score(base: int) -> int:
+	if training:
+		return 0
 	var gained := base * multiplier()
 	score += gained
 	score_changed.emit()

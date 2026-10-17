@@ -6,7 +6,7 @@ const FLOOR_Y := 192.0
 const MAX_HP := 4
 const DEBUG_KEYS := false
 
-# Shared opening cadence for every level, counted after its introduction.
+# Opening cadence after the introduction; level 1 also waits for W/3 forward travel.
 const START_DELAYS := {"fire": 0.35, "bat": 1.5, "spore": 3.5, "bolt": 7.0, "heal": 50.0, "horde": 12.0}
 const BOSS_POWERUPS := {
 	"first_delay": 4.0, "interval": 14.0, "pickup_life": 12.0,

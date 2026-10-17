@@ -4,6 +4,7 @@ signal story_done
 
 const UI := preload("res://scripts/UI.gd")
 const Level := preload("res://scripts/Level.gd")
+const Tutorial := preload("res://scripts/Tutorial.gd")
 const ParallaxBG := preload("res://scripts/ParallaxBG.gd")
 const Crafting := preload("res://scripts/Crafting.gd")
 
@@ -126,7 +127,7 @@ func _build_menu() -> void:
 	menu_bg.drift = 18.0
 	menu_layer.add_child(menu_bg)
 	_dim(menu_layer, 0.35)
-	var box := _center_box(menu_layer, 8)
+	var box := _center_box(menu_layer, 5)
 	var t1 := _label("ESCAPE DEL", 24, Color(0.45, 0.95, 1.0), 6)
 	var t2 := _label("LABORATORIO", 32, Color(1.0, 0.85, 0.3), 8)
 	box.add_child(t1)
@@ -140,13 +141,14 @@ func _build_menu() -> void:
 	var sp := Control.new()
 	sp.custom_minimum_size = Vector2(0, 2)
 	box.add_child(sp)
+	_btn(box, "TUTORIAL", _start_game.bind(true))
 	play_btn = _btn(box, "JUGAR", _start_game)
 	continue_btn = _btn(box, "CONTINUAR", _continue_game)
 	var rank_btn := _btn(box, "RANKING", _show_rank)
 	rank_btn.disabled = Database.offline_mode
 	if Database.offline_mode:
 		rank_btn.tooltip_text = "Conéctate e inicia sesión para ver el ranking"
-	_btn(box, "CONTROLES", _show_how)
+	var controls_btn := _btn(box, "CONTROLES", _show_how)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -155,6 +157,14 @@ func _build_menu() -> void:
 	out.custom_minimum_size = Vector2(100, 0)
 	var quit := _btn(row, "SALIR", _quit)
 	quit.custom_minimum_size = Vector2(44, 0)
+	# Explicit neighbors keep the short bottom buttons in their own row.
+	out.focus_neighbor_right = quit.get_path()
+	quit.focus_neighbor_left = out.get_path()
+	out.focus_neighbor_left = out.get_path()
+	quit.focus_neighbor_right = quit.get_path()
+	out.focus_neighbor_top = controls_btn.get_path()
+	quit.focus_neighbor_top = controls_btn.get_path()
+	controls_btn.focus_neighbor_bottom = out.get_path()
 	var tw := create_tween().set_loops()
 	tw.tween_property(t2, "modulate", Color(1.4, 1.3, 0.8), 0.9).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(t2, "modulate", Color(1, 1, 1), 0.9).set_trans(Tween.TRANS_SINE)
@@ -327,14 +337,12 @@ func _show_menu() -> void:
 	if not snapshot.is_empty():
 		continue_btn.visible = true
 		continue_btn.text = "CONTINUAR (NIVEL %d)" % (snapshot.level.index + 1)
-		if not how_layer.visible and not rank_layer.visible and menu_layer.visible:
-			continue_btn.grab_focus()
+		if snapshot.level.get("is_tutorial", false):
+			continue_btn.text = "CONTINUAR (NIVEL 0)"
 		return
 	continue_btn.visible = not prog.is_empty()
 	if not prog.is_empty():
 		continue_btn.text = "CONTINUAR (NIVEL %d)" % (mini(prog["level_done"], 2) + 1)
-		if not how_layer.visible and not rank_layer.visible and menu_layer.visible:
-			continue_btn.grab_focus()
 
 
 func _show_rank(kind: String = "score") -> void:
@@ -417,6 +425,7 @@ func _clear_level() -> void:
 		c.queue_free()
 	level = null
 	crafting = null
+	GameManager.training = false
 
 
 func _to_menu() -> void:
@@ -431,7 +440,7 @@ func _to_menu() -> void:
 	busy = false
 
 
-func _start_game() -> void:
+func _start_game(tutorial: bool = false) -> void:
 	if busy:
 		return
 	busy = true
@@ -443,6 +452,10 @@ func _start_game() -> void:
 	end_layer.visible = false
 	_clear_level()
 	AudioManager.stop_music(0.3)
+	if tutorial:
+		Telemetry.start_run(false)
+		await _start_level(0, "tutorial", true)
+		return
 	story_layer.visible = true
 	story_label.visible_ratio = 0.0
 	story_hint.visible = false
@@ -474,7 +487,7 @@ func _continue_game() -> void:
 		menu_layer.visible = false
 		end_layer.visible = false
 		_clear_level()
-		await _start_level(snapshot.level.index, "collect", false, snapshot)
+		await _start_level(snapshot.level.index, "tutorial" if snapshot.level.get("is_tutorial", false) else "collect", false, snapshot)
 		return
 	var prog := Database.load_progress()
 	if prog.is_empty():
@@ -500,22 +513,26 @@ func _start_level(index: int, phase: String, card: bool, snapshot: Dictionary = 
 	if fade.color.a < 0.99:
 		await _fade(1.0, 0.35)
 	_clear_level()
+	# Free the previous scene before its exit callbacks can affect the new one.
+	await get_tree().process_frame
 	if card:
 		var d: Dictionary = Cfg.LEVELS[index]
+		if phase == "tutorial":
+			d = {"tag": "NIVEL 0", "name": "PROTOCOLO DE EVACUACION", "tint": Color(0.45, 0.95, 1.0)}
 		card_label.text = "%s\n%s\n\n" % [d["tag"], d["name"]]
 		card_label.add_theme_color_override("font_color", d["tint"])
 		card_layer.visible = true
 		AudioManager.sfx("confirm")
 		await _wait(2.3)
 		card_layer.visible = false
-	level = Level.new()
+	level = Tutorial.new() if phase == "tutorial" else Level.new()
 	level.index = index
 	level.start_phase = phase
 	level.restore_data = snapshot
 	level.finished.connect(_on_level_finished)
 	level.failed.connect(_on_level_failed)
 	holder.add_child(level)
-	if snapshot.is_empty() and phase == "collect":
+	if snapshot.is_empty() and phase in ["collect", "tutorial"]:
 		SaveGame.store(SaveGame.capture(level))
 	in_game = true
 	await _fade(0.0, 0.6)
@@ -531,7 +548,22 @@ func _start_level(index: int, phase: String, card: bool, snapshot: Dictionary = 
 
 
 func _on_level_finished() -> void:
+	if busy and is_instance_valid(level) and level.is_tutorial:
+		var completed_level: Node = level
+		while busy and is_instance_valid(completed_level) and level == completed_level:
+			await get_tree().process_frame
+		if not is_instance_valid(completed_level) or level != completed_level:
+			return
 	if busy:
+		return
+	if level.is_tutorial:
+		busy = true
+		in_game = false
+		await _fade(1.0, 0.5)
+		_clear_level()
+		GameManager.reset_run()
+		Telemetry.counters = {}
+		await _start_level(0, "collect", true)
 		return
 	busy = true
 	in_game = false
@@ -582,9 +614,9 @@ func _on_level_failed(info: Dictionary) -> void:
 	in_game = false
 	fail_title.text = "TIEMPO AGOTADO" if info["reason"] == "time" else "DERROTADO"
 	if info["phase"] == "boss":
-		fail_info_label.text = "Reintentas el combate completo\ncon todas tus vidas\ny tus ingredientes."
+		fail_info_label.text = "¿Quieres reintentarlo?\nEl combate completo empieza de nuevo.\nRecuperas todas tus vidas\ny conservas tus ingredientes."
 	else:
-		fail_info_label.text = "Reintentas el nivel\ndesde la recoleccion."
+		fail_info_label.text = "¿Quieres reintentarlo?\nEl nivel empieza de nuevo\ndesde la recolección."
 	fail_layer.visible = true
 	retry_btn.grab_focus()
 
@@ -601,6 +633,9 @@ func _retry() -> void:
 
 func _restart_level() -> void:
 	if busy:
+		return
+	if is_instance_valid(level) and level.is_tutorial:
+		_start_level(0, "tutorial", false)
 		return
 	GameManager.reset_level_ingredients(cur_index)
 	Telemetry.event("restart_level", {})

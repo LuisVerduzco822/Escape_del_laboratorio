@@ -36,6 +36,8 @@ func _on_area(a: Area2D) -> void:
 	if done:
 		return
 	var target = a.get_meta("target", a)
+	if get_parent().has_method("accepts_training_shot") and not get_parent().accepts_training_shot(kind):
+		return
 	if target.has_method("take_damage"):
 		var hit: bool = target.take_damage(damage)
 		if hit:

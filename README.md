@@ -111,6 +111,14 @@ partidas completadas, porque un tiempo corto en una partida perdida no es un ré
 | Exportar | administrador | CSV de jugadores, partidas, eventos y coleccionables. |
 
 ## Cómo se juega
+**JUGAR** inicia la partida directamente en el nivel 1 después de la introducción. El botón **TUTORIAL**,
+junto a JUGAR en el menú, abre el **nivel 0: Protocolo de evacuación**, un recorrido de práctica
+integrado en el laboratorio. Enseña movimiento, salto, disparo, apuntado fijo, dash, parry, súper, ultra
+y recogida de compuestos, seguido de una prueba que combina las acciones. Cada instrucción permanece
+hasta completar su ejercicio. No recibes daño y la práctica no suma tiempo, puntos ni ingredientes a la
+partida. Puedes omitirla con **T** o con el botón **OMITIR**, y guardar y continuar desde la lección actual.
+Al terminar u omitir el tutorial comienza el nivel 1 con los recursos iniciales.
+
 Cada nivel tiene dos fases continuas, sin volver al menú:
 
 1. **Recorrido y recolección.** Los tres niveles tienen desplazamiento horizontal y recorridos de plataformas
@@ -129,10 +137,21 @@ Cada nivel tiene dos fases continuas, sin volver al menú:
    ambas conservan su dirección horizontal y avanzan hasta salir de la pantalla, sin rebotar. Guardar y cargar
    conserva su trayectoria y dirección.
    El Pulpo Tóxico alterna esporas verdes y rosas durante su ataque de invocación.
-   En los tres niveles, tras la introducción, el primer enemigo de fuego aparece a los 0.35 segundos y el
-   primer murciélago a los 1.5 segundos. Las esporas de los niveles 2 y 3 empiezan a los 3.5 segundos.
+   En el **nivel 1**, los temporizadores de enemigos esperan a que avances **160 píxeles desde el punto de
+   inicio (un tercio de pantalla)** y termine la introducción. Después, el primer enemigo de fuego aparece
+   a los 0.35 segundos y el primer murciélago a los 1.5 segundos. Retroceder no desactiva los encuentros;
+   el guardado conserva su activación. Los niveles 2 y 3 mantienen sus apariciones tras la introducción,
+   incluidas las primeras esporas a los 3.5 segundos.
 2. **Jefe final.** Barra de vida, 3 fases de ataque y tiempo límite (4:00, 4:10 y 4:20). Si se acaba el tiempo o mueres,
    reintentas solo el combate.
+   Al entrar en la arena, el jugador espera en su posición (también en el aire) mientras la cámara se
+   acomoda suavemente y el jefe termina su entrada. Durante esa espera no se aceptan movimientos ni
+   ataques; se cancelan el dash y el salto pendiente. El control vuelve automáticamente al iniciar el combate.
+   Los ataques se eligen según la distancia al jugador: hasta 120 píxeles se favorecen abanicos, anillos y
+   golpes al suelo; desde 260 píxeles, disparos dirigidos, lluvia, zonas y cargas. Entre ambos límites se
+   mezclan los patrones. Solo se usan ataques desbloqueados en la fase actual, con variedad aleatoria y
+   sin repetir el mismo ataque consecutivamente. La distancia incluye la diferencia de altura y se calcula
+   al comenzar cada ataque. Los límites y pesos se ajustan en `game/scripts/Boss.gd`.
    Cada jefe ofrece hasta tres corazones: a mitad de las fases 1 y 2 (83% y 49.5% de vida restante), solo
    si al jugador le quedan dos corazones o menos, y uno garantizado al inicio de la fase 3. Los dos
    condicionados esperan a que el jefe termine su ataque y vuelven a comprobar la salud antes de aparecer.
@@ -195,6 +214,19 @@ desde el menú; durante la partida se evitan los mensajes repetidos de instrucci
 **Súper:** con 50 de barra, rayo perforante; con 100, un Ultra que borra proyectiles y enemigos.
 
 ## Pruebas realizadas
+- **Entrada a los jefes:** `game/tests/boss_entrance_test.gd` cruza las tres arenas caminando y en el aire,
+  comprueba la posición fija, la cámara suave, el bloqueo de ataques y la recuperación del control cuando
+  termina la entrada del jefe. Usa `APPDATA` aislado como la prueba de guardado:
+  `godot --headless --fixed-fps 120 --path game --script res://tests/boss_entrance_test.gd`.
+- **Ataques por distancia:** `game/tests/boss_distance_test.gd` verifica los tres jefes y sus nueve fases,
+  las preferencias por alcance, variedad, ausencia de repeticiones, altura, arenas desplazadas y ejecución
+  de ataques en los límites de distancia. Usa `APPDATA` aislado como la prueba de guardado:
+  `godot --headless --path game --script res://tests/boss_distance_test.gd`.
+- **Tutorial y arranque del nivel 1:** `game/tests/tutorial_test.gd` comprueba el umbral de movimiento,
+  las lecciones con entradas y colisiones reales, la recarga tras fallar el súper, el guardado compatible
+  con versiones anteriores, la continuación del tutorial y la transición al nivel 1 al omitirlo.
+  Se ejecuta con `APPDATA` aislado como en la prueba de guardado:
+  `godot --headless --fixed-fps 60 --path game --script res://tests/tutorial_test.gd`.
 - **Recorridos horizontales:** `game/tests/scrolling_level_test.gd` recorre los tres niveles con entradas reales
   de movimiento y salto, recoge los compuestos, prueba las compuertas con dash y comprueba cámaras,
   esporas, rayos, arenas y guardados. Se ejecuta con la misma carpeta `APPDATA` aislada descrita arriba:

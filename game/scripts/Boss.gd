@@ -25,6 +25,23 @@ const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 
 const RADII := [46.0, 44.0, 42.0]
 const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100)]
 const MID_PHASE_HP := [0.83, 0.495]
+# Center-to-center distances in arena pixels. Weights are close / medium / far;
+# every unlocked attack remains possible, but effective patterns are favored.
+const CLOSE_RANGE := 120.0
+const FAR_RANGE := 260.0
+const ATTACK_WEIGHTS := {
+	"fan": [6.0, 4.0, 2.0],
+	"aimed": [1.0, 4.0, 6.0],
+	"ring": [6.0, 3.0, 1.0],
+	"rain": [2.0, 4.0, 6.0],
+	"zones": [2.0, 4.0, 6.0],
+	"bolts": [2.0, 4.0, 6.0],
+	"beam": [2.0, 4.0, 5.0],
+	"slam": [6.0, 4.0, 2.0],
+	"charge": [1.0, 4.0, 6.0],
+	"pink": [1.0, 4.0, 3.0],
+	"summon": [1.0, 3.0, 5.0],
+}
 
 var level
 var kind := 0
@@ -247,11 +264,27 @@ func _done() -> void:
 	_try_drop_hearts()
 
 
-func _pick_attack() -> void:
+func _choose_attack() -> String:
+	var distance := global_position.distance_to(_target())
+	var band := 0 if distance <= CLOSE_RANGE else (2 if distance >= FAR_RANGE else 1)
 	var pool: Array = POOLS[kind][phase].duplicate()
-	if pool.size() > 1:
+	# Some pools intentionally contain duplicates as an extra weighting.
+	# Remove every occurrence of the previous attack to avoid back-to-back repeats.
+	while pool.size() > 1 and pool.has(last_attack):
 		pool.erase(last_attack)
-	var a: String = pool[attack_rng.randi_range(0, pool.size() - 1)]
+	var total := 0.0
+	for attack in pool:
+		total += ATTACK_WEIGHTS[attack][band]
+	var roll := attack_rng.randf() * total
+	for attack in pool:
+		roll -= ATTACK_WEIGHTS[attack][band]
+		if roll < 0.0:
+			return attack
+	return pool.back()
+
+
+func _pick_attack() -> void:
+	var a := _choose_attack()
 	last_attack = a
 	_new_tw()
 	match a:
