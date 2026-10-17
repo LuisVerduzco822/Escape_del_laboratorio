@@ -135,7 +135,19 @@ func _draw_center() -> void:
 		if true:
 			UI.text(self, "%s - %s" % [d["tag"], d["name"]], 240, 12, 8, Color(0.85, 0.95, 1.0), 1)
 			var got := GameManager.level_ingredients(L.index)
-			if L.collect_left() > 0.0:
+			if L.scrolling:
+				var objective := "COMPUESTOS %d/3" % got if got < 3 else "ACCESO ABIERTO: AVANZA AL JEFE >"
+				UI.text(self, objective, 240, 26, 8, Color(1, 0.9, 0.5), 1)
+				# The route remains readable when returning for a missed compound.
+				var target_x: float = L.arena_x
+				for slot in 3:
+					if not GameManager.ingredients[L.index * 3 + slot]:
+						target_x = L.data["ingredient_spots"][slot].x
+						break
+				var direction := "<" if target_x < L.player.position.x else ">"
+				var target_name := "JEFE" if got == 3 else "COMPUESTO"
+				UI.text(self, "%s %s %dm" % [direction, target_name, int(absf(target_x - L.player.position.x) / 16.0)], 240, 214, 8, Color(0.6, 1.0, 0.85), 1)
+			elif L.collect_left() > 0.0:
 				UI.text(self, "JEFE EN %s   INGREDIENTES %d/3" % [GameManager.format_time(L.collect_left()), got], 240, 26, 8, Color(1, 0.9, 0.5), 1)
 			elif got < 3:
 				if int(t * 3.0) % 2 == 0:

@@ -3,6 +3,7 @@ extends Area2D
 const FIRE_TEX := preload("res://assets/enemies/Fireball.png")
 const Pickup := preload("res://scripts/Pickup.gd")
 const POINTS := {"fireball": 100, "bat": 150, "spore": 200}
+const SPAWN_TIME := 0.6
 
 var kind := "fireball"
 var hp := 1.0
@@ -24,7 +25,7 @@ func _ready() -> void:
 	collision_layer = 16
 	collision_mask = 4
 	add_to_group("enemy")
-	if pink:
+	if pink and age >= SPAWN_TIME:
 		add_to_group("parry")
 	var cs := CollisionShape2D.new()
 	var shape: Shape2D
@@ -51,31 +52,47 @@ func _ready() -> void:
 	wobble = randf() * TAU
 	body_entered.connect(_on_body)
 	z_index = 3
+	_update_appearance()
+
+
+func _update_appearance() -> void:
+	# Age is already saved, so loading an active enemy never replays its entrance.
+	var p := smoothstep(0.0, SPAWN_TIME, age)
+	var alpha := lerpf(0.0, 1.0, p)
+	modulate = Color(2, 2, 2, alpha) if flash > 0.0 else Color(1, 1, 1, alpha)
+	if sprite:
+		sprite.scale = Vector2.ONE * 0.095 * lerpf(0.35, 1.0, p)
+	var active := age >= SPAWN_TIME
+	collision_layer = 16 if active else 0
+	collision_mask = 4 if active else 0
+	if pink and active and not is_in_group("parry"):
+		add_to_group("parry")
 
 
 func _physics_process(delta: float) -> void:
 	age += delta
 	flash = maxf(0.0, flash - delta)
+	var entrance_speed := lerpf(0.15, 1.0, smoothstep(0.0, SPAWN_TIME, age))
 	match kind:
 		"fireball":
-			position.x += dir * speed * delta
+			position.x += dir * speed * delta * entrance_speed
 			_bounce()
 		"bat":
-			position.x += dir * speed * delta
-			position.y = base_y + sin(age * 3.2 + wobble) * 26.0
+			position.x += dir * speed * delta * entrance_speed
+			position.y = base_y + sin(age * 3.2 + wobble) * 26.0 * smoothstep(0.0, SPAWN_TIME, age)
 			_bounce()
 		"spore":
 			if grounded:
-				position.x += dir * speed * 1.2 * delta
+				position.x += dir * speed * 1.2 * delta * entrance_speed
 				_bounce()
 			else:
-				position.y += speed * 0.5 * delta
+				position.y += speed * 0.5 * delta * entrance_speed
 				position.x = clampf(position.x + sin(age * 2.4 + wobble) * 34.0 * delta, bound_l + 20.0, bound_r - 20.0)
 				if position.y >= Cfg.FLOOR_Y - 8.0:
 					position.y = Cfg.FLOOR_Y - 8.0
 					grounded = true
 					dir = -1 if randf() < 0.5 else 1
-	modulate = Color(2, 2, 2) if flash > 0.0 else Color.WHITE
+	_update_appearance()
 	queue_redraw()
 
 
@@ -95,7 +112,7 @@ func _turn(d: int) -> void:
 
 
 func take_damage(d: float) -> bool:
-	if dead:
+	if dead or age < SPAWN_TIME:
 		return false
 	hp -= d
 	flash = 0.06
@@ -136,6 +153,8 @@ func vanish() -> void:
 
 
 func parried() -> void:
+	if age < SPAWN_TIME:
+		return
 	_die(true, 6.0, "parry")
 
 
@@ -151,7 +170,7 @@ func _color() -> Color:
 
 
 func _on_body(b: Node) -> void:
-	if dead or not b.is_in_group("player"):
+	if dead or age < SPAWN_TIME or not b.is_in_group("player"):
 		return
 	var feet: float = b.global_position.y + 12.0
 	var falling: bool = b.velocity.y > 0.0
@@ -163,6 +182,18 @@ func _on_body(b: Node) -> void:
 
 
 func _draw() -> void:
+	if age < SPAWN_TIME:
+		var p := clampf(age / SPAWN_TIME, 0.0, 1.0)
+		var col := _color()
+		# An expanding halo and drifting motes announce the materialization.
+		draw_arc(Vector2.ZERO, lerpf(7.0, 25.0, p), 0.0, TAU, 28, Color(col, 1.0 - p), 2.0)
+		for i in 6:
+			var angle := TAU * i / 6.0 + p * 1.8
+			var mote := Vector2(cos(angle), sin(angle)) * lerpf(5.0, 23.0, p)
+			draw_circle(mote, lerpf(3.0, 0.5, p), Color(col, 1.0 - p))
+		# Procedural enemies grow like the textured fireball, without scaling hitboxes.
+		var visual_scale := lerpf(0.35, 1.0, smoothstep(0.0, SPAWN_TIME, age))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
 	if kind == "bat":
 		var f := sin(age * 18.0)
 		var body := Color(0.35, 0.22, 0.55)

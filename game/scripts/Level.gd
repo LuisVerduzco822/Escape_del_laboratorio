@@ -13,6 +13,7 @@ const Enemy := preload("res://scripts/Enemy.gd")
 const Pickup := preload("res://scripts/Pickup.gd")
 const ParallaxBG := preload("res://scripts/ParallaxBG.gd")
 const HUD := preload("res://scripts/HUD.gd")
+const UI := preload("res://scripts/UI.gd")
 
 var index := 0
 var start_phase := "collect"
@@ -33,6 +34,10 @@ var ing_spawned := [false, false, false]
 var cd := {}
 var view_left := 0.0
 var arena_x := 0.0
+var world_width := float(Cfg.W)
+var scrolling := false
+var gate: StaticBody2D
+var gate_open := false
 var restore_data := {}
 var boss_checkpoint := {}
 var horde_remaining := 0
@@ -43,9 +48,13 @@ var horde_p := 0.0
 func _ready() -> void:
 	add_to_group("level")
 	data = Cfg.LEVELS[index]
+	scrolling = data.has("world_width")
+	world_width = float(data.get("world_width", Cfg.W))
+	arena_x = float(data.get("arena_x", 0.0))
 	Fx.reset()
 	bg = ParallaxBG.new()
 	bg.setup(index)
+	bg.scrolling = scrolling
 	bg.z_index = -100
 	add_child(bg)
 	_build_world()
@@ -66,15 +75,29 @@ func _ready() -> void:
 	GameManager.current_level = index
 	Telemetry.event("level_start", {"name": data["name"], "phase": start_phase})
 	cd = {"fire": 2.0, "bat": 24.0, "spore": 16.0, "bolt": 45.0, "heal": 50.0, "horde": 42.0}
+	if scrolling:
+		# The shorter traversal needs encounters soon after the introduction.
+		cd["fire"] = 0.35
+		cd["bat"] = 1.5
+		cd["horde"] = 12.0
 	if not restore_data.is_empty():
 		_restore_snapshot(restore_data)
 		return
 	if start_phase == "boss":
+		if scrolling:
+			player.position = Vector2(arena_x + 60.0, Cfg.FLOOR_Y - 12.0)
 		_begin_warn()
 	else:
 		AudioManager.play_music(data["music"])
 		banner("%s - %s" % [data["tag"], data["name"]], data["tint"], 2.8, 16)
-		hud.hint = "RECOGE LOS 3 INGREDIENTES Y SOBREVIVE"
+		if scrolling:
+			for slot in 3:
+				ing_spawned[slot] = true
+				if not GameManager.ingredients[index * 3 + slot]:
+					_spawn_ingredient(slot)
+			hud.hint = "EXPLORA LAS PLATAFORMAS Y RECOGE 3 COMPUESTOS"
+		else:
+			hud.hint = "RECOGE LOS 3 INGREDIENTES Y SOBREVIVE"
 		hud.hint_t = 5.0
 
 
@@ -82,10 +105,10 @@ func _build_world() -> void:
 	var ground := StaticBody2D.new()
 	ground.collision_layer = 1
 	ground.collision_mask = 0
-	ground.position = Vector2(Cfg.W / 2.0, Cfg.FLOOR_Y + 40.0)
-	_box(ground, Vector2(Cfg.W + 120, 80), false)
+	ground.position = Vector2(world_width / 2.0, Cfg.FLOOR_Y + 40.0)
+	_box(ground, Vector2(world_width + 120, 80), false)
 	add_child(ground)
-	for x in [-10.0, Cfg.W + 10.0]:
+	for x in [-10.0, world_width + 10.0]:
 		var wall := StaticBody2D.new()
 		wall.collision_layer = 1
 		wall.collision_mask = 0
@@ -99,6 +122,13 @@ func _build_world() -> void:
 		plat.position = Vector2(p[0] + p[2] / 2.0, p[1] + 4.0)
 		_box(plat, Vector2(p[2], 8), true)
 		add_child(plat)
+	if scrolling:
+		gate = StaticBody2D.new()
+		gate.position = Vector2(arena_x, 100)
+		gate.collision_layer = 1
+		gate.collision_mask = 0
+		_box(gate, Vector2(12, 900), false)
+		add_child(gate)
 
 
 func _box(body: StaticBody2D, size: Vector2, one_way: bool) -> void:
@@ -111,6 +141,13 @@ func _box(body: StaticBody2D, size: Vector2, one_way: bool) -> void:
 
 
 func _draw() -> void:
+	if scrolling:
+		# A continuous floor and repeating supports make the travel distance visible.
+		draw_rect(Rect2(0, Cfg.FLOOR_Y, world_width, Cfg.H - Cfg.FLOOR_Y), Color(0.045, 0.08, 0.11))
+		draw_rect(Rect2(0, Cfg.FLOOR_Y, world_width, 3), Color(0.4, 0.65, 0.7))
+		for x in range(0, int(world_width), 80):
+			draw_rect(Rect2(x + 8, Cfg.FLOOR_Y + 12, 60, 4), Color(0.12, 0.24, 0.29))
+		_draw_gate()
 	for p in data["platforms"]:
 		var x: float = p[0]
 		var y: float = p[1]
@@ -122,6 +159,43 @@ func _draw() -> void:
 		for k in int(w / 14.0):
 			draw_rect(Rect2(x + 6 + k * 14, y + 5, 6, 1), Color(0.3, 0.9, 1.0, 0.8))
 		draw_rect(Rect2(x + w * 0.5 - 10, y + 11, 20, 2), Color(0.3, 0.8, 1.0, 0.35))
+	if scrolling:
+		for slot in 3:
+			var spot: Vector2 = data["ingredient_spots"][slot]
+			UI.text(self, "%02d" % (slot + 1), spot.x, spot.y + 37.0, 8, Color(0.5, 0.8, 0.85), 1)
+
+
+func _draw_gate() -> void:
+	var col := Color(0.35, 1.0, 0.6) if gate_open and not reached_boss else Color(1.0, 0.4, 0.25)
+	draw_rect(Rect2(arena_x - 12, 0, 24, Cfg.FLOOR_Y), Color(0.12, 0.23, 0.28))
+	if not gate_open or reached_boss:
+		for y in range(0, int(Cfg.FLOOR_Y), 12):
+			draw_rect(Rect2(arena_x - 5, y, 10, 6), col)
+	else:
+		draw_rect(Rect2(arena_x - 5, 0, 10, 22), col)
+	for slot in 3:
+		var light := Color(0.3, 1.0, 0.55) if GameManager.ingredients[index * 3 + slot] else Color(0.6, 0.2, 0.15)
+		draw_circle(Vector2(arena_x - 30, 78 + slot * 16), 4, light)
+	var label := "ARENA CERRADA" if reached_boss else ("JEFE >" if gate_open else "FALTAN COMPUESTOS")
+	draw_rect(Rect2(arena_x - 190, 101, 160, 18), Color(0.03, 0.07, 0.1, 0.9))
+	UI.text(self, label, arena_x - 110, 114, 8, col, 1)
+
+
+func _sync_gate() -> void:
+	if not scrolling:
+		return
+	gate_open = GameManager.level_ingredients(index) == 3
+	gate.collision_layer = 1 if reached_boss or not gate_open else 0
+	queue_redraw()
+
+
+func _update_camera() -> void:
+	if scrolling:
+		view_left = arena_x if reached_boss else clampf(player.position.x - 190.0, 0.0, world_width - Cfg.W)
+		cam.position.x = roundf(view_left)
+		# Backgrounds draw in viewport coordinates; foreground platforms stay in world space.
+		bg.position.x = cam.position.x
+	cam.offset = Fx.shake_offset()
 
 
 func banner(text: String, color: Color, dur: float = 2.0, size: int = 16) -> void:
@@ -152,6 +226,9 @@ func add_enemy(kind: String, pos: Vector2, o: Dictionary = {}) -> Node:
 	var e := Enemy.new()
 	e.kind = kind
 	e.position = pos
+	if scrolling:
+		e.bound_l = arena_x + 10.0 if reached_boss else maxf(10.0, pos.x - 360.0)
+		e.bound_r = world_width - 10.0 if reached_boss else minf(arena_x - 20.0, pos.x + 360.0)
 	for k in o:
 		e.set(k, o[k])
 	add_child(e)
@@ -185,7 +262,7 @@ func boss_left() -> float:
 
 func _process(_delta: float) -> void:
 	if cam:
-		cam.offset = Fx.shake_offset()
+		_update_camera()
 	if bg and player:
 		bg.focus_x = player.global_position.x
 
@@ -240,6 +317,19 @@ func _collect(delta: float) -> void:
 	_tick_horde(delta)
 	var total := Cfg.collect_time(index)
 	var p := clampf(collect_t / total, 0.0, 1.0)
+	if scrolling:
+		p = clampf(player.position.x / arena_x, 0.0, 1.0)
+		var was_open := gate_open
+		_sync_gate()
+		if gate_open and not was_open:
+			banner("¡ACCESO AL JEFE ABIERTO!", Color(0.4, 1.0, 0.6), 2.0, 8)
+		if gate_open and player.position.x >= arena_x + 32.0:
+			_begin_warn()
+			return
+		# Encounters left far behind must not exhaust the active enemy limit.
+		for enemy in get_tree().get_nodes_in_group("enemy"):
+			if absf(enemy.position.x - player.position.x) > Cfg.W + 160.0:
+				enemy.vanish()
 	var sp: Dictionary = data["spawn"]
 	for s in 3:
 		if not ing_spawned[s] and collect_t >= data["ing_times"][s] * Cfg.time_mult:
@@ -275,7 +365,7 @@ func _collect(delta: float) -> void:
 		horde_remaining = 7
 		horde_wait = 0.0
 		horde_p = p
-	if collect_t >= total and GameManager.level_ingredients(index) >= 3:
+	if not scrolling and collect_t >= total and GameManager.level_ingredients(index) >= 3:
 		_begin_warn()
 
 
@@ -285,21 +375,29 @@ func _spawn_fireball(p: float) -> void:
 	var from_left := index == 2 and randf() < 0.25
 	var dir := 1 if from_left else -1
 	var x := -20.0 if from_left else 500.0
+	if scrolling:
+		from_left = player.position.x > arena_x - 180.0 or (player.position.x > 200.0 and randf() < 0.25)
+		dir = 1 if from_left else -1
+		x = maxf(20.0, view_left + 20.0) if from_left else minf(arena_x - 25.0, view_left + Cfg.W - 20.0)
 	add_enemy("fireball", Vector2(x, Cfg.FLOOR_Y - 9.0), {"speed": 92.0 + 40.0 * p + 12.0 * index, "dir": dir, "pink": randf() < 0.18})
 
 
 func _spawn_bat(p: float) -> void:
 	if not _can_spawn():
 		return
-	add_enemy("bat", Vector2(500, randf_range(70.0, 150.0)), {"speed": 70.0 + 30.0 * p + 8.0 * index, "hp": 2.0, "pink": randf() < 0.1})
+	var x := minf(arena_x - 25.0, view_left + Cfg.W - 20.0) if scrolling else 500.0
+	add_enemy("bat", Vector2(x, randf_range(70.0, 150.0)), {"speed": 70.0 + 30.0 * p + 8.0 * index, "hp": 2.0, "pink": randf() < 0.1})
 
 
 func _spots() -> Array:
 	var out := []
 	for x in [60.0, 150.0, 240.0, 330.0, 420.0]:
-		out.append(Vector2(x, Cfg.FLOOR_Y - 14.0))
+		if not scrolling or reached_boss or view_left + x < arena_x - 20.0:
+			out.append(Vector2(view_left + x, Cfg.FLOOR_Y - 14.0))
 	for p in data["platforms"]:
-		out.append(Vector2(p[0] + p[2] / 2.0, p[1] - 14.0))
+		var pos := Vector2(p[0] + p[2] / 2.0, p[1] - 14.0)
+		if pos.x >= view_left + 20.0 and pos.x <= view_left + Cfg.W - 20.0 and (not scrolling or reached_boss or pos.x < arena_x - 20.0):
+			out.append(pos)
 	return out
 
 
@@ -311,6 +409,8 @@ func _spawn_ingredient(slot: int) -> void:
 		if absf(s.x - player.global_position.x) > 90.0:
 			spot = s
 			break
+	if scrolling:
+		spot = data["ingredient_spots"][slot]
 	var info = data["ingredients"][slot]
 	var pk := Pickup.new()
 	pk.kind = "ingredient"
@@ -319,7 +419,8 @@ func _spawn_ingredient(slot: int) -> void:
 	pk.label = info[0]
 	pk.position = spot
 	add_child(pk)
-	banner("¡NUEVO INGREDIENTE!", info[1], 1.6, 8)
+	if not scrolling:
+		banner("¡NUEVO INGREDIENTE!", info[1], 1.6, 8)
 
 
 func _spawn_heal() -> void:
@@ -336,6 +437,8 @@ func _begin_warn() -> void:
 	st = S.WARN
 	st_t = 0.0
 	reached_boss = true
+	_sync_gate()
+	_update_camera()
 	Telemetry.event("boss_warning", {"boss": data["boss_name"], "collect_time": snappedf(collect_t, 0.1)})
 	clear_threats()
 	horde_remaining = 0
@@ -377,7 +480,7 @@ func _on_boss_defeated() -> void:
 	Telemetry.count("bosses_defeated")
 	Telemetry.event("boss_defeated", {"boss": data["boss_name"], "time": snappedf(boss_t, 0.1), "phase": boss.phase, "bonus": bonus})
 	Telemetry.event("coin", {"value": 100, "name": "bono de jefe"})
-	Fx.popup(self, "+%d" % bonus, Vector2(240.0, 150.0), Color(1.0, 0.9, 0.4))
+	Fx.popup(self, "+%d" % bonus, Vector2(arena_x + 240.0, 150.0), Color(1.0, 0.9, 0.4))
 	AudioManager.stop_music(0.2)
 	AudioManager.sfx("ko")
 	Fx.hitstop(0.35)
@@ -444,13 +547,35 @@ func _restore_snapshot(saved: Dictionary) -> void:
 	SaveGame.write_fields(self, "level", saved.level)
 	SaveGame.write_fields(GameManager, "stats", saved.stats)
 	SaveGame.write_fields(player, "player", saved.player)
+	# Previous saves used a boss arena at x=0; retain their phase checkpoint.
+	var old_arena: bool = scrolling and reached_boss and player.position.x < arena_x
+	if old_arena:
+		player.position.x += arena_x
+	_sync_gate()
+	_update_camera()
 	player.set_collision_mask_value(2, player.drop_t <= 0.0)
+	var old_collection: bool = scrolling and not reached_boss and ing_spawned != [true, true, true]
 	for actor in saved.actors:
 		var node: Node = SaveGame.SCRIPTS[actor.type].new()
 		SaveGame.write_fields(node, actor.type, actor.state)
 		add_child(node)
 		# _ready builds shapes from the saved configuration, but initializes motion.
 		SaveGame.write_fields(node, actor.type, actor.state)
+		if old_arena:
+			node.position.x += arena_x
+		if scrolling and not reached_boss and actor.type == "pickup" and node.kind == "ingredient":
+			var slot: int = node.idx - index * 3
+			if slot >= 0 and slot < 3 and node.position.x != data["ingredient_spots"][slot].x:
+				old_collection = true
+	if old_collection:
+		# Also migrate timed ingredients from the original single-screen layout.
+		for child in get_children():
+			if child.get_script() == Pickup and child.kind == "ingredient":
+				child.queue_free()
+		for slot in 3:
+			ing_spawned[slot] = true
+			if not GameManager.ingredients[index * 3 + slot]:
+				_spawn_ingredient(slot)
 	if not saved.boss.is_empty():
 		boss = Boss.new()
 		boss.level = self

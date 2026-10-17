@@ -110,9 +110,16 @@ partidas completadas, porque un tiempo corto en una partida perdida no es un ré
 ## Cómo se juega
 Cada nivel tiene dos fases continuas, sin volver al menú:
 
-1. **Recolección (3:20).** Sobrevives a oleadas de enemigos que llegan por los dos lados. Si un enemigo se pasa del
+1. **Recorrido y recolección.** El primer nivel es una prueba de desplazamiento horizontal: mide 1920 píxeles
+   (cuatro pantallas), con tres ascensos de plataformas y un compuesto en lo alto de cada uno. La cámara sigue
+   al jugador y se puede regresar por un compuesto olvidado; el HUD indica su dirección. Los tres compuestos
+   están disponibles desde el principio. Recogerlos abre la compuerta al final del laboratorio, sin esperar un
+   temporizador. Al cruzarla se cierra la salida y la cámara se fija en la arena del jefe. El guardado conserva
+   la posición y reconstruye el estado de la compuerta.
+
+   **Los niveles 2 y 3 conservan la recolección de 3:20 en una pantalla.** Sobrevives a oleadas de enemigos. Si un enemigo se pasa del
    borde de la pantalla, **regresa**: no puede escapar. Durante la fase aparecen 3 ingredientes del antídoto y el
-   jefe no llega hasta recogerlos todos. Los enemigos sueltan **monedas**.
+   jefe no llega hasta recogerlos todos. Los enemigos sueltan **monedas** en los tres niveles.
 2. **Jefe final.** Barra de vida, 3 fases de ataque y tiempo límite (4:00, 4:10 y 4:20). Si se acaba el tiempo o mueres,
    reintentas solo el combate.
 
@@ -123,7 +130,7 @@ Cada nivel tiene dos fases continuas, sin volver al menú:
 | 3 | Azotea | Gárgola Viral | 920 |
 
 Al derrotar al tercer jefe se fabrica el antídoto y se muestra tu puntuación final y tu puesto en el ranking.
-Duración estimada: unos 20 minutos sin morir. El fondo tiene parallax animado con efectos propios de cada nivel.
+La duración del primer nivel depende del recorrido y los saltos. El fondo tiene parallax animado con efectos propios de cada nivel.
 
 ### Puntuación
 | Acción | Puntos |

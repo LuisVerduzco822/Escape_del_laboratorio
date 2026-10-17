@@ -19,7 +19,19 @@ const LEVELS := [
 		"boss_name": "GELATINA MUTANTE",
 		"boss_hp": 880.0,
 		"boss_time": 240.0,
-		"platforms": [[44, 146, 84], [198, 146, 84], [352, 146, 84]],
+		"world_width": 1920.0,
+		"arena_x": 1440.0,
+		"ingredient_spots": [Vector2(352, 56), Vector2(856, 44), Vector2(1280, 48)],
+		"platforms": [
+			# First ascent: wide steps introduce jumping between heights.
+			[140, 150, 96], [250, 108, 80], [320, 70, 64], [438, 126, 88],
+			# Second ascent: shorter ledges and a high compound.
+			[600, 150, 76], [710, 104, 60], [824, 58, 64], [942, 116, 60],
+			# Third ascent: narrow steps, followed by the sealed passage.
+			[1080, 150, 64], [1160, 106, 52], [1254, 62, 52], [1340, 126, 64],
+			# Boss arena retains room to dodge on the ground.
+			[1484, 146, 84], [1638, 146, 84], [1792, 146, 84],
+		],
 		"spawn": {"fire": [3.2, 1.7], "bat": [6.0, 3.2], "spore": [], "bolt": 0.0},
 		"tint": Color(0.45, 0.85, 1.0),
 		"story": "Los tanques se rompieron y el virus escapo.\nBusca los ingredientes del antidoto\nantes de que la Gelatina Mutante\nte alcance.",

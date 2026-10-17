@@ -28,7 +28,8 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	main = current_scene
-	await main._start_level(0, "collect", false)
+	# Keep the generic actor round-trip fixture in the timed second level.
+	await main._start_level(1, "collect", false)
 	paused = true
 	var level = main.level
 	level.st = 1
@@ -66,7 +67,7 @@ func _run() -> void:
 	check(not saved.is_empty(), "Snapshot passes validation")
 	check(saved.actors.size() == 6, "Enemy, ingredient, coin, projectile, zone and shot saved")
 	gm.hp = 1
-	await main._start_level(0, "collect", false, saved)
+	await main._start_level(1, "collect", false, saved)
 	paused = true
 	level = main.level
 	check(gm.hp == 2 and gm.super_meter == 65.0 and gm.score == 987 and gm.coins == 31, "Player stats restored together")
@@ -108,7 +109,7 @@ func _run() -> void:
 		quit(1)
 		return
 	check(boss_save.boss.hp == checkpoint.boss.hp and boss_save.stats.hp == 3 and boss_save.stats.super_meter == 55.0 and boss_save.stats.score == checkpoint_score, "Mid-phase damage and spent resources cannot be mixed")
-	await main._start_level(0, "boss", false, boss_save)
+	await main._start_level(1, "boss", false, boss_save)
 	paused = true
 	level = main.level
 	check(level.boss.phase == 1 and gm.hp == 3 and level.boss.hp == checkpoint.boss.hp, "Boss and player restart the phase together")

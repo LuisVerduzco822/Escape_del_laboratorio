@@ -3,6 +3,7 @@ extends Node2D
 var level := 0
 var focus_x := 240.0
 var drift := 0.0
+var scrolling := false
 var smooth_x := 240.0
 var t := 0.0
 var bg: Texture2D
@@ -90,7 +91,10 @@ func _tile(tex: Texture2D, scroll: float, y: float = 0.0, a: float = 1.0) -> voi
 
 func _draw() -> void:
 	var shift := (smooth_x - 240.0) * -0.07
-	draw_texture_rect(bg, Rect2(-16.0 + shift, Cfg.FLOOR_Y - 204.0, 512, 286), false)
+	if scrolling:
+		_tile(bg, smooth_x * 0.07, Cfg.FLOOR_Y - 204.0)
+	else:
+		draw_texture_rect(bg, Rect2(-16.0 + shift, Cfg.FLOOR_Y - 204.0, 512, 286), false)
 	if level == 0:
 		for b in bubbles:
 			var x: float = b[0] + sin(t * 1.5 + b[4]) * 4.0
@@ -101,8 +105,9 @@ func _draw() -> void:
 			draw_rect(Rect2(d[0], d[1], 2, 4), Color(0.5, 1.0, 0.35, 0.85))
 		for b in bubbles:
 			draw_arc(Vector2(b[0] + sin(t + b[4]) * 5.0, b[1]), b[2], 0.0, TAU, 10, Color(0.6, 1.0, 0.5, 0.4), 1.0)
-	_tile(far, t * 5.0 + smooth_x * -0.05)
-	_tile(mid, t * 12.0 + smooth_x * -0.12)
+	var travel_dir := 1.0 if scrolling else -1.0
+	_tile(far, t * 5.0 + smooth_x * 0.05 * travel_dir)
+	_tile(mid, t * 12.0 + smooth_x * 0.12 * travel_dir)
 	if level == 2:
 		for r in rain:
 			draw_line(Vector2(r[0], r[1]), Vector2(r[0] - 3.0, r[1] + 9.0), Color(0.7, 0.85, 1.0, 0.28), 1.0)
@@ -112,6 +117,7 @@ func _draw() -> void:
 
 func _draw_front() -> void:
 	var fy := sin(t * 1.4) * 1.5
-	var o := fposmod(t * 26.0 + smooth_x * -0.25, 480.0)
+	var travel_dir := 1.0 if scrolling else -1.0
+	var o := fposmod(t * 26.0 + smooth_x * 0.25 * travel_dir, 480.0)
 	front.draw_texture_rect(fg, Rect2(-o, fy, 480, 270), false, Color(1, 1, 1, 0.95))
 	front.draw_texture_rect(fg, Rect2(-o + 480.0, fy, 480, 270), false, Color(1, 1, 1, 0.95))
