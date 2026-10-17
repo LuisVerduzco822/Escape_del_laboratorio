@@ -71,19 +71,11 @@ func _draw() -> void:
 	_draw_ingredients()
 	_draw_center()
 
-	UI.text(self, "RACHA %s" % GameManager.format_time(GameManager.streak), 474, 250, 8, Color(0.6, 0.95, 1.0), 2)
-	if GameManager.parries > 0:
-		UI.text(self, "PARRY x%d" % GameManager.parries, 474, 262, 8, Color(1.0, 0.55, 0.88), 2)
-
 	if level.player.weapon_power_t > 0.0:
 		var duration := float(level.data.get("boss_powerups", {}).get("boost_duration", 10.0))
 		draw_rect(Rect2(176, 200, 128, 23), Color(0.02, 0.06, 0.1, 0.9))
 		UI.text(self, "DISPARO X3  %ds" % ceili(level.player.weapon_power_t), 240, 214, 8, Color(0.3, 0.9, 1.0), 1)
 		draw_rect(Rect2(180, 218, 120 * clampf(level.player.weapon_power_t / duration, 0.0, 1.0), 3), Color(0.3, 0.9, 1.0))
-	if level.index == 0 and level.age < 12.0 and not level.reached_boss and level.st != ST_FAIL:
-		var a := clampf(12.0 - level.age, 0.0, 1.0)
-		UI.text(self, "MOVER A/D  SALTAR ESPACIO  APUNTAR W/S+A/D", 240, 226, 8, Color(1, 1, 1, a), 1)
-		UI.text(self, "DISPARO J  SUPER K  DASH SHIFT  FIJAR CTRL", 240, 238, 8, Color(1, 1, 1, a), 1)
 
 	if hint_t > 0.0 and hint != "":
 		UI.text(self, hint, 240, 62, 8, Color(1, 0.95, 0.6, clampf(hint_t, 0.0, 1.0)), 1)
@@ -141,22 +133,11 @@ func _draw_center() -> void:
 			UI.text(self, "%s - %s" % [d["tag"], d["name"]], 240, 12, 8, Color(0.85, 0.95, 1.0), 1)
 			var got := GameManager.level_ingredients(L.index)
 			if L.scrolling:
-				var objective := "COMPUESTOS %d/3" % got if got < 3 else "ACCESO ABIERTO: AVANZA AL JEFE >"
-				UI.text(self, objective, 240, 26, 8, Color(1, 0.9, 0.5), 1)
-				# The route remains readable when returning for a missed compound.
-				var target_x: float = L.arena_x
-				for slot in 3:
-					if not GameManager.ingredients[L.index * 3 + slot]:
-						target_x = L.data["ingredient_spots"][slot].x
-						break
-				var direction := "<" if target_x < L.player.position.x else ">"
-				var target_name := "JEFE" if got == 3 else "COMPUESTO"
-				UI.text(self, "%s %s %dm" % [direction, target_name, int(absf(target_x - L.player.position.x) / 16.0)], 240, 214, 8, Color(0.6, 1.0, 0.85), 1)
+				UI.text(self, "COMPUESTOS %d/3" % got, 240, 26, 8, Color(1, 0.9, 0.5), 1)
 			elif L.collect_left() > 0.0:
 				UI.text(self, "JEFE EN %s   INGREDIENTES %d/3" % [GameManager.format_time(L.collect_left()), got], 240, 26, 8, Color(1, 0.9, 0.5), 1)
 			elif got < 3:
-				if int(t * 3.0) % 2 == 0:
-					UI.text(self, "¡RECOGE LOS INGREDIENTES QUE FALTAN!", 240, 26, 8, Color(1.0, 0.4, 0.4), 1)
+				UI.text(self, "COMPUESTOS %d/3" % got, 240, 26, 8, Color(1, 0.9, 0.5), 1)
 	elif L.st >= ST_WARN and L.st <= ST_KO:
 		if true:
 			var b = L.boss

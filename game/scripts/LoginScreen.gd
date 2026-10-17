@@ -13,11 +13,20 @@ var server_edit: LineEdit
 var status: Label
 var main_btn: Button
 var alt_btn: Button
+var offline_btn: Button
+var exit_btn: Button
+var choosing := true
 var registering := false
 var busy := false
+var server_available := false
+var checking_server := false
+var server_revision := 0
+var server_debounce: Timer
+var offline_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
+	get_tree().set_auto_accept_quit(true)
 	UI.apply_theme()
 	AudioManager.play_music("menu")
 	if ResourceLoader.exists(BG_PATH):
@@ -74,13 +83,16 @@ func _ready() -> void:
 
 	main_btn = _button("Iniciar Sesión", Color(0.55, 1.0, 0.35))
 	alt_btn = _button("Registrarse", Color(1.0, 0.65, 0.55))
-	main_btn.pressed.connect(_submit)
-	alt_btn.pressed.connect(_toggle_mode)
+	main_btn.pressed.connect(_main_pressed)
+	alt_btn.pressed.connect(_alt_pressed)
 	box.add_child(main_btn)
 	box.add_child(alt_btn)
-	var offline_btn := _button("Jugar sin conexión", Color(0.6, 0.9, 1.0))
+	offline_btn = _button("Jugar sin conexión", Color(0.6, 0.9, 1.0))
 	offline_btn.pressed.connect(_play_offline)
 	box.add_child(offline_btn)
+	exit_btn = _button("Salir", Color(1.0, 0.55, 0.5))
+	exit_btn.pressed.connect(func(): get_tree().quit())
+	box.add_child(exit_btn)
 
 	var small := StyleBoxFlat.new()
 	small.bg_color = Color(0.03, 0.05, 0.1, 0.85)
@@ -91,6 +103,8 @@ func _ready() -> void:
 	small.content_margin_top = 2
 	small.content_margin_bottom = 2
 	server_edit = LineEdit.new()
+	server_edit.gui_input.connect(_field_navigation.bind(server_edit))
+	server_edit.focus_entered.connect(server_edit.edit)
 	server_edit.text = Database.base_url
 	server_edit.placeholder_text = "http://localhost:3000"
 	server_edit.tooltip_text = "Dirección del servidor"
@@ -106,15 +120,40 @@ func _ready() -> void:
 	status.position = Vector2(242, 9)
 	add_child(status)
 
+	server_debounce = Timer.new()
+	server_debounce.one_shot = true
+	server_debounce.wait_time = 0.5
+	server_debounce.timeout.connect(_check_server)
+	add_child(server_debounce)
+	server_edit.text_changed.connect(_server_changed)
+	var poll := Timer.new()
+	poll.wait_time = 5.0
+	poll.timeout.connect(func():
+		if not busy and not checking_server and server_debounce.is_stopped():
+			_check_server())
+	add_child(poll)
+	poll.start()
+
+	offline_dialog = ConfirmationDialog.new()
+	offline_dialog.title = "Jugar sin conexión"
+	offline_dialog.dialog_text = "Tus puntajes se guardarán solo localmente.\nNo se subirán al ranking."
+	offline_dialog.ok_button_text = "Continuar"
+	offline_dialog.cancel_button_text = "Volver"
+	offline_dialog.confirmed.connect(_confirm_offline)
+	offline_dialog.canceled.connect(func(): offline_btn.grab_focus())
+	add_child(offline_dialog)
+
 	user_edit.text = Database.last_user()
-	if user_edit.text != "":
-		pass_edit.grab_focus()
-	else:
-		user_edit.grab_focus()
+	_show_choices()
 	_check_server()
 
 
 func _play_offline() -> void:
+	if not busy:
+		offline_dialog.popup_centered()
+
+
+func _confirm_offline() -> void:
 	if busy:
 		return
 	busy = true
@@ -123,15 +162,41 @@ func _play_offline() -> void:
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 
+func _server_changed(_text: String) -> void:
+	server_revision += 1
+	server_available = false
+	status.text = "COMPROBANDO..."
+	_update_connection_controls()
+	server_debounce.start()
+
+
+func _update_connection_controls() -> void:
+	main_btn.disabled = not server_available or busy
+	alt_btn.disabled = choosing and not server_available
+	for field in [user_edit, pass_edit, confirm_edit]:
+		field.editable = server_available and not busy
+
+
 func _check_server() -> void:
+	if busy or checking_server:
+		return
+	checking_server = true
+	var revision := server_revision
 	Database.set_url(server_edit.text)
 	status.text = "COMPROBANDO..."
 	status.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
 	var ok := await Database.health()
 	if not is_instance_valid(status):
 		return
+	checking_server = false
+	if revision != server_revision:
+		if server_debounce.is_stopped():
+			_check_server()
+		return
+	server_available = ok
 	status.text = "SERVIDOR EN LINEA" if ok else "SIN CONEXION"
 	status.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55) if ok else Color(1.0, 0.45, 0.4))
+	_update_connection_controls()
 
 
 func _label(text: String, size: int, col: Color, outline: int) -> Label:
@@ -154,6 +219,8 @@ func _field(placeholder: String, secret: bool) -> LineEdit:
 	e.max_length = 32
 	e.custom_minimum_size = Vector2(240, 24)
 	e.text_submitted.connect(_on_enter.bind(e))
+	e.gui_input.connect(_field_navigation.bind(e))
+	e.focus_entered.connect(e.edit)
 	return e
 
 
@@ -165,6 +232,20 @@ func _button(text: String, col: Color) -> Button:
 	b.add_theme_color_override("font_focus_color", Color(1, 0.95, 0.5))
 	b.focus_entered.connect(func(): AudioManager.sfx("select", -6.0))
 	return b
+
+
+func _field_navigation(event: InputEvent, field: LineEdit) -> void:
+	var direction: Side
+	if event.is_action_pressed("ui_up", true):
+		direction = SIDE_TOP
+	elif event.is_action_pressed("ui_down", true):
+		direction = SIDE_BOTTOM
+	else:
+		return
+	var next := field.find_valid_focus_neighbor(direction)
+	if next:
+		next.grab_focus()
+	field.accept_event()
 
 
 func _on_enter(_t: String, e: LineEdit) -> void:
@@ -181,23 +262,70 @@ func _say(text: String, ok: bool) -> void:
 	msg.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55) if ok else Color(1.0, 0.45, 0.4))
 
 
-func _toggle_mode() -> void:
-	if busy:
+func _main_pressed() -> void:
+	if choosing:
+		_show_form(false)
+	else:
+		_submit()
+
+
+func _alt_pressed() -> void:
+	if choosing:
+		_show_form(true)
+	elif not busy:
+		AudioManager.sfx("confirm")
+		_show_choices()
+
+
+func _show_choices() -> void:
+	choosing = true
+	registering = false
+	_set_form_visible(false)
+	pass_edit.clear()
+	confirm_edit.clear()
+	msg.text = ""
+	main_btn.text = "Iniciar sesión"
+	alt_btn.text = "Registrarse"
+	offline_btn.show()
+	exit_btn.show()
+	_update_connection_controls()
+	if server_available:
+		main_btn.grab_focus()
+	else:
+		offline_btn.grab_focus()
+
+
+func _set_form_visible(shown: bool) -> void:
+	for control in [mode_label, user_edit, pass_edit, msg]:
+		control.visible = shown
+	confirm_edit.visible = shown and registering
+
+
+func _show_form(create_account: bool) -> void:
+	if busy or not server_available:
 		return
 	AudioManager.sfx("confirm")
-	registering = not registering
-	confirm_edit.visible = registering
-	confirm_edit.text = ""
-	pass_edit.text = ""
+	choosing = false
+	registering = create_account
+	_set_form_visible(true)
+	confirm_edit.clear()
+	pass_edit.clear()
 	msg.text = ""
 	mode_label.text = "CREAR CUENTA" if registering else "INICIAR SESIÓN"
-	main_btn.text = "Crear Cuenta" if registering else "Iniciar Sesión"
-	alt_btn.text = "Volver" if registering else "Registrarse"
-	user_edit.grab_focus()
+	main_btn.text = "Crear cuenta" if registering else "Iniciar sesión"
+	alt_btn.text = "Volver"
+	offline_btn.hide()
+	exit_btn.hide()
+	_update_connection_controls()
+	if not registering and user_edit.text != "":
+		pass_edit.grab_focus()
+	else:
+		user_edit.grab_focus()
+	_check_server()
 
 
 func _submit() -> void:
-	if busy:
+	if busy or choosing or not server_available:
 		return
 	var name := user_edit.text.strip_edges()
 	var password := pass_edit.text
@@ -207,13 +335,15 @@ func _submit() -> void:
 		return
 	Database.set_url(server_edit.text)
 	busy = true
+	_update_connection_controls()
 	_say("Conectando...", true)
 	if registering:
 		var r := await Database.register(name, password)
 		busy = false
+		_update_connection_controls()
 		if r["ok"]:
 			AudioManager.sfx("pickup")
-			_toggle_mode()
+			_show_form(false)
 			user_edit.text = name
 			pass_edit.grab_focus()
 			_say(r["msg"], true)
@@ -225,6 +355,7 @@ func _submit() -> void:
 	_say(res["msg"], res["ok"])
 	if not res["ok"]:
 		busy = false
+		_update_connection_controls()
 		AudioManager.sfx("hurt", -6.0)
 		pass_edit.text = ""
 		pass_edit.grab_focus()

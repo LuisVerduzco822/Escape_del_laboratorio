@@ -19,6 +19,7 @@ var wobble := 0.0
 var bound_l := -30.0
 var bound_r := 510.0
 var grounded := false
+var fall_velocity := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -52,6 +53,8 @@ func _ready() -> void:
 	wobble = randf() * TAU
 	body_entered.connect(_on_body)
 	z_index = 3
+	if kind == "spore" and fall_velocity == Vector2.ZERO:
+		_prepare_spore_fall()
 	_update_appearance()
 
 
@@ -82,18 +85,40 @@ func _physics_process(delta: float) -> void:
 			position.y = base_y + sin(age * 3.2 + wobble) * 26.0 * smoothstep(0.0, SPAWN_TIME, age)
 			_bounce()
 		"spore":
-			if grounded:
-				position.x += dir * speed * 1.2 * delta * entrance_speed
-				_bounce()
-			else:
-				position.y += speed * 0.5 * delta * entrance_speed
-				position.x = clampf(position.x + sin(age * 2.4 + wobble) * 34.0 * delta, bound_l + 20.0, bound_r - 20.0)
-				if position.y >= Cfg.FLOOR_Y - 8.0:
-					position.y = Cfg.FLOOR_Y - 8.0
-					grounded = true
-					dir = -1 if randf() < 0.5 else 1
+			_move_spore(delta * entrance_speed)
 	_update_appearance()
 	queue_redraw()
+
+
+func _prepare_spore_fall() -> void:
+	fall_velocity = Vector2(dir * speed * 0.45, speed * 0.5)
+	var player = get_tree().get_first_node_in_group("player")
+	if pink and player and not player.dead:
+		# Aim once at the player's current height: the player can dodge the trajectory.
+		var fall_time := maxf(0.1, (player.global_position.y - global_position.y) / fall_velocity.y)
+		fall_velocity.x = clampf((player.global_position.x - global_position.x) / fall_time, -speed * 1.2, speed * 1.2)
+	if absf(fall_velocity.x) > 0.001:
+		dir = -1 if fall_velocity.x < 0.0 else 1
+
+
+func _move_spore(delta: float) -> void:
+	# Older saves have no trajectory; initialize it without changing a landed spore's direction.
+	if fall_velocity == Vector2.ZERO:
+		if grounded:
+			fall_velocity = Vector2(dir * speed * 0.45, speed * 0.5)
+		else:
+			_prepare_spore_fall()
+	if grounded:
+		position.x += dir * speed * 1.2 * delta
+	else:
+		position += fall_velocity * delta
+		if position.y >= Cfg.FLOOR_Y - 8.0:
+			position.y = Cfg.FLOOR_Y - 8.0
+			grounded = true
+	var left: Variant = get_parent().get("view_left")
+	var view_left := float(left) if left != null else 0.0
+	if position.x < view_left - 24.0 or position.x > view_left + Cfg.W + 24.0:
+		queue_free() # Leaving the screen is not a kill and grants no rewards.
 
 
 func _bounce() -> void:

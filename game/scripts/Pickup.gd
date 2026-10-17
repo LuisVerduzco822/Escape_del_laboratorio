@@ -71,6 +71,16 @@ func _coin_motion(delta: float) -> void:
 func _on_body(b: Node) -> void:
 	if is_queued_for_deletion() or not b.is_in_group("player") or b.dead:
 		return
+	if kind == "boss_heart":
+		if GameManager.hp < Cfg.MAX_HP:
+			Telemetry.event("heal", {"hp": GameManager.hp, "source": "boss_heart"})
+			GameManager.heal(1)
+			Fx.popup(get_parent(), "+1 VIDA", global_position + Vector2(0, -18), Color(1.0, 0.4, 0.55))
+		else:
+			Fx.popup(get_parent(), "VIDA COMPLETA", global_position + Vector2(0, -18), Color(1.0, 0.4, 0.55))
+		AudioManager.sfx("pickup")
+		queue_free()
+		return
 	if is_powerup():
 		if get_parent().claim_powerup(kind):
 			Fx.burst(get_parent(), global_position, col, 14, 80.0, 0.5, 2.0)
@@ -120,7 +130,13 @@ func _draw() -> void:
 		return
 	if life > 0.0 and life - age < 3.0 and int(age * 8.0) % 2 == 0:
 		return
-	if is_powerup():
+	if kind == "boss_heart":
+		var heart := Color(1.0, 0.3, 0.45)
+		draw_circle(Vector2.ZERO, 12.0 + sin(age * 5.0) * 2.0, Color(heart, 0.2))
+		draw_circle(Vector2(-3, -2), 4.0, heart)
+		draw_circle(Vector2(3, -2), 4.0, heart)
+		draw_colored_polygon(PackedVector2Array([Vector2(-7, -1), Vector2(7, -1), Vector2(0, 8)]), heart)
+	elif is_powerup():
 		var entrance := smoothstep(0.0, 0.4, age)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * lerpf(0.3, 1.0, entrance))
 		draw_circle(Vector2.ZERO, 16.0 + sin(age * 5.0) * 2.0, Color(col, 0.18))

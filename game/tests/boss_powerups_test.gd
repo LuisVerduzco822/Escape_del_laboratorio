@@ -47,6 +47,7 @@ func _run() -> void:
 	root.get_node("Database").start_offline()
 	gm = root.get_node("GameManager")
 	saves = root.get_node("SaveGame")
+	await opening_encounters()
 	gm.reset_run()
 	level = load("res://scripts/Level.gd").new()
 	root.add_child(level)
@@ -165,13 +166,67 @@ func _run() -> void:
 		level.index = index
 		level.start_phase = "boss"
 		root.add_child(level)
+		level._tick_powerups(100.0)
+		check(powerups().is_empty(), "Boss %d waits for the entrance warning" % (index + 1))
 		level.st = level.S.BOSS
 		level.boss.st = level.boss.St.FIGHT
 		freeze_combat()
-		level._tick_powerups(100.0)
-		check(powerups().is_empty() and not level.claim_powerup("overcharge") and not level.claim_powerup("boss_bomb"), "Boss %d keeps support disabled" % (index + 1))
+		await frames(2)
+		level._tick_powerups(3.9)
+		check(powerups().is_empty(), "Boss %d waits four active seconds" % (index + 1))
+		level._tick_powerups(0.2)
+		check(powerups().size() == 1 and powerups()[0].kind == "overcharge", "Boss %d starts with the weapon boost" % (index + 1))
+		var boost = powerups()[0]
+		check(boost.position.x > level.arena_x and boost.position.x < level.world_width, "Boss %d support is inside its arena" % (index + 1))
+		level.player.position = boost.position
+		await frames(4)
+		check(level.player.weapon_power_t == 10.0 and powerups().is_empty(), "Boss %d boost works through actual pickup collision" % (index + 1))
+		level.player.position = Vector2(level.arena_x + 100, level.boss.home.y)
+		level.player.aim = Vector2.RIGHT
+		var before_shot: float = level.boss.hp
+		level.player._shoot()
+		await frames(60)
+		check(is_equal_approx(level.boss.hp, before_shot - 3.0), "Boss %d receives triple damage from a boosted shot" % (index + 1))
+		level._tick_powerups(14.1)
+		check(powerups().size() == 1 and powerups()[0].kind == "boss_bomb", "Boss %d alternates to the bomb" % (index + 1))
+		var checkpoint: Dictionary = saves.capture(level, true)
+		check(saves.valid(checkpoint), "Boss %d checkpoint with support validates" % (index + 1))
+		level.queue_free()
+		await process_frame
+		level = load("res://scripts/Level.gd").new()
+		level.index = index
+		level.restore_data = checkpoint
+		root.add_child(level)
+		level.process_mode = Node.PROCESS_MODE_INHERIT
+		freeze_combat()
+		check(level.player.weapon_power_t == 10.0 and powerups().size() == 1 and level.cd == checkpoint.level.cd, "Boss %d reload preserves boost, bomb and schedule" % (index + 1))
+		var before_bomb: float = level.boss.hp
+		level.player.position = powerups()[0].position
+		await frames(4)
+		check(powerups().is_empty() and is_equal_approx(level.boss.hp, before_bomb - 110.0), "Boss %d bomb deals damage through actual pickup collision" % (index + 1))
+		level._tick_powerups(14.1)
+		check(powerups().size() == 1 and powerups()[0].kind == "overcharge", "Boss %d repeats the support cycle" % (index + 1))
 		level.queue_free()
 		await process_frame
 	saves.clear()
 	print("POWERUP TESTS: ", failures, " failures")
 	quit(1 if failures else 0)
+
+func opening_encounters() -> void:
+	for index in 3:
+		gm.reset_run()
+		level = load("res://scripts/Level.gd").new()
+		level.index = index
+		root.add_child(level)
+		level.player.invuln = 99.0
+		level.player.set_physics_process(false)
+		# Let the real introduction and scheduler run; do not fast-forward cooldowns.
+		await frames(210)
+		check(get_nodes_in_group("enemy").any(func(n): return n.kind == "fireball"), "Level %d spawns fire within half a second after its intro" % (index + 1))
+		await frames(75)
+		check(get_nodes_in_group("enemy").any(func(n): return n.kind == "bat"), "Level %d spawns a bat within two seconds after its intro" % (index + 1))
+		if index > 0:
+			await frames(120)
+			check(get_nodes_in_group("enemy").any(func(n): return n.kind == "spore"), "Level %d also starts spores early" % (index + 1))
+		level.queue_free()
+		await process_frame

@@ -4,6 +4,13 @@ const SpriteBuilder := preload("res://scripts/SpriteBuilder.gd")
 const PlayerShot := preload("res://scripts/PlayerShot.gd")
 const IDLE_TEX := preload("res://assets/characters/Adam_idle_anim_16x16.png")
 const RUN_TEX := preload("res://assets/characters/Adam_run_16x16.png")
+const WEAPON_TEX := preload("res://assets/weapons/Flamethrower.png")
+# The handheld nozzle is at top left; the other regions are tank/hose parts.
+# Half-size pixels keep the nozzle readable at the game's 2x window scale.
+const WEAPON_REGION := Rect2(0, 0, 44, 19)
+# Rotate around the grip, not the barrel: the hand stays on the torso.
+const WEAPON_RECT := Rect2(-5, -6, 22, 9.5)
+const WEAPON_MUZZLE := Vector2(16.5, -3)
 
 const SPEED := 130.0
 const GRAVITY := 1000.0
@@ -36,6 +43,9 @@ var locked := false
 var parry_flash := 0.0
 var mute_flash := 0.0
 var weapon_power_t := 0.0
+var death_t := 0.0
+var death_pivot := Vector2.ZERO
+var body_shape: CollisionShape2D
 
 
 func _ready() -> void:
@@ -48,6 +58,7 @@ func _ready() -> void:
 	cs.shape = r
 	cs.position = Vector2(0, 3)
 	add_child(cs)
+	body_shape = cs
 
 	sprite = AnimatedSprite2D.new()
 	sprite.position = Vector2(0, -4)
@@ -69,9 +80,10 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if dead:
+		death_t += delta
 		velocity.y += GRAVITY * delta
-		velocity.x = move_toward(velocity.x, 0.0, 400.0 * delta)
 		move_and_slide()
+		_animate_death()
 		queue_redraw()
 		return
 
@@ -200,7 +212,7 @@ func _shoot() -> void:
 		s.damage = float(support.get("boost_damage", 3.0))
 		s.radius = 4.5
 		fire_cd = float(support.get("boost_fire_rate", FIRE_RATE))
-	s.position = global_position + Vector2(facing * 4, -2) + aim * 12.0
+	s.position = to_global(_weapon_muzzle() + aim * 2.0)
 	s.vel = dir * 360.0
 	get_parent().add_child(s)
 	AudioManager.sfx("shoot", -10.0, randf_range(0.95, 1.08))
@@ -215,7 +227,7 @@ func _super() -> void:
 		GameManager.add_super(-50.0)
 		var s := PlayerShot.new()
 		s.kind = "super"
-		s.position = global_position + aim * 14.0
+		s.position = to_global(_weapon_muzzle() + aim * 2.0)
 		s.vel = aim * 300.0
 		s.damage = 30.0
 		s.radius = 11.0
@@ -246,6 +258,8 @@ func _ultra() -> void:
 
 func _animate(ax: float) -> void:
 	var side := "right" if facing > 0 else "left"
+	if absf(aim.y) > absf(aim.x):
+		side = "down" if aim.y > 0.0 else "up"
 	var anim := "idle_" + side
 	if is_on_floor() and absf(velocity.x) > 5.0:
 		anim = "run_" + side
@@ -267,32 +281,88 @@ func hurt() -> void:
 	AudioManager.sfx("hurt")
 	Fx.shake(3.0, 0.25)
 	Fx.hitstop(0.08)
-	Fx.flash(Color(1, 0.1, 0.1), 0.35, 0.3)
+	var hit_color := Color(0.45, 0.7, 0.15) if GameManager.hp <= 0 else Color(1, 0.1, 0.1)
+	Fx.flash(hit_color, 0.35, 0.3)
 	invuln = 1.5
-	velocity.y = -170.0
 	if GameManager.hp <= 0 and not GameManager.god:
 		_die()
+	else:
+		velocity.y = -170.0
 
 
 func _die() -> void:
+	if dead:
+		return
 	dead = true
+	death_t = 0.0
+	# Pin the rear heel: rotating the image around its center makes the feet slide.
+	death_pivot = sprite.position + Vector2(-facing * 4.0, 16.0)
 	GameManager.deaths += 1
 	Telemetry.event("death", {"deaths": GameManager.deaths})
-	velocity = Vector2(-facing * 60.0, -260.0)
-	collision_mask = 0
-	sprite.modulate = Color(1, 0.4, 0.4)
+	velocity = Vector2(0, maxf(0.0, velocity.y))
+	dash_t = 0.0
+	weapon_power_t = 0.0
+	modulate = Color.WHITE
+	z_index = 15
+	collision_layer = 0
+	collision_mask = 3
+	# Support the fixed feet without widening the collision body into nearby walls.
+	var prone := RectangleShape2D.new()
+	prone.size = Vector2(10, 8)
+	body_shape.set_deferred("shape", prone)
+	body_shape.set_deferred("position", Vector2(0, 8))
+	sprite.play("idle_right" if facing > 0 else "idle_left")
+	sprite.stop()
+	sprite.frame = 0
 	AudioManager.sfx("gameover")
-	Fx.burst(get_parent(), global_position, Color(1, 0.4, 0.3), 16, 120.0, 0.7, 3.0)
+	queue_redraw()
+
+
+func _animate_death() -> void:
+	var collapse := smoothstep(0.18, 0.8, death_t)
+	var tremble := sin(death_t * 55.0) * deg_to_rad(1.2) * (1.0 - collapse)
+	sprite.rotation = -facing * PI * 0.5 * collapse + tremble
+	sprite.scale = Vector2(lerpf(1.0, 0.82, collapse), 1.0)
+	var heel := Vector2(-facing * 4.0, 16.0) * sprite.scale
+	sprite.position = death_pivot - heel.rotated(sprite.rotation)
+	sprite.modulate = Color.WHITE.lerp(Color(0.5, 0.78, 0.38), clampf(death_t / 0.25, 0.0, 1.0))
+
+
+func _weapon_hand() -> Vector2:
+	# Adam's torso is below the head, relative to the centered 16x32 frame.
+	return sprite.position + Vector2(facing * 4.0, 9.0)
+
+
+func _weapon_muzzle() -> Vector2:
+	var muzzle := WEAPON_MUZZLE
+	muzzle.y *= -1.0 if facing < 0 else 1.0
+	return _weapon_hand() + muzzle.rotated(aim.angle())
 
 
 func _draw() -> void:
 	if dead:
+		# A soft toxic halo keeps the body readable against the dark scenery.
+		var fade := clampf(1.0 - death_t / 2.2, 0.0, 1.0)
+		var pulse := 0.85 + sin(death_t * 7.0) * 0.15
+		draw_set_transform(sprite.position, 0.0, Vector2(1.3, 0.7))
+		draw_circle(Vector2.ZERO, 17.0, Color(0.4, 0.95, 0.2, fade * pulse * 0.14))
+		draw_arc(Vector2.ZERO, 14.0, 0.0, TAU, 36, Color(0.65, 1.0, 0.3, fade * 0.4), 1.0)
+		draw_set_transform(Vector2.ZERO)
+		var head := sprite.position + Vector2(0, -8).rotated(sprite.rotation)
+		for i in 8:
+			var rise := fposmod(death_t * 20.0 + i * 4.0, 28.0)
+			var pos := head + Vector2(sin(death_t * 2.5 + i * 1.7) * 10.0, -rise)
+			var alpha := fade * (1.0 - rise / 28.0) * 0.8
+			draw_circle(pos, 1.0 + (i % 3) * 0.4, Color(0.65, 1.0, 0.3, alpha))
 		return
-	var hand := Vector2(facing * 4.0, -2.0)
-	var tip := hand + aim * 11.0
-	draw_line(hand, tip, Color(0.12, 0.12, 0.16), 4.0)
-	draw_line(hand, tip, Color(0.75, 0.8, 0.9), 2.0)
-	draw_circle(hand, 2.0, Color(0.95, 0.8, 0.65))
+	var hand := _weapon_hand()
+	var tip := _weapon_muzzle()
+	var shoulder := sprite.position + Vector2(facing * 3.0, 6.0)
+	draw_line(shoulder, hand, Color(0.95, 0.8, 0.65), 2.0)
+	draw_set_transform(hand, aim.angle(), Vector2(1.0, -1.0 if facing < 0 else 1.0))
+	draw_texture_rect_region(WEAPON_TEX, WEAPON_RECT, WEAPON_REGION)
+	draw_circle(Vector2.ZERO, 1.5, Color(0.95, 0.8, 0.65))
+	draw_set_transform(Vector2.ZERO)
 	if fire_cd > FIRE_RATE - 0.06:
 		draw_circle(tip + aim * 3.0, 3.0, Color(1.0, 0.95, 0.5, 0.9))
 	if locked:

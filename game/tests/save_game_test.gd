@@ -28,7 +28,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	main = current_scene
-	# Keep the generic actor round-trip fixture in the timed second level.
+	# Round-trip the second horizontal level with its three persistent compounds.
 	await main._start_level(1, "collect", false)
 	paused = true
 	var level = main.level
@@ -38,7 +38,7 @@ func _run() -> void:
 	level.horde_wait = 0.21
 	level.horde_p = 0.3
 	level.cd.heal = 12.25
-	level.ing_spawned = [true, false, false]
+	level.ing_spawned = [true, true, true]
 	level.player.position = Vector2(123, 100)
 	level.player.velocity = Vector2(90, -100)
 	level.player.drop_t = 0.15
@@ -50,7 +50,6 @@ func _run() -> void:
 	enemy.age = 3.7
 	enemy.base_y = 101.0
 	enemy.wobble = 1.4
-	level._spawn_ingredient(0)
 	var coin = saves.SCRIPTS.pickup.new()
 	coin.kind = "coin"
 	coin.position = Vector2(240, 160)
@@ -65,7 +64,7 @@ func _run() -> void:
 	check(level.save_current(), "Save current collection state")
 	var saved: Dictionary = saves.load_saved()
 	check(not saved.is_empty(), "Snapshot passes validation")
-	check(saved.actors.size() == 6, "Enemy, ingredient, coin, projectile, zone and shot saved")
+	check(saved.actors.size() == 8, "Enemy, three compounds, coin, projectile, zone and shot saved")
 	gm.hp = 1
 	await main._start_level(1, "collect", false, saved)
 	paused = true
@@ -77,12 +76,12 @@ func _run() -> void:
 	check(level.horde_remaining == 4 and is_equal_approx(level.horde_wait, 0.21), "Pending horde restored")
 	var again: Dictionary = saves.capture(level)
 	check(again.actors == saved.actors, "All actor properties survive reconstruction")
-	check(level.ing_spawned == [true, false, false], "Ingredient spawn flags restored")
+	check(level.ing_spawned == [true, true, true], "Ingredient spawn flags restored")
 	# Enter the boss and capture the start of phase one.
 	for child in level.get_children():
 		if child.get_script() in saves.SCRIPTS.values(): child.queue_free()
 	await process_frame
-	level.player.position = Vector2(60, 180)
+	level.player.position = Vector2(level.arena_x + 60.0, 180)
 	level.player.velocity = Vector2.ZERO
 	level.player.drop_t = 0.0
 	gm.hp = 3

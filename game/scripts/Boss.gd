@@ -24,12 +24,15 @@ const POOLS := {
 const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3)]
 const RADII := [46.0, 44.0, 42.0]
 const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100)]
+const MID_PHASE_HP := [0.83, 0.495]
 
 var level
 var kind := 0
 var max_hp := 700.0
 var hp := 700.0
 var phase := 1
+var heart_dropped := [false, false, false]
+var pending_hearts := 0
 var st := St.ENTER
 var home := Vector2(372, 112)
 var start_pos := Vector2(640, 112)
@@ -118,6 +121,7 @@ func _physics_process(delta: float) -> void:
 			if not moving:
 				position = home + Vector2(sin(t * 1.3) * 14.0, sin(t * 2.1) * 9.0)
 			if not busy:
+				_try_drop_hearts()
 				rest -= delta
 				if rest <= 0.0:
 					_pick_attack()
@@ -155,7 +159,14 @@ func _enter_fight() -> void:
 func take_damage(d: float) -> bool:
 	if st != St.FIGHT:
 		return false
+	var previous_hp := hp
 	hp -= d
+	if phase < 3:
+		var midpoint: float = max_hp * MID_PHASE_HP[phase - 1]
+		if hp > 0.0 and previous_hp > midpoint and hp <= midpoint and not heart_dropped[phase - 1]:
+			heart_dropped[phase - 1] = true
+			if GameManager.hp > 0 and GameManager.hp <= 2:
+				pending_hearts |= 1 << (phase - 1)
 	flash = 0.05
 	GameManager.add_score_raw(int(d) * 2)
 	if tick_cd <= 0.0:
@@ -167,7 +178,19 @@ func take_damage(d: float) -> bool:
 		_phase_change(2)
 	elif phase == 2 and hp <= max_hp * 0.33:
 		_phase_change(3)
+	_try_drop_hearts()
 	return true
+
+
+func _try_drop_hearts() -> void:
+	if st not in [St.FIGHT, St.PHASE] or busy or moving or contact_on:
+		return
+	for slot in 2:
+		if pending_hearts & (1 << slot):
+			pending_hearts &= ~(1 << slot)
+			# Recheck health when the attack finishes, not just when the milestone was crossed.
+			if GameManager.hp > 0 and GameManager.hp <= 2:
+				level.drop_boss_heart(slot)
 
 
 func _stop_attack() -> void:
@@ -187,17 +210,20 @@ func _phase_change(n: int) -> void:
 	_stop_attack()
 	level.clear_threats()
 	GameManager.add_score_raw(1000)
-	level.drop_ingredient(n - 2, global_position)
+	_try_drop_hearts()
+	if n == 3 and not heart_dropped[2]:
+		heart_dropped[2] = true
+		level.drop_boss_heart(2)
 	Telemetry.event("boss_phase", {"phase": n, "boss": level.data["boss_name"], "bonus": 1000})
 	AudioManager.sfx("phase")
 	Fx.shake(4.0, 0.6)
 	Fx.flash(Color(1, 0.3, 0.2), 0.4, 0.5)
-	level.banner("FASE %d" % n, Color(1.0, 0.45, 0.3), 1.8, 16)
 
 
 func _die() -> void:
 	hp = 0.0
 	st = St.DEAD
+	pending_hearts = 0
 	st_t = 0.0
 	_stop_attack()
 	level.clear_threats()
@@ -218,6 +244,7 @@ func _done() -> void:
 	warn_x = -1.0
 	warn_y = -1.0
 	rest = maxf(0.5, 1.4 - 0.25 * (phase - 1) - 0.1 * kind)
+	_try_drop_hearts()
 
 
 func _pick_attack() -> void:
@@ -392,17 +419,17 @@ func _fire_pink(y: float) -> void:
 func _atk_summon() -> void:
 	var n := 2 + phase
 	for i in n:
-		tw.tween_callback(_summon)
+		tw.tween_callback(_summon.bind(kind == 1 and i % 2 == 1))
 		tw.tween_interval(0.7)
 	tw.tween_interval(0.5)
 
 
-func _summon() -> void:
+func _summon(pink_spore: bool = false) -> void:
 	match kind:
 		0:
 			level.add_enemy("fireball", Vector2(global_position.x - radius, Cfg.FLOOR_Y - 9.0), {"speed": 130.0, "dir": -1})
 		1:
-			level.add_enemy("spore", Vector2(ox + attack_rng.randf_range(40.0, 440.0), -10.0), {"speed": 80.0, "hp": 2.0})
+			level.add_enemy("spore", Vector2(ox + attack_rng.randf_range(40.0, 440.0), -10.0), {"speed": 80.0, "hp": 2.0, "pink": pink_spore})
 		2:
 			level.add_enemy("bat", global_position + Vector2(-radius, 0), {"speed": 95.0, "hp": 2.0, "dir": -1})
 	AudioManager.sfx("select", -2.0, 0.5)

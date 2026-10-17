@@ -1,0 +1,10 @@
+Flamethrower.png
+Creator: Player 24 (MainMenuMaster)
+Pack: 2D Pixel Art Weapon Pack - Melee & Modern Arsenal
+Source: https://mainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb
+
+Original PNG supplied by the project author. The game displays the handheld
+nozzle from the top-left region of the sheet, scaled and rotated to aim.
+The public pack page does not specify a license; no additional license terms
+are inferred here. ASSETS_LICENSE.txt in the parent directory applies to the
+Modern Interiors character assets, not to this weapon.

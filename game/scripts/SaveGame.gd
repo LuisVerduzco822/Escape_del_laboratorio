@@ -6,14 +6,14 @@ const FIELDS := {
 	"stats": ["hp", "super_meter", "ingredients", "play_time", "parries", "coins", "score", "combo", "combo_t", "streak", "best_streak", "hits_taken", "survive_acc", "current_level", "deaths"],
 	"level": ["index", "st", "st_t", "age", "collect_t", "boss_t", "reached_boss", "ing_spawned", "cd", "horde_remaining", "horde_wait", "horde_p"],
 	"player": ["position", "velocity", "facing", "aim", "invuln", "dash_t", "dash_cd", "dash_dir", "air_dash", "fire_cd", "coyote", "buffer", "drop_t", "on_platform", "weapon_power_t"],
-	"boss": ["hp", "phase", "t", "last_attack"],
-	"enemy": ["position", "kind", "hp", "speed", "dir", "pink", "age", "base_y", "wobble", "bound_l", "bound_r", "grounded"],
+	"boss": ["hp", "phase", "t", "last_attack", "heart_dropped", "pending_hearts"],
+	"enemy": ["position", "kind", "hp", "speed", "dir", "pink", "age", "base_y", "wobble", "bound_l", "bound_r", "grounded", "fall_velocity"],
 	"pickup": ["position", "kind", "idx", "col", "label", "age", "life", "base_y", "value", "vy", "landed", "fall"],
 	"hazard": ["position", "vel", "accel", "pink", "radius", "col", "style", "age", "spin"],
 	"zone": ["position", "size", "warn", "active", "col", "t", "struck"],
 	"shot": ["position", "vel", "damage", "radius", "pierce", "kind", "age"],
 }
-const OPTIONAL_FIELDS := {"player": {"weapon_power_t": 0.0}}
+const OPTIONAL_FIELDS := {"player": {"weapon_power_t": 0.0}, "enemy": {"fall_velocity": Vector2.ZERO}, "boss": {"heart_dropped": [false, false, false], "pending_hearts": 0}}
 const SCRIPTS := {
 	"enemy": preload("res://scripts/Enemy.gd"),
 	"pickup": preload("res://scripts/Pickup.gd"),
@@ -38,7 +38,8 @@ func read_fields(node: Object, category: String) -> Dictionary:
 func write_fields(node: Object, category: String, state: Dictionary) -> void:
 	for key in FIELDS[category]:
 		if not state.has(key) and OPTIONAL_FIELDS.get(category, {}).has(key):
-			node.set(key, OPTIONAL_FIELDS[category][key])
+			var default_value: Variant = OPTIONAL_FIELDS[category][key]
+			node.set(key, default_value.duplicate(true) if default_value is Array or default_value is Dictionary else default_value)
 			continue
 		node.set(key, state[key].duplicate(true) if state[key] is Array or state[key] is Dictionary else state[key])
 
@@ -141,6 +142,12 @@ func valid(saved: Variant) -> bool:
 		if saved.level.st == 3:
 			ok = ok and _shape(saved.boss, "boss", samples.boss) and typeof(saved.boss.get("rng_state")) == TYPE_INT and typeof(saved.boss.get("rng_seed")) == TYPE_INT
 			if ok: ok = saved.boss.phase in [1, 2, 3] and saved.boss.hp > 0.0 and saved.boss.hp <= Cfg.LEVELS[saved.level.index].boss_hp
+			if ok and saved.boss.has("heart_dropped"):
+				ok = saved.boss.heart_dropped.size() == 3
+				for flag in saved.boss.heart_dropped:
+					ok = ok and flag is bool
+			if ok and saved.boss.has("pending_hearts"):
+				ok = saved.boss.pending_hearts >= 0 and saved.boss.pending_hearts <= 3
 		else:
 			ok = ok and saved.boss.is_empty()
 	for category in ["level", "player", "boss"]:

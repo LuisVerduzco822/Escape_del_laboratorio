@@ -6,7 +6,8 @@ static func build_four_dir_frames(idle_tex: Texture2D, run_tex: Texture2D,
 	var frames := SpriteFrames.new()
 	if frames.has_animation("default"):
 		frames.remove_animation("default")
-	var directions := ["down", "up", "left", "right"]
+	# The Adam sheets store six frames each: right, up, left, down.
+	var directions := ["right", "up", "left", "down"]
 	_add(frames, "idle", idle_tex, directions, frames_per_dir, idle_fps, frame_w, frame_h)
 	_add(frames, "run", run_tex, directions, frames_per_dir, run_fps, frame_w, frame_h)
 	return frames

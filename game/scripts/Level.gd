@@ -74,12 +74,7 @@ func _ready() -> void:
 	GameManager.start_level()
 	GameManager.current_level = index
 	Telemetry.event("level_start", {"name": data["name"], "phase": start_phase})
-	cd = {"fire": 2.0, "bat": 24.0, "spore": 16.0, "bolt": 45.0, "heal": 50.0, "horde": 42.0}
-	if scrolling:
-		# The shorter traversal needs encounters soon after the introduction.
-		cd["fire"] = 0.35
-		cd["bat"] = 1.5
-		cd["horde"] = 12.0
+	cd = Cfg.START_DELAYS.duplicate()
 	if not restore_data.is_empty():
 		_restore_snapshot(restore_data)
 		return
@@ -89,16 +84,11 @@ func _ready() -> void:
 		_begin_warn()
 	else:
 		AudioManager.play_music(data["music"])
-		banner("%s - %s" % [data["tag"], data["name"]], data["tint"], 2.8, 16)
 		if scrolling:
 			for slot in 3:
 				ing_spawned[slot] = true
 				if not GameManager.ingredients[index * 3 + slot]:
 					_spawn_ingredient(slot)
-			hud.hint = "EXPLORA LAS PLATAFORMAS Y RECOGE 3 COMPUESTOS"
-		else:
-			hud.hint = "RECOGE LOS 3 INGREDIENTES Y SOBREVIVE"
-		hud.hint_t = 5.0
 
 
 func _build_world() -> void:
@@ -159,10 +149,6 @@ func _draw() -> void:
 		for k in int(w / 14.0):
 			draw_rect(Rect2(x + 6 + k * 14, y + 5, 6, 1), Color(0.3, 0.9, 1.0, 0.8))
 		draw_rect(Rect2(x + w * 0.5 - 10, y + 11, 20, 2), Color(0.3, 0.8, 1.0, 0.35))
-	if scrolling:
-		for slot in 3:
-			var spot: Vector2 = data["ingredient_spots"][slot]
-			UI.text(self, "%02d" % (slot + 1), spot.x, spot.y + 37.0, 8, Color(0.5, 0.8, 0.85), 1)
 
 
 func _draw_gate() -> void:
@@ -176,7 +162,7 @@ func _draw_gate() -> void:
 	for slot in 3:
 		var light := Color(0.3, 1.0, 0.55) if GameManager.ingredients[index * 3 + slot] else Color(0.6, 0.2, 0.15)
 		draw_circle(Vector2(arena_x - 30, 78 + slot * 16), 4, light)
-	var label := "ARENA CERRADA" if reached_boss else ("JEFE >" if gate_open else "FALTAN COMPUESTOS")
+	var label := "CERRADO" if reached_boss else ("ABIERTO" if gate_open else "3 COMPUESTOS")
 	draw_rect(Rect2(arena_x - 190, 101, 160, 18), Color(0.03, 0.07, 0.1, 0.9))
 	UI.text(self, label, arena_x - 110, 114, 8, col, 1)
 
@@ -294,7 +280,6 @@ func _physics_process(delta: float) -> void:
 				st_t = 0.0
 				AudioManager.play_music(data["boss_music"])
 				Telemetry.event("boss_start", {"boss": data["boss_name"]})
-				banner("¡A LUCHAR!", Color(1.0, 0.85, 0.3), 1.4, 16)
 		S.BOSS:
 			_boss_phase(delta)
 		S.KO:
@@ -322,7 +307,7 @@ func _collect(delta: float) -> void:
 		var was_open := gate_open
 		_sync_gate()
 		if gate_open and not was_open:
-			banner("¡ACCESO AL JEFE ABIERTO!", Color(0.4, 1.0, 0.6), 2.0, 8)
+			AudioManager.sfx("confirm", -6.0)
 		if gate_open and player.position.x >= arena_x + 32.0:
 			_begin_warn()
 			return
@@ -348,13 +333,12 @@ func _collect(delta: float) -> void:
 		cd["spore"] -= delta
 		if cd["spore"] <= 0.0:
 			cd["spore"] = lerpf(sp["spore"][0], sp["spore"][1], p) * randf_range(0.8, 1.25)
-			if _can_spawn():
-				add_enemy("spore", Vector2(randf_range(30.0, 450.0), -10.0), {"speed": 60.0 + 30.0 * p, "hp": 2.0, "pink": randf() < 0.12})
+			_spawn_spore(p)
 	if sp["bolt"] > 0.0:
 		cd["bolt"] -= delta
 		if cd["bolt"] <= 0.0:
 			cd["bolt"] = sp["bolt"] * randf_range(0.8, 1.2)
-			add_zone(Vector2(clampf(player.global_position.x, 20.0, 460.0), Cfg.FLOOR_Y * 0.5), Vector2(26, Cfg.FLOOR_Y), 1.0, 0.4, Color(0.8, 0.9, 1.0))
+			_spawn_bolt()
 	cd["heal"] -= delta
 	if cd["heal"] <= 0.0:
 		cd["heal"] = 60.0
@@ -387,6 +371,20 @@ func _spawn_bat(p: float) -> void:
 		return
 	var x := minf(arena_x - 25.0, view_left + Cfg.W - 20.0) if scrolling else 500.0
 	add_enemy("bat", Vector2(x, randf_range(70.0, 150.0)), {"speed": 70.0 + 30.0 * p + 8.0 * index, "hp": 2.0, "pink": randf() < 0.1})
+
+
+func _spawn_spore(p: float) -> void:
+	if not _can_spawn():
+		return
+	var left := view_left + 30.0 if scrolling else 30.0
+	var right := minf(view_left + Cfg.W - 30.0, arena_x - 25.0) if scrolling else 450.0
+	add_enemy("spore", Vector2(randf_range(left, right), -10.0), {"speed": 60.0 + 30.0 * p, "hp": 2.0, "pink": randf() < 0.12, "dir": -1 if randf() < 0.5 else 1})
+
+
+func _spawn_bolt() -> void:
+	var left := view_left + 20.0 if scrolling else 20.0
+	var right := minf(view_left + Cfg.W - 20.0, arena_x - 20.0) if scrolling else 460.0
+	add_zone(Vector2(clampf(player.global_position.x, left, right), Cfg.FLOOR_Y * 0.5), Vector2(26, Cfg.FLOOR_Y), 1.0, 0.4, Color(0.8, 0.9, 1.0))
 
 
 func _spots() -> Array:
@@ -433,6 +431,30 @@ func _spawn_heal() -> void:
 	add_child(pk)
 
 
+func drop_boss_heart(slot: int) -> void:
+	# Damage can arrive from a physics overlap; create collision shapes after the query.
+	_spawn_boss_heart.call_deferred(slot)
+
+
+func _spawn_boss_heart(slot: int) -> void:
+	if st != S.BOSS or not is_instance_valid(boss) or boss.st == Boss.St.DEAD or player.dead:
+		return
+	if slot < 2:
+		if GameManager.hp > 2:
+			return
+		if boss.busy or boss.moving or boss.contact_on:
+			boss.pending_hearts |= 1 << slot
+			return
+	var spots := [120.0, 210.0, 300.0]
+	var pk := Pickup.new()
+	pk.kind = "boss_heart"
+	pk.position = Vector2(arena_x + spots[slot], Cfg.FLOOR_Y - 14.0)
+	pk.life = 20.0
+	add_child(pk)
+	Fx.burst(self, pk.position, Color(1.0, 0.35, 0.5), 10, 55.0, 0.5, 2.0)
+	AudioManager.sfx("pickup", -6.0)
+
+
 func _begin_warn() -> void:
 	st = S.WARN
 	st_t = 0.0
@@ -447,8 +469,6 @@ func _begin_warn() -> void:
 	AudioManager.sfx("warn", -12.0)
 	Fx.shake(2.0, 0.6)
 	banner("¡ADVERTENCIA!", Color(1.0, 0.3, 0.25), 3.0, 16)
-	hud.hint = data["boss_name"]
-	hud.hint_t = 3.0
 	boss = Boss.new()
 	boss.level = self
 	boss.kind = index
@@ -462,10 +482,6 @@ func _begin_warn() -> void:
 func _boss_phase(delta: float) -> void:
 	boss_t += delta
 	_tick_powerups(delta)
-	cd["heal"] -= delta
-	if cd["heal"] <= 0.0:
-		cd["heal"] = 45.0
-		_spawn_heal()
 	if boss_left() <= 0.0 and boss and boss.st != Boss.St.DEAD:
 		_fail("time")
 
@@ -497,8 +513,6 @@ func _tick_powerups(delta: float) -> void:
 	add_child(pk)
 	cd["powerup_turn"] = turn + 1
 	cd["powerup"] = float(support["interval"])
-	hud.hint = pk.label + ": ¡RECOGE LA AYUDA!"
-	hud.hint_t = 3.0
 	Telemetry.event("powerup_spawn", {"kind": kind})
 
 
@@ -532,7 +546,7 @@ func _on_boss_defeated() -> void:
 	player.invuln = 99.0
 	player.weapon_power_t = 0.0
 	for child in get_children():
-		if child.get_script() == Pickup and child.is_powerup():
+		if child.get_script() == Pickup and (child.is_powerup() or child.kind == "boss_heart"):
 			child.queue_free()
 	var bonus := 5000 + int(boss_left()) * 20
 	GameManager.add_score_raw(bonus)

@@ -113,18 +113,33 @@ partidas completadas, porque un tiempo corto en una partida perdida no es un ré
 ## Cómo se juega
 Cada nivel tiene dos fases continuas, sin volver al menú:
 
-1. **Recorrido y recolección.** El primer nivel es una prueba de desplazamiento horizontal: mide 1920 píxeles
-   (cuatro pantallas), con tres ascensos de plataformas y un compuesto en lo alto de cada uno. La cámara sigue
-   al jugador y se puede regresar por un compuesto olvidado; el HUD indica su dirección. Los tres compuestos
-   están disponibles desde el principio. Recogerlos abre la compuerta al final del laboratorio, sin esperar un
+1. **Recorrido y recolección.** Los tres niveles tienen desplazamiento horizontal y recorridos de plataformas
+   propios: el laboratorio mide 1920 píxeles (cuatro pantallas), las alcantarillas 2160 y la azotea 2400 (cinco
+   pantallas). Las alcantarillas tienen escaleras entre tuberías y pasarelas altas; la azotea combina apoyos
+   más estrechos con saltos más largos. Cada recorrido tiene tres compuestos repartidos en altura. La cámara sigue
+   al jugador y se puede regresar por un compuesto olvidado. El HUD muestra el total recogido, sin indicar
+   la ubicación ni la distancia al siguiente compuesto. Los tres compuestos
+   están disponibles desde el principio. Recogerlos abre la compuerta al final de cada zona, sin esperar un
    temporizador. Al cruzarla se cierra la salida y la cámara se fija en la arena del jefe. El guardado conserva
    la posición y reconstruye el estado de la compuerta.
 
-   **Los niveles 2 y 3 conservan la recolección de 3:20 en una pantalla.** Sobrevives a oleadas de enemigos. Si un enemigo se pasa del
-   borde de la pantalla, **regresa**: no puede escapar. Durante la fase aparecen 3 ingredientes del antídoto y el
-   jefe no llega hasta recogerlos todos. Los enemigos sueltan **monedas** en los tres niveles.
+   Los enemigos aparecen en el tramo visible y sueltan **monedas**. Las esporas caen sobre la zona actual en
+   las alcantarillas y la azotea; los rayos de la azotea apuntan al jugador a lo largo de todo el recorrido.
+   Las esporas verdes caen en diagonal; las rosas apuntan a la posición del jugador al aparecer. Al aterrizar,
+   ambas conservan su dirección horizontal y avanzan hasta salir de la pantalla, sin rebotar. Guardar y cargar
+   conserva su trayectoria y dirección.
+   El Pulpo Tóxico alterna esporas verdes y rosas durante su ataque de invocación.
+   En los tres niveles, tras la introducción, el primer enemigo de fuego aparece a los 0.35 segundos y el
+   primer murciélago a los 1.5 segundos. Las esporas de los niveles 2 y 3 empiezan a los 3.5 segundos.
 2. **Jefe final.** Barra de vida, 3 fases de ataque y tiempo límite (4:00, 4:10 y 4:20). Si se acaba el tiempo o mueres,
    reintentas solo el combate.
+   Cada jefe ofrece hasta tres corazones: a mitad de las fases 1 y 2 (83% y 49.5% de vida restante), solo
+   si al jugador le quedan dos corazones o menos, y uno garantizado al inicio de la fase 3. Los dos
+   condicionados esperan a que el jefe termine su ataque y vuelven a comprobar la salud antes de aparecer.
+   Si tienes más de dos corazones al cruzar el hito, esa oportunidad se descarta. No se genera un corazón
+   al entrar a la fase 2 ni a mitad de la fase 3. Sustituyen la curación periódica del combate. Debes recogerlos dentro de
+   20 segundos para recuperar una unidad de salud; con la vida completa se consumen sin almacenar curación.
+   No dan monedas, puntos ni súper. El guardado conserva los corazones presentes y los hitos ya activados.
 
 | Nivel | Fondo | Jefe | Vida |
 |---|---|---|---|
@@ -133,16 +148,16 @@ Cada nivel tiene dos fases continuas, sin volver al menú:
 | 3 | Azotea | Gárgola Viral | 920 |
 
 Al derrotar al tercer jefe se fabrica el antídoto y se muestra tu puntuación final y tu puesto en el ranking.
-En la batalla contra **Gelatina Mutante** aparecen ayudas alternadas: **Disparo x3** aumenta el daño y la
+En las batallas contra **los tres jefes** aparecen ayudas alternadas: **Disparo x3** aumenta el daño y la
 cadencia durante 10 segundos, y la **Bomba viral** inflige 110 puntos de daño al jefe al recogerla. La primera
 aparece tras 4 segundos de combate y las siguientes cada 14 segundos de combate activo, con un solo objeto
 disponible a la vez. Cada objeto desaparece si no se recoge en 12 segundos. El potenciador no gasta su duración
 durante pausas o transiciones de fase. Si tocas la bomba durante una transición, permanece disponible hasta
 que el jefe vuelva a ser vulnerable. El guardado por fase conserva ayudas, duración y calendario de aparición juntos.
 
-Por ahora las ayudas se habilitan únicamente en el primer jefe. Su configuración está en `boss_powerups`
-dentro de `game/scripts/Cfg.gd`; el sistema compartido permite habilitarlas y ajustar sus valores para otros jefes.
-La duración del primer nivel depende del recorrido y los saltos. El fondo tiene parallax animado con efectos propios de cada nivel.
+Los tres jefes comparten la configuración `BOSS_POWERUPS` de `game/scripts/Cfg.gd`, asignada a cada nivel
+mediante `boss_powerups`. Los tiempos de aparición inicial de enemigos están en `START_DELAYS`.
+La duración de cada nivel depende del recorrido y los saltos. El fondo tiene parallax animado con efectos propios de cada nivel.
 
 ### Puntuación
 | Acción | Puntos |
@@ -157,6 +172,11 @@ La duración del primer nivel depende del recorrido y los saltos. El fondo tiene
 | Jefe derrotado | 5000 + 20 por cada segundo que sobre del tiempo límite |
 
 También se registra la **mejor racha** (mayor tiempo seguido sin recibir daño).
+
+Al morir, el personaje se tiñe de verde, tiembla y se desploma hacia atrás, resaltado por un aura y partículas
+de veneno. Si estaba en el aire, cae sobre
+el suelo o una plataforma y permanece acostado hasta la pantalla de derrota. Los controles se consultan
+desde el menú; durante la partida se evitan los mensajes repetidos de instrucciones y recogida de ayudas.
 
 ### Controles
 | Acción | Teclas |
@@ -175,6 +195,10 @@ También se registra la **mejor racha** (mayor tiempo seguido sin recibir daño)
 **Súper:** con 50 de barra, rayo perforante; con 100, un Ultra que borra proyectiles y enemigos.
 
 ## Pruebas realizadas
+- **Recorridos horizontales:** `game/tests/scrolling_level_test.gd` recorre los tres niveles con entradas reales
+  de movimiento y salto, recoge los compuestos, prueba las compuertas con dash y comprueba cámaras,
+  esporas, rayos, arenas y guardados. Se ejecuta con la misma carpeta `APPDATA` aislada descrita arriba:
+  `godot --headless --fixed-fps 120 --path game --script res://tests/scrolling_level_test.gd`.
 - **Servidor:** 9 pruebas automáticas (`cd server && npm test`) contra PostgreSQL real: registro, hash, límites de
   intentos, progreso, eventos, coleccionables, leaderboard, permisos entre jugadores, panel de administración, CSV y
   protección contra inyección SQL. Requieren una base vacía de pruebas:
@@ -195,6 +219,7 @@ docker-compose.yml
 ```
 
 ## Créditos y licencias
+- Lanzallamas (`game/assets/weapons/Flamethrower.png`): Player 24 (MainMenuMaster), [2D Pixel Art Weapon Pack – Melee & Modern Arsenal](https://mainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb). Recurso proporcionado por el autor del proyecto; la página del pack no especifica una licencia.
 - Fondos, sprite de bola de fuego y fuente Press Start 2P (SIL OFL 1.1): proporcionados por el autor.
 - Pack Modern Interiors Free v2.2 (personaje Adam): uso no comercial.
 - Capas de parallax, jefes, efectos y música: generados para este proyecto.

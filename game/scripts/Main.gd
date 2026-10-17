@@ -142,13 +142,16 @@ func _build_menu() -> void:
 	box.add_child(sp)
 	play_btn = _btn(box, "JUGAR", _start_game)
 	continue_btn = _btn(box, "CONTINUAR", _continue_game)
-	_btn(box, "RANKING", _show_rank)
+	var rank_btn := _btn(box, "RANKING", _show_rank)
+	rank_btn.disabled = Database.offline_mode
+	if Database.offline_mode:
+		rank_btn.tooltip_text = "Conéctate e inicia sesión para ver el ranking"
 	_btn(box, "CONTROLES", _show_how)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
-	var out := _btn(row, "INICIAR SESION" if Database.offline_mode else "CERRAR SESION", _logout)
+	var out := _btn(row, "CONECTARSE" if Database.offline_mode else "CERRAR SESION", _logout)
 	out.custom_minimum_size = Vector2(100, 0)
 	var quit := _btn(row, "SALIR", _quit)
 	quit.custom_minimum_size = Vector2(44, 0)
@@ -335,12 +338,11 @@ func _show_menu() -> void:
 
 
 func _show_rank(kind: String = "score") -> void:
+	if Database.offline_mode:
+		return
 	rank_layer.visible = true
 	rank_label.text = "CARGANDO..."
 	rank_back.grab_focus()
-	if Database.offline_mode:
-		rank_label.text = "EL RANKING REQUIERE INICIAR SESION.\nLAS PARTIDAS OFFLINE NO SE SUBEN."
-		return
 	var res := await Database.leaderboard(kind, 8)
 	if not res["ok"]:
 		rank_label.text = res["error"]
