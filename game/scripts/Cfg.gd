@@ -5,6 +5,8 @@ const H := 270
 const FLOOR_Y := 192.0
 const MAX_HP := 4
 const DEBUG_KEYS := false
+# Cada nivel tiene 3 compuestos; con 4 niveles el antidoto necesita 12.
+const ING_TOTAL := 12
 
 # Opening cadence after the introduction; level 1 also waits for W/3 forward travel.
 const START_DELAYS := {"fire": 0.35, "bat": 1.5, "spore": 3.5, "bolt": 7.0, "heal": 30.0, "horde": 12.0}
@@ -19,12 +21,12 @@ const BOSS := {
 	"count": 0.8,      # multiplica la cantidad de proyectiles de cada patrón
 }
 # Vida máxima que tenían los jefes antes del reajuste: solo para validar partidas guardadas viejas.
-const LEGACY_BOSS_HP := [880.0, 940.0, 920.0]
+const LEGACY_BOSS_HP := [880.0, 940.0, 920.0, 1000.0]
 
 # Modo FINALTOP: solo jefes, uno tras otro, con el reloj corriendo. Gana el menor tiempo.
 const FINALTOP := {
 	"name": "FINALTOP",
-	"boss_hp": [520.0, 600.0, 2400.0],   # el último jefe tiene muchísima vida
+	"boss_hp": [520.0, 600.0, 900.0, 2800.0],   # el marciano (último jefe) tiene muchísima vida
 	"death_penalty": 15.0,               # segundos que suma cada derrota
 	"heart_every": 26.0,                 # un corazón cada tanto si quedan 2 vidas o menos
 	"powerups": {
@@ -151,6 +153,43 @@ const LEVELS := [
 			["PLUMA DE GARGOLA", Color(0.72, 0.5, 1.0)],
 			["CRISTAL ESTELAR", Color(0.5, 0.9, 1.0)],
 			["CENIZA ROJA", Color(1.0, 0.35, 0.3)],
+		],
+	},
+	{
+		"tag": "NIVEL 4",
+		"name": "LA PISTA",
+		"music": "roof",
+		"boss_music": "boss3",
+		"collect_time": 200.0,
+		"ing_times": [20.0, 96.0, 164.0],
+		"boss_name": "EL MARCIANO",
+		"boss_hp": 760.0,
+		"boss_time": 270.0,
+		"boss_powerups": BOSS_POWERUPS,
+		"world_width": 4240.0,
+		"arena_x": 3760.0,
+		"ingredient_spots": [Vector2(884, 50), Vector2(2760, 30), Vector2(3400, 44)],
+		"platforms": [
+			# Primer tramo: saltos del laboratorio y las alcantarillas.
+			[144, 152, 96], [258, 114, 76], [330, 78, 60], [446, 132, 80],
+			[660, 150, 80], [774, 108, 64], [854, 64, 60], [944, 64, 64],
+			[1056, 126, 72], [1200, 152, 56], [1286, 110, 60], [1370, 74, 52],
+			[1462, 74, 56], [1560, 132, 72],
+			# Segundo tramo: los saltos finos de la azotea.
+			[1840, 150, 72], [1946, 108, 60], [2070, 66, 56], [2210, 126, 64],
+			[2430, 152, 64], [2528, 110, 52], [2618, 68, 48], [2732, 44, 56],
+			[2888, 120, 52], [3050, 152, 56], [3144, 110, 50], [3240, 66, 48],
+			[3372, 58, 56], [3510, 126, 64],
+			# La arena del jefe conserva espacio para esquivar en el suelo.
+			[3816, 150, 66], [3930, 116, 66], [4050, 150, 66], [4156, 116, 66],
+		],
+		"spawn": {"fire": [2.2, 1.1], "bat": [4.0, 2.1], "spore": [4.8, 2.4], "bolt": 10.0},
+		"tint": Color(1.0, 0.7, 0.45),
+		"story": "Un helicoptero aterriza en la pista.\nEl virus no fue un accidente:\nun Marciano lo trajo a la Tierra.\nDetenlo antes de que escape.",
+		"ingredients": [
+			["NUCLEO ALIENIGENA", Color(0.5, 1.0, 0.55)],
+			["ANTENA ESTELAR", Color(1.0, 0.8, 0.35)],
+			["POLVO DE METEORITO", Color(1.0, 0.55, 0.35)],
 		],
 	},
 ]

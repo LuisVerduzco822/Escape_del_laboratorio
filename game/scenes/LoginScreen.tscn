@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://b2857akxjk0ki"]
 
-[ext_resource type="Script" path="res://scripts/LoginScreen.gd" id="1"]
+[ext_resource type="Script" uid="uid://dewhkoeoqm35k" path="res://scripts/LoginScreen.gd" id="1"]
 
-[node name="LoginScreen" type="Control"]
+[node name="LoginScreen" type="Control" unique_id=1252065304]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

@@ -1,0 +1,59 @@
+extends SceneTree
+
+# Ejecuta de verdad todos los ataques de cada jefe (normal y FinalTop) y comprueba que terminan sin errores:
+#   godot --headless --fixed-fps 60 --path game --script res://tests/boss_attacks_test.gd
+var failures := 0
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+func check(ok: bool, label: String) -> void:
+	if ok:
+		print("PASS: " + label)
+	else:
+		failures += 1
+		push_error(label)
+
+func frames(n: int) -> void:
+	for i in n:
+		await physics_frame
+
+func _run() -> void:
+	if not OS.get_user_data_dir().contains(".save-check"):
+		push_error("Use APPDATA inside the workspace .save-check directory")
+		quit(1)
+		return
+	root.get_node("Database").start_offline()
+	var gm = root.get_node("GameManager")
+	for mode in ["story", "finaltop"]:
+		for kind in 4:
+			gm.reset_run()
+			gm.god = true
+			var level = load("res://scripts/FinalTop.gd" if mode == "finaltop" else "res://scripts/Level.gd").new()
+			level.index = kind
+			if mode == "story":
+				level.start_phase = "boss"
+			root.add_child(level)
+			current_scene = level
+			await frames(3)
+			level.st = level.S.BOSS
+			level.boss.st = level.boss.St.FIGHT
+			level.boss.hp = level.boss.max_hp
+			var seen := {}
+			for ph in [1, 2, 3]:
+				level.boss.phase = ph
+				for n in 14:
+					level.boss.rest = 0.0
+					level.boss._pick_attack()
+					seen[level.boss.last_attack] = true
+					var guard := 0
+					while level.boss.busy and guard < 900:
+						await frames(1)
+						guard += 1
+					check(not level.boss.busy, "%s boss %d phase %d: attack %s finishes" % [mode, kind + 1, ph, level.boss.last_attack])
+					level.clear_threats()
+			check(seen.size() >= 6, "%s boss %d used %d different attacks" % [mode, kind + 1, seen.size()])
+			level.queue_free()
+			await process_frame
+	print("BOSS ATTACKS TESTS: ", failures, " failures")
+	quit(1 if failures else 0)

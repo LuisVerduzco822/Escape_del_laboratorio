@@ -1,7 +1,7 @@
 # Escape del Laboratorio
 
 Juego de acción 2D hecho en Godot 4. Un virus escapó del laboratorio: sobrevive a las oleadas de enemigos,
-recolecta los ingredientes del antídoto, derrota a un jefe en cada uno de los 3 niveles y fabrica la cura.
+recolecta los ingredientes del antídoto, derrota a un jefe en cada uno de los 4 niveles y fabrica la cura.
 
 Práctica 4: conexión a una base de datos. Todo lo que hace el jugador se guarda en **PostgreSQL**, hay un
 **leaderboard** y un **panel web local** para consultar la información.
@@ -167,14 +167,14 @@ Cada nivel tiene dos fases continuas, sin volver al menú:
 | 3 | Azotea | Gárgola Viral | 920 |
 
 Al derrotar al tercer jefe se fabrica el antídoto y se muestra tu puntuación final y tu puesto en el ranking.
-En las batallas contra **los tres jefes** aparecen ayudas alternadas: **Disparo x3** aumenta el daño y la
+En las batallas contra **los cuatro jefes** aparecen ayudas alternadas: **Disparo x3** aumenta el daño y la
 cadencia durante 10 segundos, y la **Bomba viral** inflige 110 puntos de daño al jefe al recogerla. La primera
 aparece tras 4 segundos de combate y las siguientes cada 14 segundos de combate activo, con un solo objeto
 disponible a la vez. Cada objeto desaparece si no se recoge en 12 segundos. El potenciador no gasta su duración
 durante pausas o transiciones de fase. Si tocas la bomba durante una transición, permanece disponible hasta
 que el jefe vuelva a ser vulnerable. El guardado por fase conserva ayudas, duración y calendario de aparición juntos.
 
-Los tres jefes comparten la configuración `BOSS_POWERUPS` de `game/scripts/Cfg.gd`, asignada a cada nivel
+Los cuatro jefes comparten la configuración `BOSS_POWERUPS` de `game/scripts/Cfg.gd`, asignada a cada nivel
 mediante `boss_powerups`. Los tiempos de aparición inicial de enemigos están en `START_DELAYS`.
 La duración de cada nivel depende del recorrido y los saltos. El fondo tiene parallax animado con efectos propios de cada nivel.
 
@@ -218,7 +218,7 @@ desde el menú; durante la partida se evitan los mensajes repetidos de instrucci
   comprueba la posición fija, la cámara suave, el bloqueo de ataques y la recuperación del control cuando
   termina la entrada del jefe. Usa `APPDATA` aislado como la prueba de guardado:
   `godot --headless --fixed-fps 120 --path game --script res://tests/boss_entrance_test.gd`.
-- **Ataques por distancia:** `game/tests/boss_distance_test.gd` verifica los tres jefes y sus nueve fases,
+- **Ataques por distancia:** `game/tests/boss_distance_test.gd` verifica los cuatro jefes y sus doce fases,
   las preferencias por alcance, variedad, ausencia de repeticiones, altura, arenas desplazadas y ejecución
   de ataques en los límites de distancia. Usa `APPDATA` aislado como la prueba de guardado:
   `godot --headless --path game --script res://tests/boss_distance_test.gd`.
@@ -255,3 +255,17 @@ docker-compose.yml
 - Fondos, sprite de bola de fuego y fuente Press Start 2P (SIL OFL 1.1): proporcionados por el autor.
 - Pack Modern Interiors Free v2.2 (personaje Adam): uso no comercial.
 - Capas de parallax, jefes, efectos y música: generados para este proyecto.
+
+
+## Nivel 4 y modo FINALTOP
+
+- **Nivel 4, "La pista"**: fondo del helicóptero aterrizando, con camino largo y un jefe final, **El Marciano**
+  (plato volador, teletransporte, espirales, muros con hueco, barridos y meteoros). El antídoto ahora necesita
+  12 compuestos (3 por nivel).
+- **FINALTOP** (botón junto a TUTORIAL): solo los jefes finales, uno tras otro, con el reloj corriendo. El último
+  tiene muchísima vida y gana quien lo termine en menos tiempo (cada derrota suma 15 s). Los jefes usan un repertorio
+  de ataques más variado (`POOLS_FT` en `game/scripts/Boss.gd`).
+- Las **alas de la gárgola** también reciben daño de los disparos.
+- Pruebas nuevas: `finaltop_test.gd`, `boss_attacks_test.gd` (ejecuta todos los ataques de cada jefe) e `input_map_test.gd`.
+- Panel web: pestañas **Comportamiento** y **Tiempo de juego**. Tras cambiar niveles en `Cfg.gd` ejecuta `npm run levels`
+  en `server/`; `npm run demo` carga datos de ejemplo.

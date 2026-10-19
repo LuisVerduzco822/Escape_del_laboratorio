@@ -20,10 +20,35 @@ const POOLS := {
 		2: ["fan", "charge", "beam", "ring", "rain", "pink"],
 		3: ["charge", "bolts", "ring", "beam", "rain", "summon", "pink"],
 	},
+	# El Marciano (nivel 4): el repertorio más amplio, con los ataques nuevos desde la fase 1.
+	3: {
+		1: ["aimed", "fan", "blink", "spiral", "meteors"],
+		2: ["fan", "blink", "spiral", "wall", "strafe", "beam", "ring", "zones", "meteors", "pink"],
+		3: ["blink", "spiral", "wall", "strafe", "meteors", "ring", "beam", "zones", "bolts", "summon", "charge", "pink", "slam", "fan"],
+	},
 }
-const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3)]
-const RADII := [46.0, 44.0, 42.0]
-const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100)]
+# En FINALTOP los tres primeros jefes suman ataques nuevos (espiral, muro con hueco, barrido,
+# teletransporte y meteoros) para que cada combate sea menos predecible.
+const POOLS_FT := {
+	0: {
+		1: ["fan", "aimed", "rain", "spiral", "meteors"],
+		2: ["fan", "aimed", "rain", "slam", "pink", "ring", "wall", "spiral", "strafe"],
+		3: ["fan", "slam", "ring", "rain", "pink", "summon", "wall", "spiral", "meteors", "strafe", "blink"],
+	},
+	1: {
+		1: ["fan", "aimed", "zones", "wall", "meteors"],
+		2: ["fan", "zones", "beam", "pink", "rain", "ring", "spiral", "meteors", "strafe"],
+		3: ["zones", "beam", "ring", "rain", "slam", "summon", "pink", "wall", "spiral", "strafe", "blink", "meteors"],
+	},
+	2: {
+		1: ["aimed", "fan", "charge", "strafe", "spiral"],
+		2: ["fan", "charge", "beam", "ring", "rain", "pink", "strafe", "meteors", "wall"],
+		3: ["charge", "bolts", "ring", "beam", "rain", "summon", "pink", "strafe", "wall", "spiral", "meteors", "blink"],
+	},
+}
+const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3), Color(0.35, 0.92, 1.0)]
+const RADII := [46.0, 44.0, 42.0, 44.0]
+const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100), Vector2(366, 102)]
 const MID_PHASE_HP := [0.83, 0.495]
 # Center-to-center distances in arena pixels. Weights are close / medium / far;
 # every unlocked attack remains possible, but effective patterns are favored.
@@ -41,6 +66,11 @@ const ATTACK_WEIGHTS := {
 	"charge": [1.0, 4.0, 6.0],
 	"pink": [1.0, 4.0, 3.0],
 	"summon": [1.0, 3.0, 5.0],
+	"spiral": [3.0, 4.0, 3.0],
+	"wall": [1.0, 4.0, 5.0],
+	"strafe": [2.0, 4.0, 5.0],
+	"blink": [3.0, 4.0, 3.0],
+	"meteors": [2.0, 4.0, 6.0],
 }
 
 var level
@@ -64,6 +94,9 @@ var contact_on := false
 var hurtbox: Area2D
 var contact: Area2D
 var last_attack := ""
+var prev_attack := ""
+var blink_alpha := 1.0
+var wing_shapes := []
 var tick_cd := 0.0
 var look := Vector2.LEFT
 var warn_x := -1.0
@@ -94,6 +127,8 @@ func _ready() -> void:
 	cs.shape = c
 	hurtbox.add_child(cs)
 	add_child(hurtbox)
+	if kind == 2:
+		_make_wing_shapes()
 	contact = Area2D.new()
 	contact.collision_layer = 0
 	contact.collision_mask = 4
@@ -104,6 +139,31 @@ func _ready() -> void:
 	contact.add_child(cs2)
 	add_child(contact)
 	position = start_pos
+
+
+# La gárgola recibe daño también en las alas: cada ala son 4 círculos que siguen su aleteo.
+const WING_CIRCLES := [[Vector2(24, -8), 16.0], [Vector2(52, -18), 14.0], [Vector2(62, 4), 14.0], [Vector2(46, 16), 12.0]]
+
+
+func _make_wing_shapes() -> void:
+	for side in [-1.0, 1.0]:
+		for c in WING_CIRCLES:
+			var cs := CollisionShape2D.new()
+			var circle := CircleShape2D.new()
+			circle.radius = c[1]
+			cs.shape = circle
+			hurtbox.add_child(cs)
+			wing_shapes.append({"node": cs, "side": side, "p": c[0]})
+	_update_wings()
+
+
+func _update_wings() -> void:
+	var flap := sin(t * 5.0) * 0.4
+	for w in wing_shapes:
+		var side: float = w["side"]
+		var ang := 0.5 - flap * side
+		var q: Vector2 = (w["p"] as Vector2).rotated(ang)
+		w["node"].position = Vector2(side * 18.0, -10.0) + Vector2(q.x * side, q.y)
 
 
 # Cantidad de proyectiles de un patrón, ajustada por la dificultad de Cfg.BOSS.
@@ -130,6 +190,8 @@ func _physics_process(delta: float) -> void:
 	st_t += delta
 	flash = maxf(0.0, flash - delta)
 	tick_cd = maxf(0.0, tick_cd - delta)
+	if not wing_shapes.is_empty():
+		_update_wings()
 	if level and level.player and not level.player.dead:
 		look = (_target() - global_position).normalized()
 	match st:
@@ -165,7 +227,7 @@ func _physics_process(delta: float) -> void:
 				AudioManager.sfx("boom", -6.0, randf_range(0.7, 1.2))
 			if st_t > 2.6:
 				queue_free()
-	modulate = Color(1.8, 1.8, 1.8) if flash > 0.0 else Color.WHITE
+	modulate = Color(1.8, 1.8, 1.8, blink_alpha) if flash > 0.0 else Color(1, 1, 1, blink_alpha)
 	queue_redraw()
 
 
@@ -272,11 +334,16 @@ func _done() -> void:
 func _choose_attack() -> String:
 	var distance := global_position.distance_to(_target())
 	var band := 0 if distance <= CLOSE_RANGE else (2 if distance >= FAR_RANGE else 1)
-	var pool: Array = POOLS[kind][phase].duplicate()
+	var pools: Dictionary = POOLS_FT if _is_finaltop() and POOLS_FT.has(kind) else POOLS
+	var pool: Array = pools[kind][phase].duplicate()
 	# Some pools intentionally contain duplicates as an extra weighting.
 	# Remove every occurrence of the previous attack to avoid back-to-back repeats.
 	while pool.size() > 1 and pool.has(last_attack):
 		pool.erase(last_attack)
+	# En las listas largas tampoco se repite el ataque anterior al anterior.
+	if pool.size() > 4:
+		while pool.size() > 1 and pool.has(prev_attack):
+			pool.erase(prev_attack)
 	var total := 0.0
 	for attack in pool:
 		total += ATTACK_WEIGHTS[attack][band]
@@ -288,8 +355,13 @@ func _choose_attack() -> String:
 	return pool.back()
 
 
+func _is_finaltop() -> bool:
+	return level != null and level.get("is_finaltop") == true
+
+
 func _pick_attack() -> void:
 	var a := _choose_attack()
+	prev_attack = last_attack
 	last_attack = a
 	_new_tw()
 	match a:
@@ -304,6 +376,11 @@ func _pick_attack() -> void:
 		"charge": _atk_charge()
 		"pink": _atk_pink()
 		"summon": _atk_summon()
+		"spiral": _atk_spiral()
+		"wall": _atk_wall()
+		"strafe": _atk_strafe()
+		"blink": _atk_blink()
+		"meteors": _atk_meteors()
 	tw.tween_callback(_done)
 
 
@@ -457,9 +534,106 @@ func _fire_pink(y: float) -> void:
 func _atk_summon() -> void:
 	var n := _n(2 + phase)
 	for i in n:
-		tw.tween_callback(_summon.bind(kind == 1 and i % 2 == 1))
+		tw.tween_callback(_summon.bind((kind == 1 or kind == 3) and i % 2 == 1))
 		tw.tween_interval(0.7)
 	tw.tween_interval(0.5)
+
+
+# ---- Ataques nuevos ----
+
+# Espiral de proyectiles desde el centro del jefe (dos brazos en la fase 3).
+func _atk_spiral() -> void:
+	var n := maxi(14, _n(22 + 4 * phase))
+	var arms := 2 if phase >= 3 else 1
+	for i in n:
+		tw.tween_callback(_fire_spiral.bind(i, arms))
+		tw.tween_interval(0.11 / sp)
+	tw.tween_interval(0.4)
+
+
+func _fire_spiral(i: int, arms: int) -> void:
+	var o := global_position + Vector2(-radius * 0.4, 0.0)
+	for a in arms:
+		var ang := PI + i * 0.42 + TAU * a / float(arms)
+		level.add_hazard(o, Vector2.RIGHT.rotated(ang) * 82.0 * sp, {"col": _col(), "radius": 4.5, "pink": phase >= 2 and a == 0 and i % 9 == 4})
+	AudioManager.sfx("shoot", -14.0, 1.2)
+
+
+# Muro vertical de proyectiles con un hueco por donde pasar (saltando o por el suelo).
+func _atk_wall() -> void:
+	var walls := 1 if phase == 1 else 2
+	for w in walls:
+		tw.tween_callback(_fire_wall)
+		tw.tween_interval(1.6 / sp)
+	tw.tween_interval(0.4)
+
+
+func _fire_wall() -> void:
+	var top := 14.0
+	var step := 16.0
+	var rows := int((Cfg.FLOOR_Y - 8.0 - top) / step) + 1
+	var gap_rows := 4
+	var gap := attack_rng.randi_range(5, rows - gap_rows)
+	for r in rows:
+		if r >= gap and r < gap + gap_rows:
+			continue
+		level.add_hazard(Vector2(global_position.x - radius, top + r * step), Vector2(-78.0 * sp, 0.0), {"col": _col(), "radius": 5.0})
+	AudioManager.sfx("warn", -8.0, 0.8)
+
+
+# El jefe se mueve al borde derecho y barre la pantalla de arriba abajo disparando hacia el jugador.
+func _atk_strafe() -> void:
+	moving = true
+	var shots := 5 + 2 * phase
+	tw.tween_property(self, "position", Vector2(ox + 430.0, 34.0), 0.5).set_trans(Tween.TRANS_SINE)
+	for i in shots:
+		var y := lerpf(34.0, 150.0, float(i) / float(shots - 1))
+		tw.tween_property(self, "position:y", y, 0.24 / sp)
+		tw.tween_callback(_fire_aimed.bind(135.0 * sp, false))
+	tw.tween_interval(0.3)
+	tw.tween_property(self, "position", home, 0.9).set_trans(Tween.TRANS_SINE)
+
+
+# Desaparece y reaparece en otro punto de la arena soltando un abanico corto.
+func _atk_blink() -> void:
+	moving = true
+	var hops := 2 + phase
+	for i in hops:
+		tw.tween_callback(_blink_out)
+		tw.tween_interval(0.3 / sp)
+		tw.tween_callback(_blink_in)
+		tw.tween_interval(0.2)
+		tw.tween_callback(_fire_fan.bind(maxi(3, _n(3 + phase)), 60.0, 120.0 * sp, i == hops - 1 and phase >= 2))
+		tw.tween_interval(0.35)
+	tw.tween_property(self, "position", home, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _blink_out() -> void:
+	Fx.burst(get_parent(), global_position, _col(), 10, 90.0, 0.4, 2.5)
+	blink_alpha = 0.15
+	AudioManager.sfx("dash", -6.0, 1.3)
+
+
+func _blink_in() -> void:
+	position = Vector2(ox + attack_rng.randf_range(250.0, 440.0), attack_rng.randf_range(50.0, 150.0))
+	blink_alpha = 1.0
+	Fx.burst(get_parent(), global_position, _col(), 10, 90.0, 0.4, 2.5)
+	AudioManager.sfx("phase", -12.0, 1.6)
+
+
+# Meteoros en diagonal desde arriba a la derecha.
+func _atk_meteors() -> void:
+	var n := _n(6 + 2 * phase)
+	for i in n:
+		tw.tween_callback(_fire_meteor)
+		tw.tween_interval(0.3 / sp)
+	tw.tween_interval(0.5)
+
+
+func _fire_meteor() -> void:
+	var x := clampf(_target().x + attack_rng.randf_range(60.0, 200.0), ox + 120.0, ox + 520.0)
+	level.add_hazard(Vector2(x, -12.0), Vector2(-62.0 * sp, 70.0 * sp), {"col": _col(), "radius": 6.0, "accel": Vector2(0, 40.0)})
+	AudioManager.sfx("shoot", -12.0, 0.9)
 
 
 func _summon(pink_spore: bool = false) -> void:
@@ -470,6 +644,11 @@ func _summon(pink_spore: bool = false) -> void:
 			level.add_enemy("spore", Vector2(ox + attack_rng.randf_range(40.0, 440.0), -10.0), {"speed": 80.0, "hp": 2.0, "pink": pink_spore})
 		2:
 			level.add_enemy("bat", global_position + Vector2(-radius, 0), {"speed": 95.0, "hp": 2.0, "dir": -1})
+		3:
+			if pink_spore:
+				level.add_enemy("bat", global_position + Vector2(-radius, 0), {"speed": 100.0, "hp": 2.0, "dir": -1})
+			else:
+				level.add_enemy("fireball", Vector2(global_position.x - radius, Cfg.FLOOR_Y - 9.0), {"speed": 140.0, "dir": -1})
 	AudioManager.sfx("select", -2.0, 0.5)
 
 
@@ -489,6 +668,8 @@ func _draw() -> void:
 			_draw_octopus()
 		2:
 			_draw_gargoyle()
+		3:
+			_draw_martian()
 
 
 func _eyes(pos_l: Vector2, pos_r: Vector2, r: float, col: Color, pupil: Color) -> void:
@@ -625,3 +806,69 @@ func _draw_gargoyle() -> void:
 	if phase >= 3:
 		var pulse := 0.5 + 0.5 * sin(t * 6.0)
 		draw_arc(Vector2(0, -6), 52.0 + pulse * 4.0, 0.0, TAU, 40, Color(0.8, 0.3, 1.0, 0.35 + 0.3 * pulse), 2.0)
+
+
+func _draw_martian() -> void:
+	var skin := Color(0.45, 0.85, 0.4).lerp(Color(0.7, 0.9, 0.35), (phase - 1) * 0.3)
+	var metal := Color(0.55, 0.6, 0.72)
+	var bob := sin(t * 2.2) * 2.0
+	# Plato volador
+	var disc := PackedVector2Array()
+	var disc2 := PackedVector2Array()
+	for i in 32:
+		var a := TAU * i / 32.0
+		disc.append(Vector2(cos(a) * 46.0, 34.0 + sin(a) * 11.0))
+		disc2.append(Vector2(cos(a) * 43.0, 33.0 + sin(a) * 8.0))
+	draw_colored_polygon(disc, metal.darkened(0.5))
+	draw_colored_polygon(disc2, metal)
+	for k in 6:
+		var lit := 0.5 + 0.5 * sin(t * 6.0 + k)
+		draw_circle(Vector2(-30.0 + k * 12.0, 36.0 + sin(k * 1.1) * 2.0), 2.2, Color(1.0, 0.85, 0.3, 0.5 + 0.5 * lit))
+	# Cuerpo con traje
+	draw_colored_polygon(PackedVector2Array([Vector2(-16, 4 + bob), Vector2(16, 4 + bob), Vector2(22, 30), Vector2(-22, 30)]), Color(0.3, 0.32, 0.5))
+	draw_rect(Rect2(-10, 12 + bob, 20, 6), Color(0.35, 0.95, 1.0, 0.8))
+	# Brazos
+	var wave := sin(t * 3.0) * 4.0
+	draw_line(Vector2(-16, 10 + bob), Vector2(-30, 22 + wave), skin.darkened(0.4), 6.0)
+	draw_line(Vector2(-16, 10 + bob), Vector2(-30, 22 + wave), skin, 4.0)
+	draw_line(Vector2(16, 10 + bob), Vector2(30, 22 - wave), skin.darkened(0.4), 6.0)
+	draw_line(Vector2(16, 10 + bob), Vector2(30, 22 - wave), skin, 4.0)
+	# Cabeza grande
+	var head := PackedVector2Array()
+	var head2 := PackedVector2Array()
+	var hc := Vector2(0, -22.0 + bob)
+	for i in 36:
+		var a3 := TAU * i / 36.0
+		var v := Vector2(cos(a3) * 30.0, sin(a3) * 28.0)
+		if sin(a3) > 0.3:
+			v.x *= 0.78
+		head.append(hc + v)
+		head2.append(hc + v * 0.94)
+	draw_colored_polygon(head, skin.darkened(0.5))
+	draw_colored_polygon(head2, skin)
+	draw_circle(Vector2(-14, -38 + bob), 5.0, Color(1, 1, 1, 0.25))
+	# Antenas
+	for sd in [-1.0, 1.0]:
+		var sx: float = sd
+		var tip := Vector2(sx * 20.0 + sin(t * 4.0 + sx) * 3.0, -64.0 + bob)
+		draw_line(Vector2(sx * 12.0, -44.0 + bob), tip, skin.darkened(0.4), 2.0)
+		var glow := Color(1.0, 0.3, 0.3) if phase >= 3 else Color(0.5, 1.0, 0.9)
+		draw_circle(tip, 5.0, Color(glow.r, glow.g, glow.b, 0.35))
+		draw_circle(tip, 3.0, glow)
+	# Ojos negros grandes; la pupila sigue al jugador
+	for ex in [-12.0, 12.0]:
+		var ev := PackedVector2Array()
+		var tilt := 0.45 if ex < 0.0 else -0.45
+		for i in 16:
+			var a4 := TAU * i / 16.0
+			ev.append(Vector2(ex, -22.0 + bob) + Vector2(cos(a4) * 10.0, sin(a4) * 7.0).rotated(tilt))
+		draw_colored_polygon(ev, Color(0.04, 0.05, 0.1))
+		draw_circle(Vector2(ex, -22.0 + bob) + look * 3.0, 2.6, Color(0.9, 1.0, 1.0))
+	if phase >= 2:
+		draw_line(Vector2(-24, -34 + bob), Vector2(-4, -29 + bob), Color(0.1, 0.25, 0.1), 3.0)
+		draw_line(Vector2(24, -34 + bob), Vector2(4, -29 + bob), Color(0.1, 0.25, 0.1), 3.0)
+	var mouth_open := 3.0 if (st == St.FIGHT and busy) else 0.0
+	draw_arc(Vector2(0, -6 + bob), 6.0 + mouth_open, 0.3, PI - 0.3, 10, Color(0.1, 0.25, 0.12), 2.0)
+	if phase >= 3:
+		var pulse := 0.5 + 0.5 * sin(t * 6.0)
+		draw_arc(Vector2(0, 0), 54.0 + pulse * 4.0, 0.0, TAU, 40, Color(0.4, 1.0, 0.9, 0.3 + 0.3 * pulse), 2.0)

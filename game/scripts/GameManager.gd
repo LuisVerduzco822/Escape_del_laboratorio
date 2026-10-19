@@ -73,7 +73,7 @@ func _mouse(action: String, button: int) -> void:
 
 func reset_run() -> void:
 	ingredients = []
-	for i in 9:
+	for i in Cfg.ING_TOTAL:
 		ingredients.append(false)
 	play_time = 0.0
 	parries = 0
@@ -87,7 +87,7 @@ func reset_run() -> void:
 
 func load_state(d: Dictionary) -> void:
 	reset_run()
-	for i in mini(9, d["ingredients"].size()):
+	for i in mini(Cfg.ING_TOTAL, d["ingredients"].size()):
 		ingredients[i] = d["ingredients"][i]
 	play_time = d["play_time"]
 	parries = d["parries"]

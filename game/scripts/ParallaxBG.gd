@@ -66,7 +66,7 @@ func _process(delta: float) -> void:
 			if b[1] < 200.0:
 				b[1] = 270.0
 				b[0] = randf() * 480.0
-	else:
+	elif level == 2:
 		for r in rain:
 			r[0] -= r[2] * 0.25 * delta
 			r[1] += r[2] * delta

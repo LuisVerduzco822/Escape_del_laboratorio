@@ -9,7 +9,7 @@ const ParallaxBG := preload("res://scripts/ParallaxBG.gd")
 const Crafting := preload("res://scripts/Crafting.gd")
 const FinalTop := preload("res://scripts/FinalTop.gd")
 
-const STORY := "En el laboratorio ocurrio un accidente\ny un virus se esta propagando.\n\nSolo hay una salida: fabricar el antidoto.\nRecolecta 9 ingredientes en 3 zonas\ny derrota al jefe de cada una.\n\nTienes 20 minutos de pura accion."
+const STORY := "En el laboratorio ocurrio un accidente\ny un virus se esta propagando.\n\nSolo hay una salida: fabricar el antidoto.\nRecolecta 12 ingredientes en 4 zonas\ny derrota al jefe de cada una.\n\nTienes 20 minutos de pura accion."
 
 var level: Node
 var holder: Node
@@ -358,7 +358,7 @@ func _show_menu() -> void:
 		return
 	continue_btn.visible = not prog.is_empty()
 	if not prog.is_empty():
-		continue_btn.text = "CONTINUAR (NIVEL %d)" % (mini(prog["level_done"], 2) + 1)
+		continue_btn.text = "CONTINUAR (NIVEL %d)" % (mini(prog["level_done"], 3) + 1)
 
 
 func _show_rank(kind: String = "score") -> void:
@@ -504,7 +504,7 @@ func _start_game(tutorial: bool = false) -> void:
 	_start_level(0, "collect", true)
 
 
-# FINALTOP: tres jefes seguidos con el reloj corriendo. No toca la partida guardada de la historia.
+# FINALTOP: cuatro jefes seguidos con el reloj corriendo. No toca la partida guardada de la historia.
 func _start_finaltop() -> void:
 	if busy:
 		return
@@ -540,7 +540,7 @@ func _finish_finaltop() -> void:
 		rank_text = "MODO OFFLINE: MARCA NO SUBIDA"
 	var penalty: float = GameManager.deaths * float(Cfg.FINALTOP["death_penalty"])
 	end_title.text = "¡FINALTOP!"
-	end_sub.text = "Los tres jefes cayeron."
+	end_sub.text = "Los cuatro jefes cayeron."
 	end_stats.text = "TIEMPO FINAL     %s\nDERROTAS         %d  (+%s)\nPARRYS           %d\nPUNTUACION       %d\n%s" % [GameManager.format_clock(GameManager.play_time), GameManager.deaths, GameManager.format_clock(penalty), GameManager.parries, GameManager.score, rank_text]
 	again_btn.text = "REINTENTAR FINALTOP"
 	end_layer.visible = true
@@ -576,7 +576,7 @@ func _continue_game() -> void:
 	end_layer.visible = false
 	_clear_level()
 	busy = false
-	_start_level(mini(prog["level_done"], 2), "collect", true)
+	_start_level(mini(prog["level_done"], 3), "collect", true)
 
 
 func _start_level(index: int, phase: String, card: bool, snapshot: Dictionary = {}) -> void:
@@ -596,7 +596,7 @@ func _start_level(index: int, phase: String, card: bool, snapshot: Dictionary = 
 		if phase == "tutorial":
 			d = {"tag": "NIVEL 0", "name": "PROTOCOLO DE EVACUACION", "tint": Color(0.45, 0.95, 1.0)}
 		if mode == "finaltop":
-			d = {"tag": "FINALTOP  %d/3" % (index + 1), "name": str(Cfg.LEVELS[index]["boss_name"]), "tint": Cfg.LEVELS[index]["tint"]}
+			d = {"tag": "FINALTOP  %d/%d" % [index + 1, Cfg.LEVELS.size()], "name": str(Cfg.LEVELS[index]["boss_name"]), "tint": Cfg.LEVELS[index]["tint"]}
 		card_label.text = "%s\n%s\n\n" % [d["tag"], d["name"]]
 		card_label.add_theme_color_override("font_color", d["tint"])
 		card_layer.visible = true
@@ -641,7 +641,7 @@ func _on_level_finished() -> void:
 		busy = true
 		in_game = false
 		Telemetry.event("level_complete", {"level_time": snappedf(level.age, 0.1), "mode": "finaltop", "clock": snappedf(GameManager.play_time, 0.01)})
-		if cur_index < 2:
+		if cur_index < Cfg.LEVELS.size() - 1:
 			await _fade(1.0, 0.8)
 			_clear_level()
 			busy = false
@@ -661,11 +661,11 @@ func _on_level_finished() -> void:
 	busy = true
 	in_game = false
 	Telemetry.event("level_complete", {"level_time": snappedf(level.age, 0.1), "coins": GameManager.coins})
-	if cur_index < 2:
+	if cur_index < Cfg.LEVELS.size() - 1:
 		Database.save_progress(cur_index + 1, GameManager.ingredients, GameManager.play_time, GameManager.parries, GameManager.deaths, GameManager.coins, GameManager.score)
 	await _fade(1.0, 0.8)
 	_clear_level()
-	if cur_index < 2:
+	if cur_index < Cfg.LEVELS.size() - 1:
 		busy = false
 		_start_level(cur_index + 1, "collect", true)
 	else:
@@ -698,7 +698,7 @@ func _on_crafting_done() -> void:
 	var rank_text := "PUESTO EN RANKING #%d" % rank if rank > 0 else "SIN CONEXION: PARTIDA NO SUBIDA"
 	if Database.offline_mode:
 		rank_text = "PARTIDA OFFLINE COMPLETADA"
-	end_stats.text = "PUNTUACION       %d\nTIEMPO DE JUEGO  %s\nINGREDIENTES      %d / 9\nMONEDAS           %d\nPARRYS            %d\nDERROTAS          %d\nMEJOR RACHA       %s\n%s" % [GameManager.score, GameManager.format_time(GameManager.play_time), GameManager.total_ingredients(), GameManager.coins, GameManager.parries, GameManager.deaths, GameManager.format_time(GameManager.best_streak), rank_text]
+	end_stats.text = "PUNTUACION       %d\nTIEMPO DE JUEGO  %s\nINGREDIENTES      %d / %d\nMONEDAS           %d\nPARRYS            %d\nDERROTAS          %d\nMEJOR RACHA       %s\n%s" % [GameManager.score, GameManager.format_time(GameManager.play_time), GameManager.total_ingredients(), Cfg.ING_TOTAL, GameManager.coins, GameManager.parries, GameManager.deaths, GameManager.format_time(GameManager.best_streak), rank_text]
 	end_layer.visible = true
 	again_btn.grab_focus()
 	await _fade(0.0, 0.8)

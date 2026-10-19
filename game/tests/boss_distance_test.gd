@@ -19,6 +19,7 @@ func sample(boss, player, offset: Vector2) -> Dictionary:
 	player.global_position = boss.global_position + offset
 	boss.attack_rng.seed = 1701
 	boss.last_attack = ""
+	boss.prev_attack = ""
 	var counts := {}
 	var valid := true
 	var no_repeats := true
@@ -27,6 +28,7 @@ func sample(boss, player, offset: Vector2) -> Dictionary:
 		valid = valid and attack in boss.POOLS[boss.kind][boss.phase]
 		no_repeats = no_repeats and attack != boss.last_attack
 		counts[attack] = counts.get(attack, 0) + 1
+		boss.prev_attack = boss.last_attack
 		boss.last_attack = attack
 	check(valid and no_repeats, "Boss %d phase %d at %s: unlocked attacks, no repeats" % [boss.kind, boss.phase, offset])
 	for attack in boss.POOLS[boss.kind][boss.phase]:
@@ -40,7 +42,7 @@ func _run() -> void:
 		quit(1)
 		return
 	root.get_node("Database").start_offline()
-	for kind in 3:
+	for kind in 4:
 		root.get_node("GameManager").reset_run()
 		var level = load("res://scripts/Level.gd").new()
 		level.index = kind
@@ -57,7 +59,7 @@ func _run() -> void:
 			var medium := sample(boss, level.player, Vector2(-190, 0))
 			var far := sample(boss, level.player, Vector2(-350, 0))
 			var close_pattern := "fan" if phase == 1 else "ring"
-			var far_pattern := "aimed" if phase == 1 else "rain"
+			var far_pattern := "aimed" if phase == 1 else ("meteors" if kind == 3 else "rain")
 			check(close[close_pattern] > medium[close_pattern] and medium[close_pattern] > far[close_pattern], "Close-range pattern gains priority nearby")
 			check(far[far_pattern] > close[far_pattern], "Ranged pattern gains priority at a distance")
 			# Vertical separation counts too; shifting the arena must not affect choices.

@@ -131,10 +131,10 @@ func valid(saved: Variant) -> bool:
 	for category in ["stats", "level", "player"]:
 		ok = ok and _shape(saved[category], category, samples[category])
 	if ok:
-		ok = saved.level.index in [0, 1, 2] and saved.level.st in [0, 1, 3]
+		ok = saved.level.index in [0, 1, 2, 3] and saved.level.st in [0, 1, 3]
 		ok = ok and saved.stats.current_level == saved.level.index and saved.level.reached_boss == (saved.level.st == 3)
 		ok = ok and saved.stats.hp > 0 and saved.stats.hp <= Cfg.MAX_HP
-		ok = ok and saved.stats.ingredients.size() == 9 and saved.level.ing_spawned.size() == 3
+		ok = ok and saved.stats.ingredients.size() in [9, Cfg.ING_TOTAL] and saved.level.ing_spawned.size() == 3
 		for flag in saved.stats.ingredients + saved.level.ing_spawned:
 			ok = ok and flag is bool
 		for key in ["fire", "bat", "spore", "bolt", "heal", "horde"]:
@@ -164,7 +164,7 @@ func valid(saved: Variant) -> bool:
 		var actor_ok := _shape(actor.get("state"), actor.type, sample)
 		sample.free()
 		if not actor_ok: return false
-		if actor.type == "pickup" and (actor.state.idx < 0 or actor.state.idx >= 9): return false
+		if actor.type == "pickup" and (actor.state.idx < 0 or actor.state.idx >= Cfg.ING_TOTAL): return false
 	for value in saved.counters.values():
 		if not value is int or value < 0: return false
 	return ok

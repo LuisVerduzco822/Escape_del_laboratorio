@@ -38,6 +38,8 @@ const HOTSPOTS = {
       { f: 0.78, s: 0.03, w: 0.22, src: 'bat' }],
   3: [{ f: 0.25, s: 0.03, w: 0.25, src: 'rayo' }, { f: 0.5, s: 0.025, w: 0.2, src: 'spore' },
       { f: 0.82, s: 0.03, w: 0.25, src: 'bat' }],
+  4: [{ f: 0.2, s: 0.03, w: 0.2, src: 'fireball' }, { f: 0.5, s: 0.03, w: 0.22, src: 'bat' },
+      { f: 0.8, s: 0.03, w: 0.25, src: 'spore' }],
 };
 
 // Estilos de juego. "low" cambia el comportamiento cuando quedan 2 vidas o menos.
@@ -57,7 +59,7 @@ const DT = 0.5;
 const SPEED = 130;
 const MAX_HP = 4;
 // Vida de cada jefe en FinalTop (igual que Cfg.FINALTOP.boss_hp) para que el tiempo de pelea se parezca al real.
-const FINALTOP_FIGHT = [55, 70, 190];
+const FINALTOP_FIGHT = [55, 70, 95, 230];
 
 function poisson(rand, mean) {
   const l = Math.exp(-mean);

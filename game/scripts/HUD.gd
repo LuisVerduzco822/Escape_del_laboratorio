@@ -112,9 +112,9 @@ func _draw_super() -> void:
 
 
 func _draw_ingredients() -> void:
-	var x0 := 480.0 - 9.0 * 15.0 - 8.0
-	UI.text(self, "ANTIDOTO %d/9" % GameManager.total_ingredients(), 474, 10, 8, Color(0.85, 0.95, 1.0), 2)
-	for i in 9:
+	var x0 := 480.0 - float(Cfg.ING_TOTAL) * 15.0 - 8.0
+	UI.text(self, "ANTIDOTO %d/%d" % [GameManager.total_ingredients(), Cfg.ING_TOTAL], 474, 10, 8, Color(0.85, 0.95, 1.0), 2)
+	for i in Cfg.ING_TOTAL:
 		var lv := i / 3
 		var sl := i % 3
 		var info = Cfg.LEVELS[lv]["ingredients"][sl]
@@ -159,7 +159,7 @@ func _draw_center() -> void:
 			draw_rect(Rect2(x + w * 0.66 - 0.5, 18, 1, 8), Color(0, 0, 0, 0.8))
 			if L.is_finaltop:
 				var clock_col := Color(0.55, 1.0, 0.9)
-				UI.text(self, "RELOJ %s   JEFE %d/3   DERROTAS %d" % [GameManager.format_clock(GameManager.play_time), L.index + 1, GameManager.deaths], 240, 42, 8, clock_col, 1)
+				UI.text(self, "RELOJ %s   JEFE %d/%d   DERROTAS %d" % [GameManager.format_clock(GameManager.play_time), L.index + 1, Cfg.LEVELS.size(), GameManager.deaths], 240, 42, 8, clock_col, 1)
 			elif L.st == ST_BOSS:
 				var left: float = L.boss_left()
 				var tc := Color(1, 1, 1) if left > 30.0 else Color(1.0, 0.35, 0.3)
