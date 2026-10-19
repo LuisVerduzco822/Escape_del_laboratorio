@@ -174,8 +174,12 @@ func _run() -> void:
 	await frames(3)
 	var main = current_scene
 	var play: Button = main.play_btn
-	var tutorial: Button = play.get_parent().get_child(play.get_index() - 1)
+	# Tutorial y FinalTop comparten una fila encima de JUGAR.
+	var top_row: Node = main.finaltop_btn.get_parent()
+	var tutorial: Button = top_row.get_child(0)
+	check(top_row.get_index() == play.get_index() - 1, "Tutorial row sits directly above Play")
 	check(tutorial.text == "TUTORIAL", "Menu offers Tutorial above Play")
+	check(main.finaltop_btn.text == "FINALTOP", "Menu offers FinalTop next to Tutorial")
 	tutorial.pressed.emit()
 	await frames(300)
 	check(main.level.is_tutorial and not main.waiting_story, "Tutorial menu button opens level 0 directly")

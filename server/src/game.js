@@ -42,12 +42,27 @@ async function ownRun(runId, userId) {
 async function rankFor(score) {
   const { rows } = await pool.query(
     `SELECT count(*)::int AS n FROM (
-        SELECT user_id, MAX(score) AS s FROM runs WHERE status = 'completed' GROUP BY user_id
+        SELECT user_id, MAX(score) AS s FROM runs WHERE status = 'completed' AND mode = 'story' GROUP BY user_id
      ) b WHERE b.s > $1`,
     [score]
   );
   return rows[0].n + 1;
 }
+
+// Finaltop: gana el menor tiempo. El puesto es el de la MEJOR marca del jugador
+// (una partida peor no lo baja): 1 + jugadores con una marca mejor que la suya.
+async function rankForTime(userId) {
+  const { rows } = await pool.query(
+    `WITH best AS (
+        SELECT user_id, MIN(play_time) AS t FROM runs WHERE status = 'completed' AND mode = 'finaltop' GROUP BY user_id
+     )
+     SELECT count(*)::int AS n FROM best WHERE t < (SELECT t FROM best WHERE user_id = $1)`,
+    [userId]
+  );
+  return rows[0].n + 1;
+}
+
+const MODES = ['story', 'finaltop'];
 
 router.get('/health', wrap(async (req, res) => {
   await pool.query('SELECT 1');
@@ -147,9 +162,10 @@ router.post('/runs', auth.requireUser, wrap(async (req, res) => {
       WHERE user_id = $1 AND status = 'in_progress'`,
     [req.user.id]
   );
+  const mode = req.body && MODES.includes(req.body.mode) ? req.body.mode : 'story';
   const { rows } = await pool.query(
-    'INSERT INTO runs (user_id, continued) VALUES ($1, $2) RETURNING id',
-    [req.user.id, Boolean(req.body && req.body.continued)]
+    'INSERT INTO runs (user_id, continued, mode) VALUES ($1, $2, $3) RETURNING id',
+    [req.user.id, Boolean(req.body && req.body.continued), mode]
   );
   res.status(201).json({ run_id: rows[0].id });
 }));
@@ -167,15 +183,54 @@ function cleanEvents(list) {
   return out;
 }
 
+// Las muestras de posición (type "pos") van a run_positions, no a la bitácora.
+const num = (v, min, max, fallback = null) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(Math.max(n, min), max) : fallback;
+};
+const count = (v) => Math.floor(num(v, 0, 200, 0));
+
+function cleanPosition(e) {
+  const d = e.data || {};
+  const x = num(d.x, -1000, 10000);
+  const y = num(d.y, -1000, 2000);
+  const hp = num(d.hp, 0, 9);
+  if (x === null || y === null || hp === null || !Number.isInteger(e.level) || e.level < 1 || e.level > 9) return null;
+  return {
+    t: e.t, level: e.level, phase: Math.floor(num(d.ph, 0, 2, 0)), x, y, hp: Math.floor(hp),
+    vx: num(d.vx, -5000, 5000, 0), vy: num(d.vy, -5000, 5000, 0),
+    airborne: d.air === true, dt: num(d.dt, 0, 5, 0.5),
+    shots: count(d.s), jumps: count(d.j), dashes: count(d.d), parries: count(d.pa), kills: count(d.k),
+  };
+}
+
 const COLLECT_KINDS = { ingredient: 'ingredient', coin: 'coin', heal: 'heal' };
 
 router.post('/runs/:id/events', auth.requireUser, wrap(async (req, res) => {
   const run = await ownRun(req.params.id, req.user.id);
   if (!run) return res.status(404).json({ error: 'Partida no encontrada' });
-  const events = cleanEvents(req.body && req.body.events);
+  const all = cleanEvents(req.body && req.body.events);
+  const events = all.filter((e) => e.type !== 'pos');
+  const positions = all.filter((e) => e.type === 'pos').map(cleanPosition).filter(Boolean);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (positions.length > 0) {
+      const cols = 17;
+      const values = [];
+      const params = [];
+      positions.forEach((p, i) => {
+        const o = i * cols;
+        values.push(`(${Array.from({ length: cols }, (_, k) => `$${o + k + 1}`).join(', ')})`);
+        params.push(run.id, req.user.id, p.t, p.level, p.phase, p.x, p.y, p.vx, p.vy, p.hp,
+          p.airborne, p.dt, p.shots, p.jumps, p.dashes, p.parries, p.kills);
+      });
+      await client.query(
+        `INSERT INTO run_positions (run_id, user_id, game_time, level, phase, x, y, vx, vy, hp, airborne, dt, shots, jumps, dashes, parries, kills)
+         VALUES ${values.join(', ')}`,
+        params
+      );
+    }
     if (events.length > 0) {
       const values = [];
       const params = [];
@@ -213,7 +268,7 @@ router.post('/runs/:id/events', auth.requireUser, wrap(async (req, res) => {
   } finally {
     client.release();
   }
-  res.json({ ok: true, saved: events.length });
+  res.json({ ok: true, saved: events.length, positions: positions.length });
 }));
 
 router.post('/runs/:id/finish', auth.requireUser, wrap(async (req, res) => {
@@ -237,10 +292,13 @@ router.post('/runs/:id/finish', auth.requireUser, wrap(async (req, res) => {
   } finally {
     client.release();
   }
-  const { rows } = await pool.query('SELECT status, score FROM runs WHERE id = $1', [run.id]);
+  const { rows } = await pool.query('SELECT status, score, play_time FROM runs WHERE id = $1', [run.id]);
   const final = rows[0];
-  const rank = final.status === 'completed' ? await rankFor(final.score) : null;
-  res.json({ ok: true, status: final.status, rank });
+  let rank = null;
+  if (final.status === 'completed') {
+    rank = run.mode === 'finaltop' ? await rankForTime(req.user.id) : await rankFor(final.score);
+  }
+  res.json({ ok: true, status: final.status, rank, mode: run.mode });
 }));
 
 const METRICS = {
@@ -252,13 +310,29 @@ const METRICS = {
   streak: 'best_streak DESC, play_time ASC',
 };
 
+// Ranking de Finaltop: mejor tiempo de cada jugador entre sus partidas completadas.
+async function finaltopBoard(req, res) {
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
+  const { rows } = await pool.query(
+    `SELECT * FROM (
+        SELECT DISTINCT ON (r.user_id) u.username, r.play_time, r.deaths, r.parries, r.score, r.ended_at
+          FROM runs r JOIN users u ON u.id = r.user_id
+         WHERE r.mode = 'finaltop' AND r.status = 'completed'
+         ORDER BY r.user_id, r.play_time ASC, r.deaths ASC
+     ) best ORDER BY play_time ASC, deaths ASC LIMIT $1`,
+    [limit]
+  );
+  res.json({ mode: 'finaltop', type: 'time', scope: 'completed', entries: rows.map((r, i) => ({ rank: i + 1, ...r })) });
+}
+
 router.get('/leaderboard', wrap(async (req, res) => {
+  if (req.query.mode === 'finaltop') return finaltopBoard(req, res);
   const type = Object.hasOwn(METRICS, req.query.type) ? req.query.type : 'score';
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
   const order = METRICS[type];
   const completedOnly = req.query.scope === 'completed' || type === 'time' || type === 'deaths';
   const scope = completedOnly ? 'completed' : 'all';
-  const filter = completedOnly ? "r.status = 'completed'" : "(r.status = 'completed' OR r.score > 0)";
+  const filter = (completedOnly ? "r.status = 'completed'" : "(r.status = 'completed' OR r.score > 0)") + " AND r.mode = 'story'";
   const { rows } = await pool.query(
     `SELECT * FROM (
         SELECT DISTINCT ON (r.user_id)
@@ -272,7 +346,7 @@ router.get('/leaderboard', wrap(async (req, res) => {
      LIMIT $1`,
     [limit]
   );
-  res.json({ type, scope, entries: rows.map((r, i) => ({ rank: i + 1, ...r })) });
+  res.json({ mode: 'story', type, scope, entries: rows.map((r, i) => ({ rank: i + 1, ...r })) });
 }));
 
 module.exports = router;

@@ -6,6 +6,7 @@ var active := 0.4
 var col := Color(1.0, 0.25, 0.3)
 var t := 0.0
 var struck := false
+var src := "boss_zone"
 
 
 func _ready() -> void:
@@ -29,7 +30,7 @@ func _physics_process(delta: float) -> void:
 	if t >= warn and t <= warn + active:
 		for b in get_overlapping_bodies():
 			if b.is_in_group("player"):
-				b.hurt()
+				b.hurt(src)
 	if t > warn + active:
 		queue_free()
 	queue_redraw()

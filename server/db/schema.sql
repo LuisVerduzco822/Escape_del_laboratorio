@@ -92,9 +92,40 @@ CREATE TABLE IF NOT EXISTS progress (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Trayectoria del jugador: una muestra cada ~0.5 s de juego (mapas de comportamiento).
+-- Va en su propia tabla para no saturar la bitácora run_events.
+CREATE TABLE IF NOT EXISTS run_positions (
+    id          BIGSERIAL PRIMARY KEY,
+    run_id      INT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    game_time   REAL NOT NULL,
+    level       SMALLINT NOT NULL,
+    phase       SMALLINT NOT NULL DEFAULT 0,   -- 0 = recorrido, 1 = pelea contra el jefe
+    x           REAL NOT NULL,
+    y           REAL NOT NULL,
+    vx          REAL NOT NULL DEFAULT 0,
+    vy          REAL NOT NULL DEFAULT 0,
+    hp          SMALLINT NOT NULL,             -- vidas restantes en ese momento
+    airborne    BOOLEAN NOT NULL DEFAULT false,
+    dt          REAL NOT NULL DEFAULT 0.5,     -- segundos que representa la muestra
+    shots       SMALLINT NOT NULL DEFAULT 0,   -- acciones desde la muestra anterior
+    jumps       SMALLINT NOT NULL DEFAULT 0,
+    dashes      SMALLINT NOT NULL DEFAULT 0,
+    parries     SMALLINT NOT NULL DEFAULT 0,
+    kills       SMALLINT NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS run_positions_run ON run_positions (run_id, game_time);
+CREATE INDEX IF NOT EXISTS run_positions_level_hp ON run_positions (level, hp);
+CREATE INDEX IF NOT EXISTS run_positions_user ON run_positions (user_id);
+CREATE INDEX IF NOT EXISTS run_events_type_level ON run_events (event_type, level);
+
 -- Actualización de bases creadas con una versión anterior del esquema
 ALTER TABLE runs ADD COLUMN IF NOT EXISTS score INT NOT NULL DEFAULT 0;
 ALTER TABLE runs ADD COLUMN IF NOT EXISTS best_streak REAL NOT NULL DEFAULT 0;
 ALTER TABLE runs ADD COLUMN IF NOT EXISTS zones_cleared INT NOT NULL DEFAULT 0;
 ALTER TABLE progress ADD COLUMN IF NOT EXISTS score INT NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS runs_status_score ON runs (status, score DESC);
+
+-- Modo de juego de cada partida: 'story' (historia) o 'finaltop' (solo jefes, gana el menor tiempo)
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'story' CHECK (mode IN ('story', 'finaltop'));
+CREATE INDEX IF NOT EXISTS runs_mode_status_time ON runs (mode, status, play_time);

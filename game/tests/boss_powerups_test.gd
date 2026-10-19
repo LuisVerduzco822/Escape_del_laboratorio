@@ -63,8 +63,8 @@ func _run() -> void:
 	level.boss._enter_fight()
 	freeze_combat()
 	await frames(2)
-	level._tick_powerups(3.9)
-	check(powerups().is_empty(), "First help waits until four combat seconds")
+	level._tick_powerups(2.9)
+	check(powerups().is_empty(), "First help waits until three combat seconds (Cfg.BOSS_POWERUPS.first_delay)")
 	level._tick_powerups(0.2)
 	check(powerups().size() == 1 and powerups()[0].kind == "overcharge", "First timed support is the weapon boost")
 	var pk = powerups()[0]
@@ -172,8 +172,8 @@ func _run() -> void:
 		level.boss.st = level.boss.St.FIGHT
 		freeze_combat()
 		await frames(2)
-		level._tick_powerups(3.9)
-		check(powerups().is_empty(), "Boss %d waits four active seconds" % (index + 1))
+		level._tick_powerups(2.9)
+		check(powerups().is_empty(), "Boss %d waits three active seconds" % (index + 1))
 		level._tick_powerups(0.2)
 		check(powerups().size() == 1 and powerups()[0].kind == "overcharge", "Boss %d starts with the weapon boost" % (index + 1))
 		var boost = powerups()[0]
@@ -187,7 +187,7 @@ func _run() -> void:
 		level.player._shoot()
 		await frames(60)
 		check(is_equal_approx(level.boss.hp, before_shot - 3.0), "Boss %d receives triple damage from a boosted shot" % (index + 1))
-		level._tick_powerups(14.1)
+		level._tick_powerups(11.1)
 		check(powerups().size() == 1 and powerups()[0].kind == "boss_bomb", "Boss %d alternates to the bomb" % (index + 1))
 		var checkpoint: Dictionary = saves.capture(level, true)
 		check(saves.valid(checkpoint), "Boss %d checkpoint with support validates" % (index + 1))
@@ -204,7 +204,7 @@ func _run() -> void:
 		level.player.position = powerups()[0].position
 		await frames(4)
 		check(powerups().is_empty() and is_equal_approx(level.boss.hp, before_bomb - 110.0), "Boss %d bomb deals damage through actual pickup collision" % (index + 1))
-		level._tick_powerups(14.1)
+		level._tick_powerups(11.1)
 		check(powerups().size() == 1 and powerups()[0].kind == "overcharge", "Boss %d repeats the support cycle" % (index + 1))
 		level.queue_free()
 		await process_frame

@@ -106,6 +106,11 @@ func _ready() -> void:
 	position = start_pos
 
 
+# Cantidad de proyectiles de un patrón, ajustada por la dificultad de Cfg.BOSS.
+func _n(v: int) -> int:
+	return maxi(2, roundi(v * float(Cfg.BOSS["count"])))
+
+
 func _target() -> Vector2:
 	if level and level.player:
 		return level.player.global_position
@@ -145,7 +150,7 @@ func _physics_process(delta: float) -> void:
 			if contact_on:
 				for b in contact.get_overlapping_bodies():
 					if b.is_in_group("player"):
-						b.hurt()
+						b.hurt("boss")
 		St.PHASE:
 			position = position.lerp(home, minf(1.0, delta * 3.0)) + Vector2(randf_range(-1, 1), randf_range(-1, 1))
 			if st_t >= 2.2:
@@ -250,7 +255,7 @@ func _die() -> void:
 func _new_tw() -> Tween:
 	tw = create_tween()
 	busy = true
-	sp = 1.0 + 0.12 * kind + 0.15 * (phase - 1)
+	sp = (1.0 + 0.12 * kind + 0.15 * (phase - 1)) * float(Cfg.BOSS["speed"])
 	return tw
 
 
@@ -260,7 +265,7 @@ func _done() -> void:
 	contact_on = false
 	warn_x = -1.0
 	warn_y = -1.0
-	rest = maxf(0.5, 1.4 - 0.25 * (phase - 1) - 0.1 * kind)
+	rest = maxf(0.5, 1.4 - 0.25 * (phase - 1) - 0.1 * kind) + float(Cfg.BOSS["rest_add"])
 	_try_drop_hearts()
 
 
@@ -292,8 +297,8 @@ func _pick_attack() -> void:
 		"aimed": _atk_aimed()
 		"ring": _atk_ring()
 		"rain": _atk_rain()
-		"zones": _atk_zones(3 + phase, false)
-		"bolts": _atk_zones(6, true)
+		"zones": _atk_zones(maxi(3, _n(3 + phase)), false)
+		"bolts": _atk_zones(_n(6), true)
 		"beam": _atk_beam()
 		"slam": _atk_slam()
 		"charge": _atk_charge()
@@ -303,7 +308,7 @@ func _pick_attack() -> void:
 
 
 func _atk_fan() -> void:
-	var n := 4 + phase + kind
+	var n := _n(4 + phase + kind)
 	var waves := 2 + (1 if phase >= 2 else 0)
 	for w in waves:
 		tw.tween_callback(_fire_fan.bind(n + (w % 2), 76.0 + 8.0 * phase, 105.0 * sp, w % 2 == 1))
@@ -321,7 +326,7 @@ func _fire_fan(n: int, arc: float, spd: float, pink_mid: bool) -> void:
 
 
 func _atk_aimed() -> void:
-	var cnt := 4 + phase * 2
+	var cnt := _n(4 + phase * 2)
 	for i in cnt:
 		tw.tween_callback(_fire_aimed.bind(135.0 * sp, i == cnt - 1 and phase >= 2))
 		tw.tween_interval(0.42 / sp)
@@ -335,7 +340,7 @@ func _fire_aimed(spd: float, pink: bool) -> void:
 
 
 func _atk_ring() -> void:
-	var n := 10 + phase * 3
+	var n := maxi(8, _n(10 + phase * 3))
 	for r in 2:
 		tw.tween_callback(_fire_ring.bind(n, 85.0 * sp, r % 2 == 1))
 		tw.tween_interval(0.85 / sp)
@@ -350,7 +355,7 @@ func _fire_ring(n: int, spd: float, offset: bool) -> void:
 
 
 func _atk_rain() -> void:
-	var cnt := 10 + 3 * phase
+	var cnt := _n(10 + 3 * phase)
 	for i in cnt:
 		tw.tween_callback(_fire_drop.bind(i))
 		tw.tween_interval(0.27 / sp)
@@ -450,7 +455,7 @@ func _fire_pink(y: float) -> void:
 
 
 func _atk_summon() -> void:
-	var n := 2 + phase
+	var n := _n(2 + phase)
 	for i in n:
 		tw.tween_callback(_summon.bind(kind == 1 and i % 2 == 1))
 		tw.tween_interval(0.7)

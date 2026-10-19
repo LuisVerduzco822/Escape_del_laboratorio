@@ -68,7 +68,8 @@ func _draw() -> void:
 		var mult := GameManager.multiplier()
 		UI.text(self, "COMBO %d  X%d" % [GameManager.combo, mult], 8, 63, 8, Color(1.0, 0.6, 0.3) if mult > 1 else Color(0.8, 0.85, 0.95), 0, 3)
 	_draw_super()
-	_draw_ingredients()
+	if not level.is_finaltop:
+		_draw_ingredients()
 	_draw_center()
 
 	if level.player.weapon_power_t > 0.0:
@@ -156,7 +157,10 @@ func _draw_center() -> void:
 			draw_rect(Rect2(x, 18, w * r, 2), Color(1, 1, 1, 0.3))
 			draw_rect(Rect2(x + w * 0.33 - 0.5, 18, 1, 8), Color(0, 0, 0, 0.8))
 			draw_rect(Rect2(x + w * 0.66 - 0.5, 18, 1, 8), Color(0, 0, 0, 0.8))
-			if L.st == ST_BOSS:
+			if L.is_finaltop:
+				var clock_col := Color(0.55, 1.0, 0.9)
+				UI.text(self, "RELOJ %s   JEFE %d/3   DERROTAS %d" % [GameManager.format_clock(GameManager.play_time), L.index + 1, GameManager.deaths], 240, 42, 8, clock_col, 1)
+			elif L.st == ST_BOSS:
 				var left: float = L.boss_left()
 				var tc := Color(1, 1, 1) if left > 30.0 else Color(1.0, 0.35, 0.3)
 				if left <= 30.0 and int(t * 4.0) % 2 == 0:

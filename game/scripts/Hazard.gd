@@ -8,6 +8,7 @@ var col := Color(0.8, 0.35, 1.0)
 var style := "orb"
 var age := 0.0
 var spin := 0.0
+var src := "boss_shot"
 
 
 func _ready() -> void:
@@ -41,7 +42,7 @@ func _on_body(b: Node) -> void:
 		return
 	if b.is_in_group("player"):
 		var before: float = b.invuln
-		b.hurt()
+		b.hurt(src)
 		if b.dead or b.invuln > before:
 			vanish()
 

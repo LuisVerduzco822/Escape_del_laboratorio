@@ -8,6 +8,7 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 router.use(auth.requireAdmin);
 
 router.get('/ping', (req, res) => res.json({ ok: true }));
+router.use('/behavior', require('./behavior'));
 
 router.get('/summary', wrap(async (req, res) => {
   const q = (sql) => pool.query(sql).then((r) => r.rows);

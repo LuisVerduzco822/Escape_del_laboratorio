@@ -46,6 +46,9 @@ var horde_wait := 0.0
 var horde_p := 0.0
 var enemies_started := false
 var is_tutorial := false
+var is_finaltop := false
+const TRACE_EVERY := 0.5
+var trace_t := 0.0
 var tutorial_state := {}
 
 
@@ -214,8 +217,9 @@ func add_hazard(pos: Vector2, vel: Vector2, o: Dictionary = {}) -> Node:
 	return h
 
 
-func add_zone(center: Vector2, size: Vector2, warn: float, active: float, col: Color) -> void:
+func add_zone(center: Vector2, size: Vector2, warn: float, active: float, col: Color, src: String = "boss_zone") -> void:
 	var z := Zone.new()
+	z.src = src
 	z.position = center
 	z.size = size
 	z.warn = warn
@@ -272,10 +276,11 @@ func _process(_delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	age += delta
 	st_t += delta
-	if st != S.FAIL and st != S.DONE:
+	if counts_play_time():
 		GameManager.play_time += delta
 	if not player.dead and st <= S.BOSS:
 		GameManager.tick(delta)
+	_trace(delta)
 	if player.dead and st != S.FAIL and st != S.KO and st != S.DONE:
 		fail_t += delta
 		if fail_t > 1.3:
@@ -302,6 +307,26 @@ func _physics_process(delta: float) -> void:
 			if st_t >= 4.2:
 				st = S.DONE
 				finished.emit()
+
+
+# El reloj de la partida corre salvo en la derrota y en la pantalla final.
+# FinalTop lo reduce a "solo mientras se pelea" para que el ranking mida combate.
+func counts_play_time() -> bool:
+	return st != S.FAIL and st != S.DONE
+
+
+# Toma una muestra de la trayectoria cada TRACE_EVERY segundos de juego activo.
+func _trace(delta: float) -> void:
+	if is_tutorial or GameManager.training or player.dead:
+		return
+	if st != S.INTRO and st != S.COLLECT and st != S.BOSS:
+		return
+	if is_player_frozen():
+		return
+	trace_t += delta
+	if trace_t >= TRACE_EVERY:
+		Telemetry.trace(player, 1 if reached_boss else 0, trace_t)
+		trace_t = 0.0
 
 
 func _debug() -> void:
@@ -363,7 +388,7 @@ func _collect(delta: float) -> void:
 			_spawn_bolt()
 	cd["heal"] -= delta
 	if cd["heal"] <= 0.0:
-		cd["heal"] = 60.0
+		cd["heal"] = Cfg.HEAL_EVERY
 		_spawn_heal()
 	cd["horde"] -= delta
 	if cd["horde"] <= 0.0:
@@ -406,7 +431,7 @@ func _spawn_spore(p: float) -> void:
 func _spawn_bolt() -> void:
 	var left := view_left + 20.0 if scrolling else 20.0
 	var right := minf(view_left + Cfg.W - 20.0, arena_x - 20.0) if scrolling else 460.0
-	add_zone(Vector2(clampf(player.global_position.x, left, right), Cfg.FLOOR_Y * 0.5), Vector2(26, Cfg.FLOOR_Y), 1.0, 0.4, Color(0.8, 0.9, 1.0))
+	add_zone(Vector2(clampf(player.global_position.x, left, right), Cfg.FLOOR_Y * 0.5), Vector2(26, Cfg.FLOOR_Y), 1.0, 0.4, Color(0.8, 0.9, 1.0), "rayo")
 
 
 func _spots() -> Array:
@@ -568,7 +593,9 @@ func claim_powerup(kind: String) -> bool:
 
 
 func _on_boss_defeated() -> void:
-	SaveGame.clear()
+	# FinalTop nunca toca la partida guardada de la historia.
+	if not is_finaltop:
+		SaveGame.clear()
 	st = S.KO
 	st_t = 0.0
 	player.invuln = 99.0
@@ -623,7 +650,7 @@ func clear_shots() -> void:
 
 
 func capture_boss_checkpoint() -> void:
-	if player.dead or not is_instance_valid(boss) or boss.st == Boss.St.DEAD:
+	if is_finaltop or player.dead or not is_instance_valid(boss) or boss.st == Boss.St.DEAD:
 		return
 	# Remove the player's old bullets as well: both timelines start clean.
 	clear_shots()
@@ -634,6 +661,9 @@ func capture_boss_checkpoint() -> void:
 
 
 func save_current() -> bool:
+	if is_finaltop:
+		SaveGame.error = "FinalTop no se puede guardar."
+		return false
 	if player.dead or st > S.BOSS:
 		SaveGame.error = "No se puede guardar en este momento."
 		return false
@@ -688,6 +718,8 @@ func _restore_snapshot(saved: Dictionary) -> void:
 		boss.max_hp = data.boss_hp
 		add_child(boss)
 		SaveGame.write_fields(boss, "boss", saved.boss)
+		# Los jefes ahora tienen menos vida: una partida guardada antes del reajuste no puede superar el máximo.
+		boss.hp = minf(boss.hp, boss.max_hp)
 		boss.attack_rng.seed = saved.boss.rng_seed
 		boss.attack_rng.state = saved.boss.rng_state
 		boss.position = boss.home + Vector2(sin(boss.t * 1.3) * 14.0, sin(boss.t * 2.1) * 9.0)

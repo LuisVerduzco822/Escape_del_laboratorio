@@ -209,7 +209,7 @@ func _on_body(b: Node) -> void:
 		b.bounce()
 		_die(true, 3.0, "stomp")
 	else:
-		b.hurt()
+		b.hurt(kind)
 
 
 func _draw() -> void:

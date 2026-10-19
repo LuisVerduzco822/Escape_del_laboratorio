@@ -42,7 +42,7 @@ before(async () => {
   const db = require('../src/db');
   pool = db.pool;
   await db.init();
-  await pool.query('TRUNCATE users, auth_tokens, runs, run_events, collectibles, progress RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE users, auth_tokens, runs, run_events, run_positions, collectibles, progress RESTART IDENTITY CASCADE');
   server = require('../src/server').listen(0);
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -230,6 +230,175 @@ test('panel de administración: clave, resumen, listados, detalle y CSV', { skip
   assert.strictEqual((await api('GET', '/api/admin/export/users', { headers: ADMIN })).status, 404);
   const pl = await api('GET', '/api/admin/export/players', { headers: ADMIN });
   assert.ok(!/pass_hash|salt/.test(pl.data));
+});
+
+test('comportamiento: posiciones, zonas, trayectorias y vidas restantes', { skip }, async () => {
+  const token = await newUser('mapa_user');
+  const other = await newUser('mapa_otro');
+  const run = (await api('POST', '/api/runs', { token, body: {} })).data.run_id;
+  const pos = (x, y, hp, vx, extra = {}) => ({ t: 1, type: 'pos', level: 1, data: { x, y, hp, vx, vy: 0, air: false, ph: 0, dt: 0.5, s: 0, j: 0, d: 0, pa: 0, k: 0, ...extra } });
+  const ev = await api('POST', `/api/runs/${run}/events`, {
+    token,
+    body: {
+      events: [
+        pos(100, 180, 4, 130, { s: 2 }),
+        pos(160, 180, 4, 130, { s: 1 }),
+        pos(130, 150, 2, -100, { air: true, j: 1, d: 1, pa: 1 }),
+        pos(131, 180, 1, 0),
+        pos(700, 100, 1, 0, { ph: 1 }),
+        // inválidas: se descartan sin romper nada
+        pos('abc', 180, 4, 0),
+        { t: 1, type: 'pos', level: 0, data: { x: 10, y: 10, hp: 4 } },
+        { t: 1, type: 'pos', level: 1, data: { x: 10, y: 10 } },
+        { t: 2, type: 'hurt', level: 1, data: { x: 130, y: 180, hp_left: 3, src: 'fireball', ph: 0 } },
+        { t: 3, type: 'hurt', level: 1, data: { x: 135, y: 180, hp_left: 2, src: 'bat', ph: 0 } },
+        { t: 4, type: 'hurt', level: 1, data: { x: 700, y: 100, hp_left: 0, src: 'boss', ph: 1 } },
+        { t: 4, type: 'death', level: 1, data: { x: 700, y: 100, src: 'boss', ph: 1 } },
+        { t: 5, type: 'hurt', level: 1, data: { x: 'abc', y: '1e400', hp_left: 'dos', src: 'fireball' } },
+        { t: 5, type: 'hurt', level: 1, data: { hp_left: 2.5, src: 'viejo' } },
+      ],
+    },
+  });
+  assert.strictEqual(ev.status, 200);
+  assert.strictEqual(ev.data.positions, 5);
+  assert.strictEqual(ev.data.saved, 6);
+  assert.strictEqual((await pool.query('SELECT count(*)::int AS n FROM run_positions WHERE run_id = $1', [run])).rows[0].n, 5);
+  assert.strictEqual((await pool.query("SELECT count(*)::int AS n FROM run_events WHERE run_id = $1 AND event_type = 'pos'", [run])).rows[0].n, 0);
+
+  const B = '/api/admin/behavior';
+  const get = (path) => api('GET', B + path, { headers: ADMIN });
+  assert.strictEqual((await api('GET', B + '/overview')).status, 401);
+
+  const overview = (await get('/overview')).data.levels.find((l) => l.level === 1);
+  assert.strictEqual(overview.samples, 5);
+  assert.ok(overview.hurts >= 4 && overview.deaths >= 1);
+
+  const hurt = (await get('/heatmap?level=1&layer=hurt&bin=16')).data;
+  assert.strictEqual(hurt.total, 3);
+  assert.ok(hurt.cells.some((c) => c.cx === 8 && c.cy === 11 && c.n === 2)); // x=130 y x=135 (y=180) caen en la misma celda de 16
+  const death = (await get('/heatmap?level=1&layer=death&bin=16')).data;
+  assert.strictEqual(death.total, 1);
+  assert.strictEqual((await get('/heatmap?level=1&layer=time')).data.total, 2.5);
+  assert.strictEqual((await get('/heatmap?level=1&layer=lowtime&hp_max=2')).data.total, 1.5);
+  assert.strictEqual((await get('/heatmap?level=1&layer=time&phase=1')).data.total, 0.5);
+  assert.strictEqual((await get('/heatmap?level=1&layer=hurt&phase=1')).data.total, 1);
+  assert.strictEqual((await get('/heatmap?level=1&layer=time&user_id=' + 999999)).data.total, 0);
+  assert.strictEqual((await get('/heatmap?level=1&layer=time&mode=finaltop')).data.total, 0);
+  assert.strictEqual((await get('/heatmap?level=1&layer=time&mode=story')).data.total, 2.5);
+  const hostile = await get("/heatmap?level=abc&layer=x';DROP TABLE users;--&bin=0");
+  assert.strictEqual(hostile.status, 200);
+  assert.strictEqual(hostile.data.layer, 'hurt');
+  assert.strictEqual(hostile.data.bin, 4);
+
+  const zones = (await get('/zones?level=1&width=120')).data.zones;
+  const z1 = zones.find((z) => z.x0 === 120);
+  assert.strictEqual(z1.hurts, 2);
+  assert.deepStrictEqual(Object.keys(z1.sources).sort(), ['bat', 'fireball']);
+  const z5 = zones.find((z) => z.x0 === 600);
+  assert.strictEqual(z5.hurts, 1);
+  assert.strictEqual(z5.deaths, 1);
+  assert.strictEqual(z5.top_source, 'boss');
+  assert.strictEqual(zones[0].x0, 120); // la zona con más vidas perdidas va primero
+
+  const runs = (await get('/runs?level=1')).data.runs;
+  assert.strictEqual(runs[0].id, run);
+  assert.strictEqual(runs[0].samples, 5);
+  const trails = (await get(`/trails?level=1&run_id=${run}`)).data.trails;
+  assert.strictEqual(trails.length, 1);
+  assert.strictEqual(trails[0].points.length, 5);
+  assert.deepStrictEqual(trails[0].points[0], [100, 180, 4, 1]);
+  assert.strictEqual(trails[0].events.filter((e) => e.type === 'hurt').length, 3);
+  assert.strictEqual((await get('/trails?level=3')).data.trails.length, 0);
+
+  const low = (await get('/lowhp?level=1&hp_max=2')).data;
+  assert.deepStrictEqual(low.by_hp.map((r) => r.hp), [1, 2, 4]);
+  assert.strictEqual(low.groups.high.seconds, 1);
+  assert.strictEqual(low.groups.low.seconds, 1.5);
+  assert.strictEqual(low.groups.high.shots_pm, 180);
+  assert.strictEqual(low.groups.low.dashes_pm, 40);
+  assert.strictEqual(low.groups.low.backward_pct, 33.3);
+  assert.strictEqual(low.groups.low.air_pct, 33.3);
+  assert.strictEqual(low.groups.low.high_pct, 66.7); // y=150 y y=100 están sobre plataformas
+  assert.strictEqual(low.groups.high.hurts, 3); // hp_left 3 y 2 -> había 4 y 3; hp_left 2.5 -> redondea a 3 -> había 4
+  assert.strictEqual(low.groups.low.hurts, 1);
+  assert.strictEqual((await get('/lowhp')).status, 200); // sin nivel: todos los niveles
+
+  const src = (await get('/sources?level=1')).data.sources;
+  assert.strictEqual(src.find((s) => s.src === 'boss').lethal, 1);
+  assert.strictEqual(src.find((s) => s.src === 'bat').by_hp[3], 1);
+
+  // el filtro por jugador no mezcla los datos de otro usuario
+  const run2 = (await api('POST', '/api/runs', { token: other, body: {} })).data.run_id;
+  await api('POST', `/api/runs/${run2}/events`, { token: other, body: { events: [pos(500, 180, 3, 50)] } });
+  const mine = (await api('GET', '/api/admin/players', { headers: ADMIN })).data.players.find((p) => p.username === 'mapa_user');
+  assert.strictEqual((await get(`/heatmap?level=1&layer=time&user_id=${mine.id}`)).data.total, 2.5);
+  assert.strictEqual((await get('/heatmap?level=1&layer=time')).data.total, 3);
+});
+
+test('finaltop: modo propio, ranking por menor tiempo y separado de la historia', { skip }, async () => {
+  const tA = await newUser('ft_rapido');
+  const tB = await newUser('ft_lento');
+  const tC = await newUser('ft_sin_terminar');
+  const play = async (token, seconds, deaths, completed, body = {}) => {
+    const id = (await api('POST', '/api/runs', { token, body: { mode: 'finaltop', ...body } })).data.run_id;
+    return { id, fin: await api('POST', `/api/runs/${id}/finish`, { token, body: { completed, summary: { play_time: seconds, deaths, level_reached: 3, bosses_defeated: completed ? 3 : 1, score: 100 } } }) };
+  };
+  const slow = await play(tB, 540.5, 3, true);
+  assert.strictEqual(slow.fin.data.rank, 1);
+  assert.strictEqual(slow.fin.data.mode, 'finaltop');
+  const fast = await play(tA, 410.2, 1, true);
+  assert.strictEqual(fast.fin.data.rank, 1);
+  const worse = await play(tB, 700, 5, true); // peor marca del mismo jugador: no baja su mejor tiempo
+  assert.strictEqual(worse.fin.data.rank, 2);
+  await play(tC, 20, 0, false);
+  const badMode = await api('POST', '/api/runs', { token: tC, body: { mode: 'x; DROP TABLE runs' } });
+  assert.strictEqual((await pool.query('SELECT mode FROM runs WHERE id = $1', [badMode.data.run_id])).rows[0].mode, 'story');
+
+  const board = (await api('GET', '/api/leaderboard?mode=finaltop')).data;
+  assert.strictEqual(board.mode, 'finaltop');
+  assert.deepStrictEqual(board.entries.map((e) => e.username), ['ft_rapido', 'ft_lento']);
+  assert.ok(Math.abs(board.entries[0].play_time - 410.2) < 0.01);
+  assert.ok(Math.abs(board.entries[1].play_time - 540.5) < 0.01);
+  assert.strictEqual(board.entries[0].rank, 1);
+
+  const story = (await api('GET', '/api/leaderboard?scope=completed&limit=50')).data;
+  assert.ok(story.entries.every((e) => !String(e.username).startsWith('ft_')));
+  assert.strictEqual(story.mode, 'story');
+  assert.strictEqual((await api('GET', '/api/leaderboard?mode=finaltop&limit=1')).data.entries.length, 1);
+});
+
+test('tiempo de juego: totales, días, horas, jugadores y duración', { skip }, async () => {
+  const token = await newUser('tiempo_user');
+  const mk = async (seconds, daysAgo, mode = 'story') => {
+    const id = (await api('POST', '/api/runs', { token, body: { mode } })).data.run_id;
+    await api('POST', `/api/runs/${id}/finish`, { token, body: { completed: true, summary: { play_time: seconds } } });
+    await pool.query(`UPDATE runs SET started_at = date_trunc('day', now()) - ($2 || ' days')::interval + interval '14 hours' WHERE id = $1`, [id, String(daysAgo)]);
+    return id;
+  };
+  await mk(100, 0);
+  await mk(400, 0);
+  await mk(1500, 2);
+  await mk(3000, 40); // fuera de los últimos 30 días
+  await mk(250, 1, 'finaltop');
+
+  const get = (path) => api('GET', '/api/admin/behavior/playtime' + path, { headers: ADMIN });
+  assert.strictEqual((await api('GET', '/api/admin/behavior/playtime')).status, 401);
+  const all = (await get('?days=30')).data;
+  const mine = all.players.find((p) => p.username === 'tiempo_user');
+  assert.strictEqual(mine.seconds, 100 + 400 + 1500 + 250);
+  assert.strictEqual(mine.runs, 4);
+  assert.strictEqual(mine.active_days, 3);
+  assert.strictEqual(all.daily.length, 30);
+  assert.strictEqual(all.daily[29].seconds >= 500, true); // hoy
+  assert.strictEqual(all.hours[14].seconds >= 100 + 400 + 1500 + 250, true);
+  assert.ok(all.totals.longest_run >= 1500);
+  assert.strictEqual(all.durations.reduce((s, b) => s + b.n, 0), all.totals.runs);
+  assert.strictEqual(all.durations.find((b) => b.label === '10–20 min').n >= 0, true);
+  const wide = (await get('?days=90')).data;
+  assert.ok(wide.players.find((p) => p.username === 'tiempo_user').seconds === mine.seconds + 3000);
+  const ft = (await get('?days=30&mode=finaltop')).data;
+  assert.strictEqual(ft.players.find((p) => p.username === 'tiempo_user').seconds, 250);
+  assert.strictEqual((await get('?days=abc;DROP')).data.days, 30);
 });
 
 test('el panel web se sirve en la raíz', { skip }, async () => {

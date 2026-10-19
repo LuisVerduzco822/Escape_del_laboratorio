@@ -1,0 +1,43 @@
+/* Estilos de las pestañas Comportamiento y Tiempo de juego (usa las variables de index.html) */
+.filters { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin-bottom: 12px; }
+.filters label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+.filters label.chk { cursor: pointer; text-transform: none; font-size: 13px; color: var(--text); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; text-transform: none; letter-spacing: 0; }
+.seg button { background: var(--panel); color: var(--text); border: 0; border-right: 1px solid var(--line); padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button:hover { background: var(--panel2); }
+.seg button.on { background: var(--cyan); color: #04101a; font-weight: 600; }
+#mapWrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: #070d18; }
+#bmap { display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; color: var(--muted); font-size: 12px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ramp { display: inline-block; width: 90px; height: 10px; border-radius: 2px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.dot.ring { background: #ff5d6c; box-shadow: 0 0 0 2px #0a1220, 0 0 0 3px #ff5d6c55; }
+.xmark { color: #fff; font-size: 15px; line-height: 1; }
+#tip { position: fixed; display: none; z-index: 50; pointer-events: none; background: #0b1424; border: 1px solid var(--cyan); border-radius: 6px; padding: 7px 10px; font-size: 12px; line-height: 1.45; max-width: 280px; box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+.mini { display: inline-block; vertical-align: middle; width: 70px; height: 8px; background: var(--panel2); border-radius: 2px; margin-right: 8px; overflow: hidden; }
+.mini span { display: block; height: 100%; background: #d95926; }
+ul.insights { margin: 0; padding-left: 18px; }
+ul.insights li { margin: 4px 0; }
+.pair { display: grid; grid-template-columns: 150px 1fr; gap: 3px 10px; margin-bottom: 9px; font-size: 12px; }
+.pair .pl { grid-row: span 2; align-self: center; color: var(--text); }
+.pb { display: grid; grid-template-columns: 1fr 58px; gap: 8px; align-items: center; }
+.pb .track { background: var(--panel2); border-radius: 3px; height: 8px; overflow: hidden; }
+.pb .fill { height: 100%; border-radius: 0 3px 3px 0; }
+.pb span { text-align: right; font-family: "Courier New", monospace; }
+svg.chart { width: 100%; height: auto; display: block; }
+svg.chart .grid { stroke: var(--line); stroke-width: 1; opacity: .6; }
+svg.chart .base { stroke: var(--muted); stroke-width: 1; }
+svg.chart .ax { fill: var(--muted); font-size: 11px; }
+svg.chart .hit { fill: transparent; cursor: crosshair; }
+svg.chart .hit:hover { fill: rgba(95, 231, 255, .08); }
+details { margin-top: 10px; }
+details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+@media (max-width: 720px) { .pair { grid-template-columns: 1fr; } .pair .pl { grid-row: auto; } }
+
+table.compact th, table.compact td { padding: 7px 7px; white-space: normal; }
+table.compact td:last-child { min-width: 90px; }
+.bar { grid-template-columns: 150px 1fr 92px; }
+.bar .val { white-space: nowrap; }
+.box .mini { width: 56px; }

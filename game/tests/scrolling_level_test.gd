@@ -5,6 +5,9 @@ var level
 var gm
 var saves
 var current_index := 0
+# Los niveles largos repiten el tramo original desplazado hacia la derecha (Cfg.LEVELS): la ruta de
+# plataformas del tramo 1 se recorre otra vez sumando este desplazamiento en x.
+const SHIFT := {0: 1340.0, 1: 1560.0, 2: 1840.0}
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -107,7 +110,7 @@ func _run() -> void:
 	await walk_to(216)
 	await jump_to(290, 108)
 	await jump_to(352, 70)
-	check(gm.ingredients[0], "First elevated compound collected through actual collision")
+	check(gm.level_ingredients(0) == 0, "The first staircase no longer holds a compound (the route is longer)")
 	await picture("scroll-first")
 	await walk_to(480)
 	await frames(60)
@@ -117,7 +120,7 @@ func _run() -> void:
 	await jump_to(740, 104)
 	await walk_to(766)
 	await jump_to(856, 58)
-	check(gm.ingredients[1], "Second compound reached across the narrow ledges")
+	check(gm.ingredients[0] and gm.level_ingredients(0) == 1, "First compound collected through actual collision across the narrow ledges")
 	check(level.view_left > 500.0 and level.bg.position.x == level.cam.position.x, "Camera and background follow the player in world space")
 	level._spawn_fireball(0.5)
 	level._spawn_bat(0.5)
@@ -138,9 +141,7 @@ func _run() -> void:
 	for enemy in get_nodes_in_group("enemy"):
 		check(enemy.collision_layer == 16 and enemy.collision_mask == 4 and is_equal_approx(enemy.modulate.a, 1.0), "Finished entrance restores full visibility and combat collisions")
 	# Skip the final compound and try walking and dashing through the sealed door.
-	await walk_to(1005)
-	await frames(60)
-	await walk_to(1430)
+	await walk_to(level.arena_x - 15.0, 4000)
 	Input.action_press("move_right")
 	Input.action_press("dash")
 	await frames(30)
@@ -148,12 +149,19 @@ func _run() -> void:
 	Input.action_release("move_right")
 	check(level.player.position.x < level.arena_x and not level.reached_boss, "Missing compound physically blocks entry even during dash")
 	await picture("scroll-gate-closed")
-	await walk_to(1056)
-	await jump_to(1110, 150)
-	await walk_to(1130)
-	await jump_to(1186, 106)
-	await walk_to(1204)
-	await jump_to(1280, 62)
+	# Segundo tramo: la misma ruta del primero, desplazada.
+	check(await walk_to(1450, 4000), "Walk back to the second-section staircase")
+	await jump_to(1528, 150)
+	await walk_to(1556)
+	await jump_to(1630, 108)
+	await jump_to(1692, 70)
+	check(gm.ingredients[1] and gm.level_ingredients(0) == 2, "Second compound reached on the extended route")
+	await walk_to(2396, 4000)
+	await jump_to(2450, 150)
+	await walk_to(2470)
+	await jump_to(2526, 106)
+	await walk_to(2544)
+	await jump_to(2620, 62)
 	check(gm.level_ingredients(0) == 3, "All compounds collected by traversing their platforms")
 	await frames(2)
 	check(level.gate_open and level.gate.collision_layer == 0 and not level.reached_boss, "Three compounds open the passage without remotely starting the boss")
@@ -202,10 +210,13 @@ func _run() -> void:
 	print("SCROLLING TESTS: ", failures, " failures")
 	quit(1 if failures else 0)
 
+func shifted(route: Array, dx: float) -> Array:
+	return route.map(func(v): return Vector2(v.x + dx, v.y))
+
 func steps(route: Array) -> void:
 	for step in route:
 		if step.y < 0:
-			check(await walk_to(step.x), "Reach launch point x=%s" % step.x)
+			check(await walk_to(step.x, 4000), "Reach launch point x=%s" % step.x)
 		else:
 			await jump_to(step.x, step.y)
 
@@ -249,15 +260,13 @@ func remaining_route(index: int) -> void:
 	level.st = level.S.COLLECT
 	await frames(5)
 	print("TRAVERSING LEVEL ", index + 1)
+	var shift: float = SHIFT[index]
 	var first := [Vector2(114, -1), Vector2(192, 152), Vector2(226, -1), Vector2(296, 114), Vector2(360, 78)] if index == 1 else [Vector2(114, -1), Vector2(176, 150), Vector2(202, -1), Vector2(276, 108), Vector2(296, -1), Vector2(398, 66)]
-	await steps(first)
+	var second := [Vector2(628, -1), Vector2(700, 150), Vector2(728, -1), Vector2(806, 108), Vector2(828, -1), Vector2(884, 64), Vector2(904, -1), Vector2(976, 64)] if index == 1 else [Vector2(700, -1), Vector2(762, 152), Vector2(784, -1), Vector2(854, 110), Vector2(870, -1), Vector2(942, 68), Vector2(956, -1), Vector2(1060, 44)]
+	# El primer compuesto del nivel largo está donde antes estaba el segundo.
+	await steps(second)
 	check(gm.ingredients[index * 3] and gm.level_ingredients(index) == 1, "First compound belongs to this level")
 	await picture("level%d-first" % (index + 1))
-	await walk_to(550 if index == 1 else 600)
-	await frames(60)
-	var second := [Vector2(628, -1), Vector2(700, 150), Vector2(728, -1), Vector2(806, 108), Vector2(828, -1), Vector2(884, 64), Vector2(904, -1), Vector2(976, 64)] if index == 1 else [Vector2(700, -1), Vector2(762, 152), Vector2(784, -1), Vector2(854, 110), Vector2(870, -1), Vector2(942, 68), Vector2(956, -1), Vector2(1060, 44)]
-	await steps(second)
-	check(gm.ingredients[index * 3 + 1] and gm.level_ingredients(index) == 2, "Second elevated compound is reachable")
 	check(level.view_left > 650.0 and level.bg.position.x == level.cam.position.x, "Camera and themed background follow the extended route")
 	# Trigger the actual spawn schedulers after moving beyond the original screen.
 	level.cd.spore = 0.0
@@ -277,9 +286,7 @@ func remaining_route(index: int) -> void:
 	await fresh(snapshot)
 	check(level.player.position == snapshot.player.position and saves.capture(level).actors == snapshot.actors, "Mid-route loading preserves compounds, enemies and hazards")
 	# Pass the third staircase without collecting its compound first.
-	await walk_to(1100 if index == 1 else 1260)
-	await frames(60)
-	await walk_to(level.arena_x - 15.0, 500)
+	await walk_to(level.arena_x - 15.0, 4000)
 	Input.action_press("move_right")
 	Input.action_press("dash")
 	await frames(30)
@@ -287,9 +294,12 @@ func remaining_route(index: int) -> void:
 	Input.action_release("dash")
 	check(level.player.position.x < level.arena_x and level.gate.collision_layer == 1 and not level.reached_boss, "Missing compound seals this boss arena against dash")
 	await picture("level%d-closed" % (index + 1))
-	await walk_to(1172 if index == 1 else 1320, 500)
+	# Vuelve por los otros dos compuestos: copias desplazadas de la primera y la tercera escalera.
+	await steps(shifted(first, shift))
+	check(gm.ingredients[index * 3 + 1] and gm.level_ingredients(index) == 2, "Second elevated compound is reachable on the extended route")
+	await walk_to((1172 if index == 1 else 1320) + shift, 4000)
 	var third := [Vector2(1228, 152), Vector2(1246, -1), Vector2(1316, 110), Vector2(1336, -1), Vector2(1396, 74), Vector2(1412, -1), Vector2(1490, 74)] if index == 1 else [Vector2(1378, 152), Vector2(1396, -1), Vector2(1468, 110), Vector2(1484, -1), Vector2(1564, 66), Vector2(1578, -1), Vector2(1700, 58)]
-	await steps(third)
+	await steps(shifted(third, shift))
 	await frames(3)
 	check(gm.level_ingredients(index) == 3 and level.gate_open and level.gate.collision_layer == 0, "All three compounds unlock this passage")
 	check(not level.reached_boss and level.collect_t < 200.0, "Collecting does not remotely trigger the boss or require the old timer")

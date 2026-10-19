@@ -2,6 +2,7 @@ extends Node
 
 const FLUSH_EVERY := 6.0
 const BATCH := 150
+const TRACE_MAX_QUEUE := 2000
 
 var run_id := -1
 var active := false
@@ -10,6 +11,8 @@ var counters := {}
 var busy := false
 var max_level := 1
 var pending_continued := false
+var pending_mode := "story"
+var trace_last := {}
 
 
 func _ready() -> void:
@@ -21,22 +24,25 @@ func _ready() -> void:
 	add_child(t)
 
 
-func start_run(continued: bool) -> void:
+# mode: "story" (historia) o "finaltop" (solo jefes, gana el menor tiempo).
+func start_run(continued: bool, mode: String = "story") -> void:
 	if active:
 		await finish(false)
 	if not Database.logged_in():
 		return
 	counters = {}
+	trace_last = {}
 	queue = []
 	run_id = -1
 	max_level = 1
 	active = true
 	pending_continued = continued
+	pending_mode = mode
 	await _open_run()
 
 
 func _open_run() -> void:
-	var r := await Database.request(HTTPClient.METHOD_POST, "/api/runs", {"continued": pending_continued})
+	var r := await Database.request(HTTPClient.METHOD_POST, "/api/runs", {"continued": pending_continued, "mode": pending_mode})
 	if r["ok"]:
 		run_id = int(r["data"].get("run_id", -1))
 
@@ -54,6 +60,39 @@ func event(type: String, data: Dictionary = {}) -> void:
 	queue.append({"t": snappedf(GameManager.play_time, 0.01), "type": type, "level": lv, "data": data})
 	if queue.size() >= BATCH:
 		_send()
+
+
+# Muestra de la trayectoria del jugador (la llama Level cada ~0.5 s de juego).
+# Guarda posición, vidas y las acciones hechas desde la muestra anterior; el servidor
+# las usa para los mapas de calor y el análisis de comportamiento con pocas vidas.
+func trace(p: CharacterBody2D, phase: int, dt: float) -> void:
+	if not active or GameManager.training or queue.size() > TRACE_MAX_QUEUE:
+		return
+	var lv := GameManager.current_level + 1
+	max_level = maxi(max_level, lv)
+	var cur := {
+		"s": int(counters.get("shots", 0)),
+		"j": int(counters.get("jumps", 0)),
+		"d": int(counters.get("dashes", 0)),
+		"k": int(counters.get("enemies_killed", 0)),
+		"pa": GameManager.parries,
+	}
+	var d := {
+		"x": snappedf(p.global_position.x, 1.0),
+		"y": snappedf(p.global_position.y, 1.0),
+		"vx": snappedf(p.velocity.x, 1.0),
+		"vy": snappedf(p.velocity.y, 1.0),
+		"hp": GameManager.hp,
+		"air": not p.is_on_floor(),
+		"ph": phase,
+		"dt": snappedf(dt, 0.01),
+	}
+	for k in cur:
+		var before := int(trace_last.get(k, 0))
+		# Si el contador se reinició (nuevo nivel o partida cargada), cuenta desde cero.
+		d[k] = cur[k] - before if cur[k] >= before else cur[k]
+	trace_last = cur
+	queue.append({"t": snappedf(GameManager.play_time, 0.01), "type": "pos", "level": lv, "data": d})
 
 
 func summary() -> Dictionary:

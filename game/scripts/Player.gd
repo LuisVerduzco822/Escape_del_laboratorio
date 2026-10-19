@@ -47,6 +47,7 @@ var mute_flash := 0.0
 var weapon_power_t := 0.0
 var death_t := 0.0
 var death_pivot := Vector2.ZERO
+var last_hurt_src := ""
 var body_shape: CollisionShape2D
 
 
@@ -294,12 +295,22 @@ func bounce() -> void:
 	air_dash = true
 
 
-func hurt() -> void:
+# Posición y fase en que ocurre un evento, para el mapa de comportamiento.
+func _where(d: Dictionary) -> Dictionary:
+	d["x"] = snappedf(global_position.x, 1.0)
+	d["y"] = snappedf(global_position.y, 1.0)
+	d["ph"] = 1 if get_parent().get("reached_boss") == true else 0
+	return d
+
+
+# source: qué causó el golpe (fireball, bat, spore, boss, boss_shot, boss_zone, rayo).
+func hurt(source: String = "") -> void:
 	if dead or invuln > 0.0 or dash_t > 0.0:
 		return
 	GameManager.damage(1)
 	Telemetry.count("damage_taken")
-	Telemetry.event("hurt", {"hp_left": GameManager.hp})
+	last_hurt_src = source
+	Telemetry.event("hurt", _where({"hp_left": GameManager.hp, "src": source}))
 	AudioManager.sfx("hurt")
 	Fx.shake(3.0, 0.25)
 	Fx.hitstop(0.08)
@@ -320,7 +331,7 @@ func _die() -> void:
 	# Pin the rear heel: rotating the image around its center makes the feet slide.
 	death_pivot = sprite.position + Vector2(-facing * 4.0, 16.0)
 	GameManager.deaths += 1
-	Telemetry.event("death", {"deaths": GameManager.deaths})
+	Telemetry.event("death", _where({"deaths": GameManager.deaths, "src": last_hurt_src}))
 	velocity = Vector2(0, maxf(0.0, velocity.y))
 	dash_t = 0.0
 	weapon_power_t = 0.0

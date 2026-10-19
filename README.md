@@ -204,8 +204,8 @@ desde el menú; durante la partida se evitan los mensajes repetidos de instrucci
 | Apuntar en 8 direcciones | W / S combinadas con A / D |
 | Saltar | Espacio o Z |
 | Disparar (mantener) | J, X o clic izquierdo |
-| Súper / Ultra | K, V o clic derecho |
-| Dash (invulnerable) | Shift o L |
+| Súper / Ultra | K o V |
+| Dash (invulnerable) | Shift, L o clic derecho |
 | Fijar posición | Ctrl o I |
 | Bajar de una plataforma | S + Saltar |
 | Pausa | Esc o P |

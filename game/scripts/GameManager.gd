@@ -46,9 +46,9 @@ func _setup_inputs() -> void:
 	_mouse("shoot", MOUSE_BUTTON_LEFT)
 	_key("super", KEY_K)
 	_key("super", KEY_V)
-	_mouse("super", MOUSE_BUTTON_RIGHT)
 	_key("dash", KEY_SHIFT)
 	_key("dash", KEY_L)
+	_mouse("dash", MOUSE_BUTTON_RIGHT)
 	_key("lock", KEY_CTRL)
 	_key("lock", KEY_I)
 	_key("pause", KEY_ESCAPE)
@@ -197,6 +197,12 @@ func total_ingredients() -> int:
 		if v:
 			n += 1
 	return n
+
+
+# Reloj con centésimas para FinalTop: 03:07.45
+func format_clock(sec: float) -> String:
+	var s := maxf(sec, 0.0)
+	return "%02d:%05.2f" % [int(s) / 60, fmod(s, 60.0)]
 
 
 func format_time(sec: float) -> String:

@@ -7,6 +7,7 @@ const Level := preload("res://scripts/Level.gd")
 const Tutorial := preload("res://scripts/Tutorial.gd")
 const ParallaxBG := preload("res://scripts/ParallaxBG.gd")
 const Crafting := preload("res://scripts/Crafting.gd")
+const FinalTop := preload("res://scripts/FinalTop.gd")
 
 const STORY := "En el laboratorio ocurrio un accidente\ny un virus se esta propagando.\n\nSolo hay una salida: fabricar el antidoto.\nRecolecta 9 ingredientes en 3 zonas\ny derrota al jefe de cada una.\n\nTienes 20 minutos de pura accion."
 
@@ -42,11 +43,15 @@ var how_back: Button
 var how_return_focus: Control
 var save_notice: Label
 var save_btn: Button
+var finaltop_btn: Button
+var end_title: Label
+var end_sub: Label
 
 var busy := false
 var in_game := false
 var waiting_story := false
 var cur_index := 0
+var mode := "story"  # "story" o "finaltop"
 var last_fail := {}
 var crafting: Node2D
 
@@ -141,7 +146,15 @@ func _build_menu() -> void:
 	var sp := Control.new()
 	sp.custom_minimum_size = Vector2(0, 2)
 	box.add_child(sp)
-	_btn(box, "TUTORIAL", _start_game.bind(true))
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 6)
+	top_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(top_row)
+	var tutorial_btn := _btn(top_row, "TUTORIAL", _start_game.bind(true))
+	tutorial_btn.custom_minimum_size = Vector2(112, 0)
+	finaltop_btn = _btn(top_row, "FINALTOP", _start_finaltop)
+	finaltop_btn.custom_minimum_size = Vector2(112, 0)
+	finaltop_btn.tooltip_text = "Solo jefes, contra el reloj"
 	play_btn = _btn(box, "JUGAR", _start_game)
 	continue_btn = _btn(box, "CONTINUAR", _continue_game)
 	var rank_btn := _btn(box, "RANKING", _show_rank)
@@ -175,7 +188,7 @@ func _build_how() -> void:
 	_dim(how_layer, 0.88)
 	var box := _center_box(how_layer, 6)
 	box.add_child(_label("CONTROLES", 16, Color(1.0, 0.85, 0.3)))
-	var txt := "MOVER ........ A / D  o  FLECHAS\nAPUNTAR ...... W / S + A / D (8 DIRECC.)\nSALTAR ....... ESPACIO o Z\nDISPARAR ..... J, X o CLIC IZQ.\nSUPER ........ K, V o CLIC DER.\nDASH ......... SHIFT o L\nFIJAR POS. ... CTRL o I\nPAUSA ........ ESC o P\n\nPARRY: salta, y en el aire pulsa\nSALTAR sobre un objeto ROSA.\nCada parry carga la barra de SUPER."
+	var txt := "MOVER ........ A / D  o  FLECHAS\nAPUNTAR ...... W / S + A / D (8 DIRECC.)\nSALTAR ....... ESPACIO o Z\nDISPARAR ..... J, X o CLIC IZQ.\nSUPER ........ K o V\nDASH ......... SHIFT, L o CLIC DER.\nFIJAR POS. ... CTRL o I\nPAUSA ........ ESC o P\n\nPARRY: salta, y en el aire pulsa\nSALTAR sobre un objeto ROSA.\nCada parry carga la barra de SUPER."
 	var l := _label(txt, 8, Color.WHITE, 3)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	l.add_theme_constant_override("line_spacing", 4)
@@ -196,7 +209,7 @@ func _build_rank() -> void:
 	tabs.add_theme_constant_override("separation", 6)
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(tabs)
-	for k in [["score", "PUNTOS"], ["time", "TIEMPO"], ["coins", "MONEDAS"]]:
+	for k in [["score", "PUNTOS"], ["time", "TIEMPO"], ["coins", "MONEDAS"], ["finaltop", "FINALTOP"]]:
 		var tb := _btn(tabs, k[1], _show_rank.bind(k[0]))
 		tb.custom_minimum_size = Vector2(76, 0)
 	rank_label = _label("", 8, Color.WHITE, 3)
@@ -270,15 +283,17 @@ func _build_end() -> void:
 	d.set_anchors_preset(Control.PRESET_FULL_RECT)
 	end_layer.add_child(d)
 	var box := _center_box(end_layer, 8)
-	box.add_child(_label("¡LO LOGRASTE!", 24, Color(1.0, 0.9, 0.35), 6))
-	box.add_child(_label("El antidoto salvo la ciudad.", 8, Color(0.8, 1.0, 0.9), 3))
+	end_title = _label("¡LO LOGRASTE!", 24, Color(1.0, 0.9, 0.35), 6)
+	box.add_child(end_title)
+	end_sub = _label("El antidoto salvo la ciudad.", 8, Color(0.8, 1.0, 0.9), 3)
+	box.add_child(end_sub)
 	end_stats = _label("", 8, Color.WHITE, 3)
 	end_stats.add_theme_constant_override("line_spacing", 5)
 	box.add_child(end_stats)
 	var sp := Control.new()
 	sp.custom_minimum_size = Vector2(0, 6)
 	box.add_child(sp)
-	again_btn = _btn(box, "JUGAR DE NUEVO", _start_game)
+	again_btn = _btn(box, "JUGAR DE NUEVO", _play_again)
 	_btn(box, "MENU PRINCIPAL", _to_menu)
 	end_layer.visible = false
 
@@ -316,6 +331,7 @@ func _wait(sec: float) -> void:
 
 
 func _show_menu() -> void:
+	mode = "story"
 	in_game = false
 	menu_layer.visible = true
 	how_layer.visible = false
@@ -351,11 +367,24 @@ func _show_rank(kind: String = "score") -> void:
 	rank_layer.visible = true
 	rank_label.text = "CARGANDO..."
 	rank_back.grab_focus()
-	var res := await Database.leaderboard(kind, 8)
+	var is_finaltop := kind == "finaltop"
+	var res := await Database.leaderboard("time" if is_finaltop else kind, 8, "all", "finaltop" if is_finaltop else "story")
 	if not res["ok"]:
 		rank_label.text = res["error"]
 		return
 	var lines := PackedStringArray()
+	if is_finaltop:
+		lines.append("FINALTOP - MENOR TIEMPO")
+		lines.append("#  JUGADOR           TIEMPO MUERTES")
+		var n := 1
+		for r in res["entries"]:
+			lines.append("%d  %s %9s %5d" % [n, str(r["username"]).to_upper().rpad(14).substr(0, 14), GameManager.format_clock(float(r["play_time"])), int(r.get("deaths", 0))])
+			n += 1
+		if res["entries"].is_empty():
+			lines.append("")
+			lines.append("NADIE HA TERMINADO FINALTOP")
+		rank_label.text = "\n".join(lines)
+		return
 	lines.append("#  JUGADOR         PUNTOS TIEMPO NIV")
 	var i := 1
 	for r in res["entries"]:
@@ -444,6 +473,7 @@ func _start_game(tutorial: bool = false) -> void:
 	if busy:
 		return
 	busy = true
+	mode = "story"
 	SaveGame.clear()
 	await Database.clear_progress()
 	GameManager.reset_run()
@@ -474,9 +504,55 @@ func _start_game(tutorial: bool = false) -> void:
 	_start_level(0, "collect", true)
 
 
+# FINALTOP: tres jefes seguidos con el reloj corriendo. No toca la partida guardada de la historia.
+func _start_finaltop() -> void:
+	if busy:
+		return
+	busy = true
+	mode = "finaltop"
+	GameManager.reset_run()
+	await _fade(1.0, 0.5)
+	menu_layer.visible = false
+	end_layer.visible = false
+	_clear_level()
+	AudioManager.stop_music(0.3)
+	Telemetry.start_run(false, "finaltop")
+	busy = false
+	_start_level(0, "boss", true)
+
+
+func _play_again() -> void:
+	if mode == "finaltop":
+		_start_finaltop()
+	else:
+		_start_game()
+
+
+func _finish_finaltop() -> void:
+	await _fade(1.0, 0.8)
+	_clear_level()
+	AudioManager.play_music("menu")
+	AudioManager.sfx("victory")
+	var res: Dictionary = await Telemetry.finish(true)
+	var rank := int(res.get("rank", 0)) if res.get("rank") != null else 0
+	var rank_text := "PUESTO EN FINALTOP #%d" % rank if rank > 0 else "SIN CONEXION: MARCA NO SUBIDA"
+	if Database.offline_mode:
+		rank_text = "MODO OFFLINE: MARCA NO SUBIDA"
+	var penalty: float = GameManager.deaths * float(Cfg.FINALTOP["death_penalty"])
+	end_title.text = "¡FINALTOP!"
+	end_sub.text = "Los tres jefes cayeron."
+	end_stats.text = "TIEMPO FINAL     %s\nDERROTAS         %d  (+%s)\nPARRYS           %d\nPUNTUACION       %d\n%s" % [GameManager.format_clock(GameManager.play_time), GameManager.deaths, GameManager.format_clock(penalty), GameManager.parries, GameManager.score, rank_text]
+	again_btn.text = "REINTENTAR FINALTOP"
+	end_layer.visible = true
+	again_btn.grab_focus()
+	await _fade(0.0, 0.8)
+	busy = false
+
+
 func _continue_game() -> void:
 	if busy:
 		return
+	mode = "story"
 	var snapshot := SaveGame.load_saved()
 	if not snapshot.is_empty():
 		busy = true
@@ -519,13 +595,18 @@ func _start_level(index: int, phase: String, card: bool, snapshot: Dictionary = 
 		var d: Dictionary = Cfg.LEVELS[index]
 		if phase == "tutorial":
 			d = {"tag": "NIVEL 0", "name": "PROTOCOLO DE EVACUACION", "tint": Color(0.45, 0.95, 1.0)}
+		if mode == "finaltop":
+			d = {"tag": "FINALTOP  %d/3" % (index + 1), "name": str(Cfg.LEVELS[index]["boss_name"]), "tint": Cfg.LEVELS[index]["tint"]}
 		card_label.text = "%s\n%s\n\n" % [d["tag"], d["name"]]
 		card_label.add_theme_color_override("font_color", d["tint"])
 		card_layer.visible = true
 		AudioManager.sfx("confirm")
 		await _wait(2.3)
 		card_layer.visible = false
-	level = Tutorial.new() if phase == "tutorial" else Level.new()
+	if mode == "finaltop":
+		level = FinalTop.new()
+	else:
+		level = Tutorial.new() if phase == "tutorial" else Level.new()
 	level.index = index
 	level.start_phase = phase
 	level.restore_data = snapshot
@@ -555,6 +636,18 @@ func _on_level_finished() -> void:
 		if not is_instance_valid(completed_level) or level != completed_level:
 			return
 	if busy:
+		return
+	if level.is_finaltop:
+		busy = true
+		in_game = false
+		Telemetry.event("level_complete", {"level_time": snappedf(level.age, 0.1), "mode": "finaltop", "clock": snappedf(GameManager.play_time, 0.01)})
+		if cur_index < 2:
+			await _fade(1.0, 0.8)
+			_clear_level()
+			busy = false
+			_start_level(cur_index + 1, "boss", true)
+		else:
+			_finish_finaltop()
 		return
 	if level.is_tutorial:
 		busy = true
@@ -595,6 +688,9 @@ func _on_crafting_done() -> void:
 	_clear_level()
 	AudioManager.play_music("menu")
 	AudioManager.sfx("victory")
+	end_title.text = "¡LO LOGRASTE!"
+	end_sub.text = "El antidoto salvo la ciudad."
+	again_btn.text = "JUGAR DE NUEVO"
 	var res: Dictionary = await Telemetry.finish(true)
 	Database.clear_progress()
 	SaveGame.clear()
@@ -613,7 +709,11 @@ func _on_level_failed(info: Dictionary) -> void:
 	last_fail = info
 	in_game = false
 	fail_title.text = "TIEMPO AGOTADO" if info["reason"] == "time" else "DERROTADO"
-	if info["phase"] == "boss":
+	if mode == "finaltop":
+		var penalty := float(Cfg.FINALTOP["death_penalty"])
+		GameManager.play_time += penalty
+		fail_info_label.text = "Sigues en el jefe %d de 3.\nRecuperas todas tus vidas.\nEl reloj sigue: +%d s de penalizacion.\nTIEMPO %s" % [int(info["level"]) + 1, int(penalty), GameManager.format_clock(GameManager.play_time)]
+	elif info["phase"] == "boss":
 		fail_info_label.text = "¿Quieres reintentarlo?\nEl combate completo empieza de nuevo.\nRecuperas todas tus vidas\ny conservas tus ingredientes."
 	else:
 		fail_info_label.text = "¿Quieres reintentarlo?\nEl nivel empieza de nuevo\ndesde la recolección."
@@ -649,8 +749,10 @@ func _set_pause(on: bool) -> void:
 	AudioManager.duck(on)
 	AudioManager.sfx("pause")
 	if on:
-		save_btn.disabled = not is_instance_valid(level) or level.player.dead or level.st > Level.S.BOSS
+		save_btn.disabled = not is_instance_valid(level) or level.player.dead or level.st > Level.S.BOSS or mode == "finaltop"
 		save_notice.text = "Al cargar: inicio de esta fase del jefe." if is_instance_valid(level) and level.reached_boss else "Se guardara el estado actual del nivel."
+		if mode == "finaltop":
+			save_notice.text = "FinalTop no se guarda: el reloj sigue corriendo."
 		resume_btn.grab_focus()
 	else:
 		how_layer.visible = false

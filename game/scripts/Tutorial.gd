@@ -7,7 +7,7 @@ const LESSONS := [
 	["SALTO", "ESPACIO para saltar", "Sube y aterriza en la plataforma iluminada."],
 	["DISPARO", "Manten J para disparar", "Destruye el blanco de contencion."],
 	["APUNTAR", "CTRL fija tu posicion; W apunta arriba", "Colocate bajo el blanco y dispara con J."],
-	["DASH", "SHIFT para un dash invulnerable", "Cruza la franja roja durante el dash."],
+	["DASH", "SHIFT o CLIC DER. para un dash invulnerable", "Cruza la franja roja durante el dash."],
 	["PARRY", "Salta y pulsa ESPACIO otra vez junto al rosa", "El objeto rosa no hace dano. Acercate en el aire."],
 	["SUPER", "K con media barra: rayo perforante", "Tienes 50 de energia. Dispara el SUPER al blanco."],
 	["ULTRA", "K con la barra llena: ULTRA", "Tienes 100 de energia. Limpia la zona con K."],

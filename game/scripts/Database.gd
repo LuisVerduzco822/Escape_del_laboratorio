@@ -232,8 +232,8 @@ func clear_progress() -> void:
 	await request(HTTPClient.METHOD_DELETE, "/api/progress")
 
 
-func leaderboard(kind: String = "score", limit: int = 8, scope: String = "all") -> Dictionary:
-	var r := await request(HTTPClient.METHOD_GET, "/api/leaderboard?type=%s&scope=%s&limit=%d" % [kind, scope, limit], null, false)
+func leaderboard(kind: String = "score", limit: int = 8, scope: String = "all", mode: String = "story") -> Dictionary:
+	var r := await request(HTTPClient.METHOD_GET, "/api/leaderboard?type=%s&scope=%s&limit=%d&mode=%s" % [kind, scope, limit, mode], null, false)
 	if not r["ok"]:
 		return {"ok": false, "entries": [], "error": r["error"]}
 	return {"ok": true, "entries": r["data"].get("entries", []), "error": ""}

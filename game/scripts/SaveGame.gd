@@ -141,7 +141,7 @@ func valid(saved: Variant) -> bool:
 			ok = ok and saved.level.cd.has(key) and (saved.level.cd[key] is float or saved.level.cd[key] is int)
 		if saved.level.st == 3:
 			ok = ok and _shape(saved.boss, "boss", samples.boss) and typeof(saved.boss.get("rng_state")) == TYPE_INT and typeof(saved.boss.get("rng_seed")) == TYPE_INT
-			if ok: ok = saved.boss.phase in [1, 2, 3] and saved.boss.hp > 0.0 and saved.boss.hp <= Cfg.LEVELS[saved.level.index].boss_hp
+			if ok: ok = saved.boss.phase in [1, 2, 3] and saved.boss.hp > 0.0 and saved.boss.hp <= maxf(Cfg.LEVELS[saved.level.index].boss_hp, Cfg.LEGACY_BOSS_HP[saved.level.index])
 			if ok and saved.boss.has("heart_dropped"):
 				ok = saved.boss.heart_dropped.size() == 3
 				for flag in saved.boss.heart_dropped:
