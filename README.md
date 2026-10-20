@@ -277,6 +277,6 @@ docker-compose.yml
 - **FINALTOP es más largo:** los jefes tienen más vida (800 / 1000 / 1350 / 3600) y 6 ataques extra
   (orbes teledirigidos, rejilla, orbes que botan, cortina, barrido y fuego cruzado).
 - **Las monedas se recogen solas:** vuelan hacia el jugador desde media pantalla.
-- **Panel, pestaña Jugadores:** mejores tiempos (historia y FinalTop), perfil de cada jugador, tramo donde más le costó
+- **Panel, pestaña Jugadores:** mejores tiempos (historia y FinalTop), perfil de cada jugador con un mapa por nivel (movimiento, vidas perdidas, derrotas y los 3 tramos donde más le costó)
   avanzar por nivel y botón "Mapa" que abre su mapa de calor. Endpoint: `GET /api/admin/behavior/profiles`.
 - Pruebas nuevas: `unlock_coins_test.gd`.

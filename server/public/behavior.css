@@ -51,3 +51,15 @@ table.compact td:last-child { min-width: 90px; }
 .pcard .hard { color: #e6a35c; }
 .pstrip { margin: 8px 0; }
 svg.chart .sbar:hover { opacity: .75; }
+
+/* Mapa por nivel dentro del perfil del jugador */
+.lvcard { margin-bottom: 14px; }
+.lvhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; margin-bottom: 8px; }
+.lvhead h3 { margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+.lvmapwrap { border: 1px solid var(--line); border-radius: 6px; background: #070d18; overflow: hidden; }
+canvas.lvmap { display: block; }
+.zlist { margin: 10px 0 0; padding-left: 0; list-style: none; font-size: 13px; }
+.zlist li { margin: 4px 0; }
+.zbadge { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; color: #0a1220; font-weight: 700; font-size: 11px; }
