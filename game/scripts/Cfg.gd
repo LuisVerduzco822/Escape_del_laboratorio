@@ -26,7 +26,7 @@ const LEGACY_BOSS_HP := [880.0, 940.0, 920.0, 1000.0]
 # Modo FINALTOP: solo jefes, uno tras otro, con el reloj corriendo. Gana el menor tiempo.
 const FINALTOP := {
 	"name": "FINALTOP",
-	"boss_hp": [520.0, 600.0, 900.0, 2800.0],   # el marciano (último jefe) tiene muchísima vida
+	"boss_hp": [800.0, 1000.0, 1350.0, 3600.0],   # el marciano (último jefe) tiene muchísima vida
 	"death_penalty": 15.0,               # segundos que suma cada derrota
 	"heart_every": 26.0,                 # un corazón cada tanto si quedan 2 vidas o menos
 	"powerups": {

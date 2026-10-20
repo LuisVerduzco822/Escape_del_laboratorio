@@ -333,6 +333,23 @@ test('comportamiento: posiciones, zonas, trayectorias y vidas restantes', { skip
   const mine = (await api('GET', '/api/admin/players', { headers: ADMIN })).data.players.find((p) => p.username === 'mapa_user');
   assert.strictEqual((await get(`/heatmap?level=1&layer=time&user_id=${mine.id}`)).data.total, 2.5);
   assert.strictEqual((await get('/heatmap?level=1&layer=time')).data.total, 3);
+
+  // perfil por jugador: tiempos, golpes y el tramo donde más le costó avanzar
+  const profiles = (await get('/profiles')).data;
+  assert.strictEqual(profiles.width, 100);
+  const prof = profiles.players.find((p) => p.username === 'mapa_user');
+  const l1 = prof.levels.find((l) => l.level === 1);
+  assert.strictEqual(l1.seconds, 2);
+  assert.strictEqual(l1.boss_seconds, 0.5);
+  assert.strictEqual(l1.hurts, 2);
+  assert.strictEqual(l1.boss_hurts, 1);
+  assert.strictEqual(l1.deaths, 1);
+  assert.strictEqual(l1.hardest.x0, 100);
+  assert.strictEqual(l1.hardest.score, 26); // 2 s + 2 golpes x 12
+  assert.strictEqual(prof.hardest.level, 1);
+  assert.strictEqual(profiles.players.find((p) => p.username === 'mapa_otro').levels[0].seconds, 0.5);
+  assert.strictEqual((await get('/profiles?mode=finaltop')).data.players.length, 0);
+  assert.strictEqual((await get('/profiles?width=5000')).status, 200);
 });
 
 test('finaltop: modo propio, ranking por menor tiempo y separado de la historia', { skip }, async () => {

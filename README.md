@@ -269,3 +269,14 @@ docker-compose.yml
 - Pruebas nuevas: `finaltop_test.gd`, `boss_attacks_test.gd` (ejecuta todos los ataques de cada jefe) e `input_map_test.gd`.
 - Panel web: pestañas **Comportamiento** y **Tiempo de juego**. Tras cambiar niveles en `Cfg.gd` ejecuta `npm run levels`
   en `server/`; `npm run demo` carga datos de ejemplo.
+
+## Novedades de FINALTOP, monedas y panel
+
+- **FINALTOP está bloqueado** (botón "FINALTOP (BLOQ.)") hasta completar el juego normal. El desbloqueo se guarda por
+  jugador en `user://unlocks.cfg` y, con servidor, se recupera de las partidas completadas.
+- **FINALTOP es más largo:** los jefes tienen más vida (800 / 1000 / 1350 / 3600) y 6 ataques extra
+  (orbes teledirigidos, rejilla, orbes que botan, cortina, barrido y fuego cruzado).
+- **Las monedas se recogen solas:** vuelan hacia el jugador desde media pantalla.
+- **Panel, pestaña Jugadores:** mejores tiempos (historia y FinalTop), perfil de cada jugador, tramo donde más le costó
+  avanzar por nivel y botón "Mapa" que abre su mapa de calor. Endpoint: `GET /api/admin/behavior/profiles`.
+- Pruebas nuevas: `unlock_coins_test.gd`.

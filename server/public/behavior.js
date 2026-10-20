@@ -111,6 +111,14 @@
   }
   const seg = (key, options) => `<div class="seg" data-seg="${key}">${options.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(BH[key]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
 
+  // Lo usa la pestaña Jugadores para abrir el mapa de calor ya filtrado por jugador y nivel.
+  window.openBehaviorFor = function (userId, level) {
+    BH.user = String(userId || '');
+    BH.level = Number(level) || 1;
+    BH.run = '';
+    go('behavior');
+  };
+
   views.behavior = async function () {
     if (!players) players = (await getJson('/api/admin/players', true)).players;
     const lv = LEVEL_GEOM.levels;

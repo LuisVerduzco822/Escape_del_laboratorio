@@ -9,6 +9,11 @@ var style := "orb"
 var age := 0.0
 var spin := 0.0
 var src := "boss_shot"
+# Proyectil teledirigido: gira hacia el jugador durante home_t segundos (home_turn rad/s).
+var home_t := 0.0
+var home_turn := 1.5
+# Rebota en el suelo esta cantidad de veces.
+var bounces := 0
 
 
 func _ready() -> void:
@@ -27,7 +32,18 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if home_t > 0.0:
+		home_t -= delta
+		var p = get_tree().get_first_node_in_group("player")
+		if p and not p.dead and vel.length() > 1.0:
+			var want: Vector2 = (p.global_position - global_position).normalized()
+			var turn := clampf(vel.angle_to(want), -home_turn * delta, home_turn * delta)
+			vel = vel.rotated(turn)
 	vel += accel * delta
+	if bounces > 0 and vel.y > 0.0 and position.y >= Cfg.FLOOR_Y - 6.0:
+		position.y = Cfg.FLOOR_Y - 6.0
+		vel.y = -vel.y * 0.86
+		bounces -= 1
 	position += vel * delta
 	age += delta
 	spin += delta * 6.0

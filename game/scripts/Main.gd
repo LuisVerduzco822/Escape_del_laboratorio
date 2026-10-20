@@ -155,6 +155,7 @@ func _build_menu() -> void:
 	finaltop_btn = _btn(top_row, "FINALTOP", _start_finaltop)
 	finaltop_btn.custom_minimum_size = Vector2(112, 0)
 	finaltop_btn.tooltip_text = "Solo jefes, contra el reloj"
+	finaltop_btn.disabled = true
 	play_btn = _btn(box, "JUGAR", _start_game)
 	continue_btn = _btn(box, "CONTINUAR", _continue_game)
 	var rank_btn := _btn(box, "RANKING", _show_rank)
@@ -340,12 +341,15 @@ func _show_menu() -> void:
 	end_layer.visible = false
 	AudioManager.play_music("menu")
 	user_label.text = "JUGADOR: " + Database.username.to_upper()
+	_update_finaltop_lock()
 	net_label.text = "CONECTANDO CON EL SERVIDOR..."
 	continue_btn.visible = false
 	play_btn.grab_focus()
 	await Database.refresh_progress()
+	await Database.sync_unlocks()
 	if not is_instance_valid(net_label):
 		return
+	_update_finaltop_lock()
 	net_label.text = "MODO OFFLINE - GUARDADO LOCAL" if Database.offline_mode else ("SERVIDOR EN LINEA" if Database.online else "SIN CONEXION AL SERVIDOR")
 	net_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55) if Database.online else Color(1.0, 0.45, 0.4))
 	var prog := Database.load_progress()
@@ -505,8 +509,15 @@ func _start_game(tutorial: bool = false) -> void:
 
 
 # FINALTOP: cuatro jefes seguidos con el reloj corriendo. No toca la partida guardada de la historia.
+func _update_finaltop_lock() -> void:
+	var open := Database.finaltop_unlocked()
+	finaltop_btn.disabled = not open
+	finaltop_btn.text = "FINALTOP" if open else "FINALTOP (BLOQ.)"
+	finaltop_btn.tooltip_text = "Solo jefes, contra el reloj" if open else "Termina el juego completo para desbloquearlo"
+
+
 func _start_finaltop() -> void:
-	if busy:
+	if busy or not Database.finaltop_unlocked():
 		return
 	busy = true
 	mode = "finaltop"
@@ -684,6 +695,8 @@ func _on_crafting_done() -> void:
 	if busy:
 		return
 	busy = true
+	var newly_unlocked := not Database.finaltop_unlocked()
+	Database.unlock_finaltop()
 	await _fade(1.0, 0.8)
 	_clear_level()
 	AudioManager.play_music("menu")
@@ -698,6 +711,8 @@ func _on_crafting_done() -> void:
 	var rank_text := "PUESTO EN RANKING #%d" % rank if rank > 0 else "SIN CONEXION: PARTIDA NO SUBIDA"
 	if Database.offline_mode:
 		rank_text = "PARTIDA OFFLINE COMPLETADA"
+	if newly_unlocked:
+		rank_text += "\nFINALTOP DESBLOQUEADO"
 	end_stats.text = "PUNTUACION       %d\nTIEMPO DE JUEGO  %s\nINGREDIENTES      %d / %d\nMONEDAS           %d\nPARRYS            %d\nDERROTAS          %d\nMEJOR RACHA       %s\n%s" % [GameManager.score, GameManager.format_time(GameManager.play_time), GameManager.total_ingredients(), Cfg.ING_TOTAL, GameManager.coins, GameManager.parries, GameManager.deaths, GameManager.format_time(GameManager.best_streak), rank_text]
 	end_layer.visible = true
 	again_btn.grab_focus()

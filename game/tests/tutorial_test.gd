@@ -179,7 +179,7 @@ func _run() -> void:
 	var tutorial: Button = top_row.get_child(0)
 	check(top_row.get_index() == play.get_index() - 1, "Tutorial row sits directly above Play")
 	check(tutorial.text == "TUTORIAL", "Menu offers Tutorial above Play")
-	check(main.finaltop_btn.text == "FINALTOP", "Menu offers FinalTop next to Tutorial")
+	check(main.finaltop_btn.text.begins_with("FINALTOP"), "Menu offers FinalTop next to Tutorial")
 	tutorial.pressed.emit()
 	await frames(300)
 	check(main.level.is_tutorial and not main.waiting_story, "Tutorial menu button opens level 0 directly")

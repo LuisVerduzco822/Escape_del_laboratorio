@@ -59,7 +59,7 @@ const DT = 0.5;
 const SPEED = 130;
 const MAX_HP = 4;
 // Vida de cada jefe en FinalTop (igual que Cfg.FINALTOP.boss_hp) para que el tiempo de pelea se parezca al real.
-const FINALTOP_FIGHT = [55, 70, 95, 230];
+const FINALTOP_FIGHT = [85, 105, 143, 380];
 
 function poisson(rand, mean) {
   const l = Math.exp(-mean);
@@ -151,7 +151,7 @@ function simulateRun(rand, style, mode) {
         // golpes
         invuln = Math.max(0, invuln - DT);
         let lambda = phase === 0 ? hazardAt(geo, x)
-          : 0.05 + 0.05 * Math.exp(-(((x - (geo.arena_x + 240)) / 140) ** 2));
+          : (0.05 + 0.05 * Math.exp(-(((x - (geo.arena_x + 240)) / 140) ** 2))) * (mode === 'finaltop' ? 0.3 : 1);
         if (dashes > 0) lambda *= 0.4;
         if (invuln <= 0 && rand() < 1 - Math.exp(-lambda * DT)) {
           hp -= 1;

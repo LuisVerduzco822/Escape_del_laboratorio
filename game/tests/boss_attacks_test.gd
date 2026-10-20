@@ -52,6 +52,19 @@ func _run() -> void:
 						guard += 1
 					check(not level.boss.busy, "%s boss %d phase %d: attack %s finishes" % [mode, kind + 1, ph, level.boss.last_attack])
 					level.clear_threats()
+			# Los ataques extra de FINALTOP se ejecutan uno por uno (no solo al azar).
+			for extra in ["homing", "grid", "bounce", "curtain", "sweep", "crossfire"]:
+				level.boss.phase = 3
+				level.boss.last_attack = extra
+				level.boss._new_tw()
+				level.boss.call("_atk_" + extra)
+				level.boss.tw.tween_callback(level.boss._done)
+				var guard2 := 0
+				while level.boss.busy and guard2 < 900:
+					await frames(1)
+					guard2 += 1
+				check(not level.boss.busy, "%s boss %d: extra attack %s finishes" % [mode, kind + 1, extra])
+				level.clear_threats()
 			check(seen.size() >= 6, "%s boss %d used %d different attacks" % [mode, kind + 1, seen.size()])
 			level.queue_free()
 			await process_frame

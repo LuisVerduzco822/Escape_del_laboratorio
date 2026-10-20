@@ -41,3 +41,13 @@ table.compact td:last-child { min-width: 90px; }
 .bar { grid-template-columns: 150px 1fr 92px; }
 .bar .val { white-space: nowrap; }
 .box .mini { width: 56px; }
+
+/* Pestaña Jugadores */
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.pcard { display: flex; flex-direction: column; gap: 4px; text-align: left; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+.pcard:hover { background: var(--panel2); }
+.pcard.on { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan) inset; }
+.pcard b { font-size: 14px; }
+.pcard .hard { color: #e6a35c; }
+.pstrip { margin: 8px 0; }
+svg.chart .sbar:hover { opacity: .75; }

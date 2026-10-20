@@ -32,18 +32,23 @@ const POOLS := {
 const POOLS_FT := {
 	0: {
 		1: ["fan", "aimed", "rain", "spiral", "meteors"],
-		2: ["fan", "aimed", "rain", "slam", "pink", "ring", "wall", "spiral", "strafe"],
-		3: ["fan", "slam", "ring", "rain", "pink", "summon", "wall", "spiral", "meteors", "strafe", "blink"],
+		2: ["fan", "aimed", "rain", "slam", "pink", "ring", "wall", "spiral", "strafe", "bounce", "sweep"],
+		3: ["fan", "slam", "ring", "rain", "pink", "summon", "wall", "spiral", "meteors", "strafe", "blink", "homing", "bounce", "curtain", "sweep"],
 	},
 	1: {
 		1: ["fan", "aimed", "zones", "wall", "meteors"],
-		2: ["fan", "zones", "beam", "pink", "rain", "ring", "spiral", "meteors", "strafe"],
-		3: ["zones", "beam", "ring", "rain", "slam", "summon", "pink", "wall", "spiral", "strafe", "blink", "meteors"],
+		2: ["fan", "zones", "beam", "pink", "rain", "ring", "spiral", "meteors", "strafe", "homing", "grid"],
+		3: ["zones", "beam", "ring", "rain", "slam", "summon", "pink", "wall", "spiral", "strafe", "blink", "meteors", "homing", "grid", "curtain", "crossfire"],
 	},
 	2: {
 		1: ["aimed", "fan", "charge", "strafe", "spiral"],
-		2: ["fan", "charge", "beam", "ring", "rain", "pink", "strafe", "meteors", "wall"],
-		3: ["charge", "bolts", "ring", "beam", "rain", "summon", "pink", "strafe", "wall", "spiral", "meteors", "blink"],
+		2: ["fan", "charge", "beam", "ring", "rain", "pink", "strafe", "meteors", "wall", "homing", "crossfire", "sweep"],
+		3: ["charge", "bolts", "ring", "beam", "rain", "summon", "pink", "strafe", "wall", "spiral", "meteors", "blink", "homing", "grid", "bounce", "curtain", "sweep", "crossfire"],
+	},
+	3: {
+		1: ["aimed", "fan", "blink", "spiral", "meteors", "homing", "sweep"],
+		2: ["fan", "blink", "spiral", "wall", "strafe", "beam", "ring", "zones", "meteors", "pink", "homing", "grid", "bounce", "sweep", "crossfire"],
+		3: ["blink", "spiral", "wall", "strafe", "meteors", "ring", "beam", "zones", "bolts", "summon", "charge", "pink", "slam", "fan", "homing", "grid", "bounce", "curtain", "sweep", "crossfire"],
 	},
 }
 const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3), Color(0.35, 0.92, 1.0)]
@@ -71,6 +76,12 @@ const ATTACK_WEIGHTS := {
 	"strafe": [2.0, 4.0, 5.0],
 	"blink": [3.0, 4.0, 3.0],
 	"meteors": [2.0, 4.0, 6.0],
+	"homing": [2.0, 4.0, 5.0],
+	"grid": [1.0, 4.0, 5.0],
+	"bounce": [3.0, 4.0, 3.0],
+	"curtain": [2.0, 4.0, 5.0],
+	"sweep": [4.0, 4.0, 2.0],
+	"crossfire": [1.0, 4.0, 6.0],
 }
 
 var level
@@ -381,6 +392,12 @@ func _pick_attack() -> void:
 		"strafe": _atk_strafe()
 		"blink": _atk_blink()
 		"meteors": _atk_meteors()
+		"homing": _atk_homing()
+		"grid": _atk_grid()
+		"bounce": _atk_bounce()
+		"curtain": _atk_curtain()
+		"sweep": _atk_sweep()
+		"crossfire": _atk_crossfire()
 	tw.tween_callback(_done)
 
 
@@ -634,6 +651,107 @@ func _fire_meteor() -> void:
 	var x := clampf(_target().x + attack_rng.randf_range(60.0, 200.0), ox + 120.0, ox + 520.0)
 	level.add_hazard(Vector2(x, -12.0), Vector2(-62.0 * sp, 70.0 * sp), {"col": _col(), "radius": 6.0, "accel": Vector2(0, 40.0)})
 	AudioManager.sfx("shoot", -12.0, 0.9)
+
+
+# ---- Ataques extra de FINALTOP ----
+
+# Orbes teledirigidos: giran hacia el jugador un par de segundos y luego siguen recto.
+func _atk_homing() -> void:
+	var n := 2 + phase
+	for i in n:
+		tw.tween_callback(_fire_homing)
+		tw.tween_interval(0.85 / sp)
+	tw.tween_interval(1.2)
+
+
+func _fire_homing() -> void:
+	var m := _muzzle()
+	var dir := Vector2.LEFT.rotated(attack_rng.randf_range(-0.7, 0.7))
+	level.add_hazard(m, dir * 72.0 * sp, {"col": _col(), "radius": 6.0, "home_t": 1.9, "home_turn": 1.5})
+	AudioManager.sfx("shoot", -10.0, 0.5)
+
+
+# Rejilla: columnas de aviso alternadas y, después, un rayo bajo que obliga a saltar.
+func _atk_grid() -> void:
+	var rounds := 1 if phase == 1 else 2
+	for r in rounds:
+		tw.tween_callback(_fire_grid_columns.bind(r % 2))
+		tw.tween_interval(1.0)
+		tw.tween_callback(level.add_zone.bind(Vector2(ox + 240.0, Cfg.FLOOR_Y - 9.0), Vector2(480, 18), 0.9, 0.5, _col()))
+		tw.tween_interval(1.5 / sp)
+
+
+func _fire_grid_columns(shift: int) -> void:
+	for k in 3:
+		var x := ox + 70.0 + shift * 70.0 + k * 140.0
+		level.add_zone(Vector2(x, Cfg.FLOOR_Y * 0.5), Vector2(30.0, Cfg.FLOOR_Y), 0.8, 0.4, _col())
+
+
+# Orbes que botan por el suelo antes de salir de la pantalla.
+func _atk_bounce() -> void:
+	var n := 3 + phase
+	for i in n:
+		tw.tween_callback(_fire_bounce)
+		tw.tween_interval(0.55 / sp)
+	tw.tween_interval(0.8)
+
+
+func _fire_bounce() -> void:
+	var m := _muzzle()
+	level.add_hazard(m, Vector2(-(95.0 + attack_rng.randf_range(0.0, 30.0)) * sp, -50.0), {"col": _col(), "radius": 6.0, "accel": Vector2(0, 260.0), "bounces": 3})
+	AudioManager.sfx("shoot", -10.0, 0.8)
+
+
+# Cortina de gotas que cae por toda la arena salvo un hueco.
+func _atk_curtain() -> void:
+	var rounds := 1 if phase == 1 else 2
+	for r in rounds:
+		tw.tween_callback(_fire_curtain)
+		tw.tween_interval(2.0 / sp)
+	tw.tween_interval(0.4)
+
+
+func _fire_curtain() -> void:
+	var cols := 21
+	var gap := attack_rng.randi_range(2, cols - 6)
+	for c in cols:
+		if c >= gap and c < gap + 4:
+			continue
+		level.add_hazard(Vector2(ox + 14.0 + c * 22.0, -10.0), Vector2(0, 85.0 * sp), {"style": "drop", "radius": 5.0, "col": _col(), "accel": Vector2(0, 40.0)})
+	AudioManager.sfx("warn", -8.0, 0.7)
+
+
+# Barrido: una ráfaga rápida que abre un abanico de arriba abajo (o al revés).
+func _atk_sweep() -> void:
+	var n := 12 + 2 * phase
+	var from_top := attack_rng.randf() < 0.5
+	for i in n:
+		tw.tween_callback(_fire_sweep.bind(i, n, from_top))
+		tw.tween_interval(0.08 / sp)
+	tw.tween_interval(0.6)
+
+
+func _fire_sweep(i: int, n: int, from_top: bool) -> void:
+	var f := float(i) / float(n - 1)
+	var ang := PI + deg_to_rad(lerpf(-48.0, 48.0, f if from_top else 1.0 - f))
+	level.add_hazard(_muzzle(), Vector2.RIGHT.rotated(ang) * 120.0 * sp, {"col": _col(), "radius": 4.5})
+	AudioManager.sfx("shoot", -14.0, 1.1)
+
+
+# Fuego cruzado: dos esquinas disparan a la vez hacia el jugador.
+func _atk_crossfire() -> void:
+	var n := 3 + phase
+	for i in n:
+		tw.tween_callback(_fire_crossfire)
+		tw.tween_interval(0.7 / sp)
+	tw.tween_interval(0.5)
+
+
+func _fire_crossfire() -> void:
+	for corner in [Vector2(ox + 8.0, 8.0), Vector2(ox + 472.0, 8.0)]:
+		var a: float = (_target() - corner).angle()
+		level.add_hazard(corner, Vector2.RIGHT.rotated(a) * 118.0 * sp, {"col": _col(), "radius": 5.0})
+	AudioManager.sfx("shoot", -10.0, 1.0)
 
 
 func _summon(pink_spore: bool = false) -> void:

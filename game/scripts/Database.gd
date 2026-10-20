@@ -2,6 +2,7 @@ extends Node
 
 const CONFIG_FILE := "user://config.cfg"
 const OFFLINE_SAVE := "user://offline_progress.cfg"
+const UNLOCK_FILE := "user://unlocks.cfg"
 const DEFAULT_URL := "http://localhost:3000"
 var timeout := 8.0
 
@@ -237,6 +238,31 @@ func leaderboard(kind: String = "score", limit: int = 8, scope: String = "all", 
 	if not r["ok"]:
 		return {"ok": false, "entries": [], "error": r["error"]}
 	return {"ok": true, "entries": r["data"].get("entries", []), "error": ""}
+
+
+# FINALTOP se desbloquea al completar el juego normal. Se recuerda por jugador en este equipo y,
+# con servidor, se recupera de las partidas completadas del jugador (/api/me).
+func finaltop_unlocked() -> bool:
+	var c := ConfigFile.new()
+	if c.load(UNLOCK_FILE) != OK:
+		return false
+	return bool(c.get_value("finaltop", username.to_lower(), false))
+
+
+func unlock_finaltop() -> void:
+	var c := ConfigFile.new()
+	c.load(UNLOCK_FILE)
+	c.set_value("finaltop", username.to_lower(), true)
+	if c.save(UNLOCK_FILE) != OK:
+		push_warning("No se pudo guardar el desbloqueo de FINALTOP")
+
+
+func sync_unlocks() -> void:
+	if offline_mode or not logged_in() or finaltop_unlocked():
+		return
+	var stats := await my_stats()
+	if int(stats.get("completed", 0)) > 0:
+		unlock_finaltop()
 
 
 func my_stats() -> Dictionary:

@@ -13,6 +13,8 @@ var value := 1
 var vy := 0.0
 var landed := false
 var fall := false
+# Radio (px) desde el que las monedas se acercan solas al jugador.
+const COIN_MAGNET := 260.0
 
 
 func _ready() -> void:
@@ -51,8 +53,10 @@ func is_powerup() -> bool:
 
 func _coin_motion(delta: float) -> void:
 	var p = get_tree().get_first_node_in_group("player")
-	if kind == "coin" and p and not p.dead and position.distance_to(p.position) < 70.0:
-		position += (p.position - position).normalized() * 190.0 * delta
+	# Las monedas se recogen solas: vuelan hacia el jugador (más rápido cuanto más cerca) desde media pantalla.
+	if kind == "coin" and p and not p.dead and position.distance_to(p.position) < COIN_MAGNET:
+		var pull := 200.0 + 260.0 * (1.0 - position.distance_to(p.position) / COIN_MAGNET)
+		position += (p.position - position).normalized() * pull * delta
 		base_y = position.y
 		landed = true
 		return

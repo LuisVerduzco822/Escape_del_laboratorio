@@ -184,6 +184,96 @@ router.get('/zones', wrap(async (req, res) => {
   res.json({ level: f.level, width, zones: list });
 }));
 
+// ---------- perfil de cada jugador ----------
+
+// Mejores tiempos y "dónde le costó más avanzar": para cada jugador y nivel se reparte el recorrido en
+// tramos de `width` px y se puntúa cada tramo con el tiempo que pasó ahí + sus golpes y derrotas.
+const HURT_WEIGHT = 12;   // cada vida perdida equivale a 12 s de atasco
+const DEATH_WEIGHT = 30;
+
+router.get('/profiles', wrap(async (req, res) => {
+  const width = intParam(req.query.width, { min: 40, max: 400, fallback: 100 });
+  const mode = req.query.mode === 'story' || req.query.mode === 'finaltop' ? req.query.mode : null;
+  const modeRun = mode ? ' AND r.mode = $2' : '';
+  const modeParams = mode ? [width, mode] : [width];
+
+  const [base, pos, ev] = await Promise.all([
+    pool.query(
+      `SELECT u.id, u.username,
+              count(r.id)::int AS runs,
+              count(r.id) FILTER (WHERE r.status = 'completed')::int AS completed,
+              MIN(r.play_time) FILTER (WHERE r.status = 'completed' AND r.mode = 'story') AS best_story,
+              MIN(r.play_time) FILTER (WHERE r.status = 'completed' AND r.mode = 'finaltop') AS best_finaltop,
+              COALESCE(SUM(r.play_time), 0)::float AS seconds,
+              COALESCE(SUM(r.deaths), 0)::int AS deaths,
+              MAX(r.started_at) AS last_run
+         FROM users u JOIN runs r ON r.user_id = u.id
+        WHERE true${mode ? ' AND r.mode = $1' : ''}
+        GROUP BY u.id ORDER BY u.id`, mode ? [mode] : []),
+    pool.query(
+      `SELECT p.user_id, p.level, p.phase, floor(p.x / $1::float)::int AS zone,
+              round(sum(p.dt)::numeric, 1)::float AS seconds
+         FROM run_positions p JOIN runs r ON r.id = p.run_id
+        WHERE true${modeRun}
+        GROUP BY 1, 2, 3, 4`, modeParams),
+    pool.query(
+      `SELECT e.user_id, e.level, COALESCE(round(${jnum('ph')})::int, 0) AS phase,
+              floor(${EX} / $1::numeric)::int AS zone,
+              count(*) FILTER (WHERE e.event_type = 'hurt')::int AS hurts,
+              count(*) FILTER (WHERE e.event_type = 'death')::int AS deaths
+         FROM run_events e JOIN runs r ON r.id = e.run_id
+        WHERE e.event_type IN ('hurt', 'death') AND ${HAS_XY}${modeRun}
+        GROUP BY 1, 2, 3, 4`, modeParams),
+  ]);
+
+  const players = new Map(base.rows.map((p) => [p.id, { ...p, seconds: round1(p.seconds), levels: new Map() }]));
+  const lvl = (uid, level) => {
+    const pl = players.get(uid);
+    if (!pl) return null;
+    if (!pl.levels.has(level)) pl.levels.set(level, { level, seconds: 0, boss_seconds: 0, hurts: 0, boss_hurts: 0, deaths: 0, bins: new Map() });
+    return pl.levels.get(level);
+  };
+  const bin = (l, zone) => {
+    if (!l.bins.has(zone)) l.bins.set(zone, { x0: zone * width, x1: (zone + 1) * width, seconds: 0, hurts: 0, deaths: 0 });
+    return l.bins.get(zone);
+  };
+  pos.rows.forEach((r) => {
+    const l = lvl(r.user_id, r.level);
+    if (!l) return;
+    if (r.phase === 1) { l.boss_seconds += r.seconds; return; }
+    l.seconds += r.seconds;
+    bin(l, r.zone).seconds += r.seconds;
+  });
+  ev.rows.forEach((r) => {
+    const l = lvl(r.user_id, r.level);
+    if (!l) return;
+    l.deaths += r.deaths;
+    if (r.phase === 1) { l.boss_hurts += r.hurts; return; }
+    l.hurts += r.hurts;
+    const b = bin(l, r.zone);
+    b.hurts += r.hurts;
+    b.deaths += r.deaths;
+  });
+
+  const out = [...players.values()].map((p) => {
+    const levels = [...p.levels.values()].sort((a, b) => a.level - b.level).map((l) => {
+      const bins = [...l.bins.values()].map((b) => ({ ...b, seconds: round1(b.seconds), score: round1(b.seconds + HURT_WEIGHT * b.hurts + DEATH_WEIGHT * b.deaths) }))
+        .sort((a, b) => a.x0 - b.x0);
+      const hardest = bins.slice().sort((a, b) => b.score - a.score)[0] || null;
+      return { level: l.level, seconds: round1(l.seconds), boss_seconds: round1(l.boss_seconds), hurts: l.hurts, boss_hurts: l.boss_hurts, deaths: l.deaths, hardest: hardest && hardest.score > 0 ? hardest : null, bins };
+    });
+    const worst = levels.filter((l) => l.hardest).sort((a, b) => b.hardest.score - a.hardest.score)[0] || null;
+    return {
+      id: p.id, username: p.username, runs: p.runs, completed: p.completed,
+      best_story: p.best_story, best_finaltop: p.best_finaltop, seconds: p.seconds, deaths: p.deaths, last_run: p.last_run,
+      hurts: levels.reduce((n, l) => n + l.hurts + l.boss_hurts, 0),
+      hardest: worst ? { level: worst.level, ...worst.hardest } : null,
+      levels,
+    };
+  });
+  res.json({ width, mode, players: out });
+}));
+
 // ---------- trayectorias ----------
 
 const MAX_POINTS_PER_RUN = 1200;
