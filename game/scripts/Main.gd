@@ -9,7 +9,7 @@ const ParallaxBG := preload("res://scripts/ParallaxBG.gd")
 const Crafting := preload("res://scripts/Crafting.gd")
 const FinalTop := preload("res://scripts/FinalTop.gd")
 
-const STORY := "En el laboratorio ocurrio un accidente\ny un virus se esta propagando.\n\nSolo hay una salida: fabricar el antidoto.\nRecolecta 12 ingredientes en 4 zonas\ny derrota al jefe de cada una.\n\nTienes 20 minutos de pura accion."
+const STORY := "En el laboratorio ocurrio un accidente\ny un virus se esta propagando.\n\nSolo hay una salida: fabricar el antidoto.\nRecolecta 15 ingredientes en 5 zonas\ny derrota al jefe de cada una.\n\nTienes 20 minutos de pura accion."
 
 var level: Node
 var holder: Node
@@ -189,7 +189,7 @@ func _build_how() -> void:
 	_dim(how_layer, 0.88)
 	var box := _center_box(how_layer, 6)
 	box.add_child(_label("CONTROLES", 16, Color(1.0, 0.85, 0.3)))
-	var txt := "MOVER ........ A / D  o  FLECHAS\nAPUNTAR ...... W / S + A / D (8 DIRECC.)\nSALTAR ....... ESPACIO o Z\nDISPARAR ..... J, X o CLIC IZQ.\nSUPER ........ K o V\nDASH ......... SHIFT, L o CLIC DER.\nFIJAR POS. ... CTRL o I\nPAUSA ........ ESC o P\n\nPARRY: salta, y en el aire pulsa\nSALTAR sobre un objeto ROSA.\nCada parry carga la barra de SUPER."
+	var txt := "MOVER ........ A / D  o  FLECHAS\nAPUNTAR ...... W / S + A / D (8 DIRECC.)\nSALTAR ....... ESPACIO o Z (DOBLE)\nDISPARAR ..... J, X o CLIC IZQ.\nSUPER ........ K o V\nDASH ......... SHIFT, L o CLIC DER.\nFIJAR POS. ... CTRL o I\nPAUSA ........ ESC o P\n\nPARRY: salta, y en el aire pulsa\nSALTAR sobre un objeto ROSA.\nCada parry carga la barra de SUPER."
 	var l := _label(txt, 8, Color.WHITE, 3)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	l.add_theme_constant_override("line_spacing", 4)
@@ -362,7 +362,7 @@ func _show_menu() -> void:
 		return
 	continue_btn.visible = not prog.is_empty()
 	if not prog.is_empty():
-		continue_btn.text = "CONTINUAR (NIVEL %d)" % (mini(prog["level_done"], 3) + 1)
+		continue_btn.text = "CONTINUAR (NIVEL %d)" % (mini(prog["level_done"], Cfg.LEVELS.size() - 1) + 1)
 
 
 func _show_rank(kind: String = "score") -> void:
@@ -587,7 +587,7 @@ func _continue_game() -> void:
 	end_layer.visible = false
 	_clear_level()
 	busy = false
-	_start_level(mini(prog["level_done"], 3), "collect", true)
+	_start_level(mini(prog["level_done"], Cfg.LEVELS.size() - 1), "collect", true)
 
 
 func _start_level(index: int, phase: String, card: bool, snapshot: Dictionary = {}) -> void:

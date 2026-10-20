@@ -5,8 +5,8 @@ const H := 270
 const FLOOR_Y := 192.0
 const MAX_HP := 4
 const DEBUG_KEYS := false
-# Cada nivel tiene 3 compuestos; con 4 niveles el antidoto necesita 12.
-const ING_TOTAL := 12
+# Cada nivel tiene 3 compuestos; con 5 niveles el antidoto necesita 15.
+const ING_TOTAL := 15
 
 # Opening cadence after the introduction; level 1 also waits for W/3 forward travel.
 const START_DELAYS := {"fire": 0.35, "bat": 1.5, "spore": 3.5, "bolt": 7.0, "heal": 30.0, "horde": 12.0}
@@ -21,12 +21,12 @@ const BOSS := {
 	"count": 0.8,      # multiplica la cantidad de proyectiles de cada patrón
 }
 # Vida máxima que tenían los jefes antes del reajuste: solo para validar partidas guardadas viejas.
-const LEGACY_BOSS_HP := [880.0, 940.0, 920.0, 1000.0]
+const LEGACY_BOSS_HP := [880.0, 940.0, 920.0, 1000.0, 1100.0]
 
 # Modo FINALTOP: solo jefes, uno tras otro, con el reloj corriendo. Gana el menor tiempo.
 const FINALTOP := {
 	"name": "FINALTOP",
-	"boss_hp": [800.0, 1000.0, 1350.0, 3600.0],   # el marciano (último jefe) tiene muchísima vida
+	"boss_hp": [800.0, 1000.0, 1350.0, 1700.0, 4500.0],   # la calavera (último jefe) tiene muchísima vida
 	"death_penalty": 15.0,               # segundos que suma cada derrota
 	"heart_every": 26.0,                 # un corazón cada tanto si quedan 2 vidas o menos
 	"powerups": {
@@ -190,6 +190,46 @@ const LEVELS := [
 			["NUCLEO ALIENIGENA", Color(0.5, 1.0, 0.55)],
 			["ANTENA ESTELAR", Color(1.0, 0.8, 0.35)],
 			["POLVO DE METEORITO", Color(1.0, 0.55, 0.35)],
+		],
+	},
+	{
+		"tag": "NIVEL 5",
+		"name": "LAS RUINAS",
+		"music": "background",
+		"boss_music": "boss2",
+		"collect_time": 230.0,
+		"ing_times": [20.0, 110.0, 190.0],
+		"boss_name": "LA CALAVERA",
+		"boss_hp": 820.0,
+		"boss_time": 300.0,
+		"boss_powerups": BOSS_POWERUPS,
+		"world_width": 4600.0,
+		"arena_x": 4120.0,
+		"ingredient_spots": [Vector2(884, 50), Vector2(2760, 30), Vector2(3848, 64)],
+		"platforms": [
+			# Primer tramo: saltos del laboratorio y las alcantarillas.
+			[144, 152, 96], [258, 114, 76], [330, 78, 60], [446, 132, 80],
+			[660, 150, 80], [774, 108, 64], [854, 64, 60], [944, 64, 64],
+			[1056, 126, 72], [1200, 152, 56], [1286, 110, 60], [1370, 74, 52],
+			[1462, 74, 56], [1560, 132, 72],
+			# Segundo tramo: los saltos finos de la azotea (con salto doble se pueden enlazar).
+			[1840, 150, 72], [1946, 108, 60], [2070, 66, 56], [2210, 126, 64],
+			[2430, 152, 64], [2528, 110, 52], [2618, 68, 48], [2732, 44, 56],
+			[2888, 120, 52], [3050, 152, 56], [3144, 110, 50], [3240, 66, 48],
+			[3372, 58, 56], [3510, 126, 64],
+			# Tercer tramo: la subida entre los escombros hasta la arena.
+			[3620, 150, 72], [3720, 112, 60], [3820, 78, 56], [3940, 128, 64],
+			[4040, 152, 60],
+			# La arena de la calavera conserva espacio para esquivar en el suelo.
+			[4176, 150, 66], [4290, 116, 66], [4410, 150, 66], [4516, 116, 66],
+		],
+		"spawn": {"fire": [2.0, 1.0], "bat": [3.8, 2.0], "spore": [4.6, 2.3], "bolt": 9.0},
+		"tint": Color(1.0, 0.5, 0.4),
+		"story": "La ciudad arde en ruinas.\nEl virus nacio de algo mas antiguo:\nuna Calavera gigante que despierta\nentre los escombros. Detenla.",
+		"ingredients": [
+			["HUESO ANTIGUO", Color(0.95, 0.93, 0.8)],
+			["CENIZA ARDIENTE", Color(1.0, 0.55, 0.25)],
+			["LLAMA VERDE", Color(0.5, 1.0, 0.45)],
 		],
 	},
 ]

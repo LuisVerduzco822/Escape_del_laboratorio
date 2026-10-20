@@ -42,7 +42,7 @@ func _run() -> void:
 		quit(1)
 		return
 	root.get_node("Database").start_offline()
-	for kind in 4:
+	for kind in 5:
 		root.get_node("GameManager").reset_run()
 		var level = load("res://scripts/Level.gd").new()
 		level.index = kind
@@ -59,7 +59,7 @@ func _run() -> void:
 			var medium := sample(boss, level.player, Vector2(-190, 0))
 			var far := sample(boss, level.player, Vector2(-350, 0))
 			var close_pattern := "fan" if phase == 1 else "ring"
-			var far_pattern := "aimed" if phase == 1 else ("meteors" if kind == 3 else "rain")
+			var far_pattern := "aimed" if phase == 1 else ("meteors" if kind >= 3 else "rain")
 			check(close[close_pattern] > medium[close_pattern] and medium[close_pattern] > far[close_pattern], "Close-range pattern gains priority nearby")
 			check(far[far_pattern] > close[far_pattern], "Ranged pattern gains priority at a distance")
 			# Vertical separation counts too; shifting the arena must not affect choices.

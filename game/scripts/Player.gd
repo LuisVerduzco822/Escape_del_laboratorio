@@ -17,6 +17,9 @@ const WEAPON_MUZZLE := Vector2(16.5, -3)
 const SPEED := 130.0
 const GRAVITY := 1000.0
 const JUMP_V := -390.0
+# Salto doble: un salto extra en el aire con una vuelta completa (vueltereta).
+const DOUBLE_JUMP_V := -350.0
+const FLIP_TIME := 0.5
 const BOUNCE_V := -300.0
 const DASH_SPEED := 270.0
 const DASH_TIME := 0.18
@@ -35,6 +38,9 @@ var dash_t := 0.0
 var dash_cd := 0.0
 var dash_dir := 1
 var air_dash := true
+var air_jumps := 1
+var flip_t := 0.0
+var flip_dir := 1
 var fire_cd := 0.0
 var coyote := 0.0
 var buffer := 0.0
@@ -132,6 +138,7 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor():
 		coyote = COYOTE
 		air_dash = true
+		air_jumps = 1
 	else:
 		coyote = maxf(0.0, coyote - delta)
 
@@ -161,6 +168,9 @@ func _physics_process(delta: float) -> void:
 					AudioManager.sfx("jump", -6.0)
 				buffer = 0.0
 				coyote = 0.0
+			elif air_jumps > 0:
+				_double_jump()
+				buffer = 0.0
 		if Input.is_action_just_released("jump") and velocity.y < -120.0:
 			velocity.y *= 0.45
 
@@ -186,7 +196,21 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 
+func _double_jump() -> void:
+	air_jumps -= 1
+	velocity.y = DOUBLE_JUMP_V
+	flip_t = FLIP_TIME
+	flip_dir = facing
+	Telemetry.count("jumps")
+	Telemetry.event("double_jump", _where({}))
+	action_performed.emit("double_jump")
+	AudioManager.sfx("jump", -4.0, 1.4)
+	# Anillo de aire bajo los pies al impulsarse.
+	Fx.burst(get_parent(), global_position + Vector2(0, 9), Color(0.85, 0.97, 1.0, 0.9), 10, 70.0, 0.35, 2.0)
+
+
 func _start_dash(ax: float) -> void:
+	flip_t = 0.0
 	dash_t = DASH_TIME
 	dash_cd = DASH_CD
 	dash_dir = facing if ax == 0.0 else (1 if ax > 0.0 else -1)
@@ -280,6 +304,7 @@ func _ultra() -> void:
 
 
 func _animate(ax: float) -> void:
+	_animate_flip()
 	var side := "right" if facing > 0 else "left"
 	if absf(aim.y) > absf(aim.x):
 		side = "down" if aim.y > 0.0 else "up"
@@ -290,9 +315,26 @@ func _animate(ax: float) -> void:
 		sprite.play(anim)
 
 
+# Vueltereta del salto doble: una vuelta completa en el sentido del movimiento, con un poco de encogimiento.
+func _animate_flip() -> void:
+	if flip_t > 0.0 and is_on_floor():
+		flip_t = 0.0
+	if flip_t > 0.0:
+		flip_t = maxf(0.0, flip_t - get_physics_process_delta_time())
+		var p := 1.0 - flip_t / FLIP_TIME
+		var eased := p * p * (3.0 - 2.0 * p)
+		sprite.rotation = flip_dir * TAU * eased
+		var tuck := sin(p * PI)
+		sprite.scale = Vector2(1.0 - 0.1 * tuck, 1.0 - 0.14 * tuck)
+	elif sprite.rotation != 0.0:
+		sprite.rotation = 0.0
+		sprite.scale = Vector2.ONE
+
+
 func bounce() -> void:
 	velocity.y = BOUNCE_V
 	air_dash = true
+	air_jumps = 1
 
 
 # Posición y fase en que ocurre un evento, para el mapa de comportamiento.
@@ -324,6 +366,7 @@ func hurt(source: String = "") -> void:
 
 
 func _die() -> void:
+	flip_t = 0.0
 	if dead:
 		return
 	dead = true
@@ -363,7 +406,7 @@ func _animate_death() -> void:
 
 func _weapon_hand() -> Vector2:
 	# Adam's torso is below the head, relative to the centered 16x32 frame.
-	return sprite.position + Vector2(facing * 4.0, 9.0)
+	return sprite.position + Vector2(facing * 4.0, 9.0).rotated(sprite.rotation)
 
 
 func _weapon_muzzle() -> Vector2:
@@ -390,7 +433,7 @@ func _draw() -> void:
 		return
 	var hand := _weapon_hand()
 	var tip := _weapon_muzzle()
-	var shoulder := sprite.position + Vector2(facing * 3.0, 6.0)
+	var shoulder := sprite.position + Vector2(facing * 3.0, 6.0).rotated(sprite.rotation)
 	draw_line(shoulder, hand, Color(0.95, 0.8, 0.65), 2.0)
 	draw_set_transform(hand, aim.angle(), Vector2(1.0, -1.0 if facing < 0 else 1.0))
 	draw_texture_rect_region(WEAPON_TEX, WEAPON_RECT, WEAPON_REGION)
@@ -398,6 +441,13 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	if fire_cd > FIRE_RATE - 0.06:
 		draw_circle(tip + aim * 3.0, 3.0, Color(1.0, 0.95, 0.5, 0.9))
+	if flip_t > 0.0:
+		# Estela de la vuelta: arcos que se desvanecen detrás del giro.
+		var p := 1.0 - flip_t / FLIP_TIME
+		var head := flip_dir * TAU * (p * p * (3.0 - 2.0 * p)) - PI / 2.0
+		for k in 3:
+			var a0 := head - flip_dir * (0.5 + k * 0.5)
+			draw_arc(sprite.position, 13.0 + k * 2.0, minf(a0, head), maxf(a0, head), 10, Color(0.85, 0.97, 1.0, 0.5 - k * 0.15), 2.0)
 	if locked:
 		draw_arc(Vector2(0, 3), 13.0, 0.0, TAU, 20, Color(1, 1, 1, 0.25), 1.0)
 	if weapon_power_t > 0.0:

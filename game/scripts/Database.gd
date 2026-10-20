@@ -189,10 +189,10 @@ func load_progress() -> Dictionary:
 func _valid_offline_progress(saved: Dictionary) -> bool:
 	if typeof(saved.get("level_done")) != TYPE_INT:
 		return false
-	if saved["level_done"] < 1 or saved["level_done"] > 3:
+	if saved["level_done"] < 1 or saved["level_done"] > Cfg.LEVELS.size() - 1:
 		return false
 	var flags: Variant = saved.get("ingredients")
-	if not flags is Array or flags.size() != 9 and flags.size() != Cfg.ING_TOTAL:
+	if not flags is Array or flags.size() != 9 and flags.size() != 12 and flags.size() != Cfg.ING_TOTAL:
 		return false
 	for flag in flags:
 		if typeof(flag) != TYPE_BOOL:

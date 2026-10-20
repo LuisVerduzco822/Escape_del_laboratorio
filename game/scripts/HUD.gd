@@ -112,14 +112,15 @@ func _draw_super() -> void:
 
 
 func _draw_ingredients() -> void:
-	var x0 := 480.0 - float(Cfg.ING_TOTAL) * 15.0 - 8.0
+	var step := 12.0
+	var x0 := 480.0 - float(Cfg.ING_TOTAL) * step - 8.0
 	UI.text(self, "ANTIDOTO %d/%d" % [GameManager.total_ingredients(), Cfg.ING_TOTAL], 474, 10, 8, Color(0.85, 0.95, 1.0), 2)
 	for i in Cfg.ING_TOTAL:
 		var lv := i / 3
 		var sl := i % 3
 		var info = Cfg.LEVELS[lv]["ingredients"][sl]
-		var pos := Vector2(x0 + i * 15.0 + 7.0, 28.0)
-		draw_rect(Rect2(pos.x - 7, pos.y - 11, 14, 20), Color(0, 0, 0, 0.45))
+		var pos := Vector2(x0 + i * step + 7.0, 28.0)
+		draw_rect(Rect2(pos.x - 6, pos.y - 11, 12, 20), Color(0, 0, 0, 0.45))
 		if GameManager.ingredients[i]:
 			Pickup.draw_flask(self, pos, 0.9, info[1], 1.0)
 		else:

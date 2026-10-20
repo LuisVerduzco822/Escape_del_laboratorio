@@ -43,14 +43,14 @@ func _run() -> void:
 	var cfg = root.get_node("Cfg")
 	var hp: Array = cfg.FINALTOP["boss_hp"]
 
-	check(hp.size() == 4, "FinalTop defines one HP value per boss")
-	check(hp[3] >= 2.5 * maxf(hp[0], maxf(hp[1], hp[2])), "The last boss has far more health than the others")
-	check(hp[3] >= 2000.0, "The last boss is a long fight")
+	check(hp.size() == 5, "FinalTop defines one HP value per boss")
+	check(hp[4] >= 2.5 * maxf(maxf(hp[0], hp[1]), maxf(hp[2], hp[3])), "The last boss has far more health than the others")
+	check(hp[4] >= 2000.0, "The last boss is a long fight")
 	for i in 3:
-		check(hp[i] >= 700.0 and hp[i] < hp[3], "Boss %d is a full fight but shorter than the last one" % (i + 1))
-	check(hp[0] + hp[1] + hp[2] + hp[3] >= 5000.0, "FinalTop is a long run in total")
+		check(hp[i] >= 700.0 and hp[i] < hp[4], "Boss %d is a full fight but shorter than the last one" % (i + 1))
+	check(hp[0] + hp[1] + hp[2] + hp[3] + hp[4] >= 8000.0, "FinalTop is a long run in total")
 
-	for index in 4:
+	for index in 5:
 		gm.reset_run()
 		gm.god = true
 		await fresh(index)
@@ -73,15 +73,15 @@ func _run() -> void:
 
 	# Variedad de ataques: el último jefe tiene un repertorio amplio y el marciano es el nivel 4.
 	var boss_script = load("res://scripts/Boss.gd")
-	check(cfg.LEVELS.size() == 4 and cfg.LEVELS[3]["boss_name"] == "EL MARCIANO", "Level 4 ends with the Martian")
+	check(cfg.LEVELS.size() == 5 and cfg.LEVELS[3]["boss_name"] == "EL MARCIANO" and cfg.LEVELS[4]["boss_name"] == "LA CALAVERA", "Level 4 is the Martian and level 5 the giant Skull")
 	check(boss_script.POOLS_FT[2][3].size() >= 16, "The gargoyle has a wide FinalTop repertoire in phase 3")
-	check(boss_script.POOLS_FT[3][3].size() >= 20, "The Martian has the widest FinalTop repertoire in phase 3")
+	check(boss_script.POOLS_FT[3][3].size() >= 20 and boss_script.POOLS_FT[4][3].size() >= 22, "The Martian and the Skull have wide FinalTop repertoires in phase 3")
 	var distinct := {}
-	for k in 4:
+	for k in 5:
 		for a in boss_script.POOLS_FT[k][3]:
 			distinct[a] = true
-	check(distinct.size() >= 20, "FinalTop final phases combine at least 20 distinct attacks")
-	for k in 4:
+	check(distinct.size() >= 24, "FinalTop final phases combine at least 20 distinct attacks")
+	for k in 5:
 		for ph in [1, 2, 3]:
 			for a in boss_script.POOLS[k][ph] + boss_script.POOLS_FT[k][ph]:
 				check(boss_script.ATTACK_WEIGHTS.has(a), "Attack %s has weights (boss %d, phase %d)" % [a, k + 1, ph])

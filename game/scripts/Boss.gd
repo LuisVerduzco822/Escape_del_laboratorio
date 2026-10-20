@@ -26,6 +26,12 @@ const POOLS := {
 		2: ["fan", "blink", "spiral", "wall", "strafe", "beam", "ring", "zones", "meteors", "pink"],
 		3: ["blink", "spiral", "wall", "strafe", "meteors", "ring", "beam", "zones", "bolts", "summon", "charge", "pink", "slam", "fan"],
 	},
+	# La Calavera (nivel 5): ataca de muchas maneras; la mandíbula, los ojos y los huesos son suyos.
+	4: {
+		1: ["aimed", "fan", "eyes", "bonewave", "spiral", "meteors", "homing"],
+		2: ["fan", "eyes", "bonewave", "chomp", "spiral", "wall", "strafe", "beam", "ring", "meteors", "homing", "sweep", "bounce"],
+		3: ["eyes", "bonewave", "chomp", "spiral", "wall", "strafe", "meteors", "ring", "beam", "zones", "bolts", "summon", "blink", "homing", "grid", "bounce", "curtain", "sweep", "crossfire", "pink"],
+	},
 }
 # En FINALTOP los tres primeros jefes suman ataques nuevos (espiral, muro con hueco, barrido,
 # teletransporte y meteoros) para que cada combate sea menos predecible.
@@ -50,10 +56,15 @@ const POOLS_FT := {
 		2: ["fan", "blink", "spiral", "wall", "strafe", "beam", "ring", "zones", "meteors", "pink", "homing", "grid", "bounce", "sweep", "crossfire"],
 		3: ["blink", "spiral", "wall", "strafe", "meteors", "ring", "beam", "zones", "bolts", "summon", "charge", "pink", "slam", "fan", "homing", "grid", "bounce", "curtain", "sweep", "crossfire"],
 	},
+	4: {
+		1: ["aimed", "fan", "eyes", "bonewave", "spiral", "meteors", "homing", "chomp", "sweep"],
+		2: ["fan", "eyes", "bonewave", "chomp", "spiral", "wall", "strafe", "beam", "ring", "meteors", "homing", "sweep", "bounce", "grid", "crossfire", "blink"],
+		3: ["eyes", "bonewave", "chomp", "spiral", "wall", "strafe", "meteors", "ring", "beam", "zones", "bolts", "summon", "blink", "homing", "grid", "bounce", "curtain", "sweep", "crossfire", "pink", "slam", "charge", "fan", "aimed"],
+	},
 }
-const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3), Color(0.35, 0.92, 1.0)]
-const RADII := [46.0, 44.0, 42.0, 44.0]
-const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100), Vector2(366, 102)]
+const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3), Color(0.35, 0.92, 1.0), Color(0.95, 0.92, 0.78)]
+const RADII := [46.0, 44.0, 42.0, 44.0, 58.0]
+const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100), Vector2(366, 102), Vector2(356, 104)]
 const MID_PHASE_HP := [0.83, 0.495]
 # Center-to-center distances in arena pixels. Weights are close / medium / far;
 # every unlocked attack remains possible, but effective patterns are favored.
@@ -82,6 +93,9 @@ const ATTACK_WEIGHTS := {
 	"curtain": [2.0, 4.0, 5.0],
 	"sweep": [4.0, 4.0, 2.0],
 	"crossfire": [1.0, 4.0, 6.0],
+	"eyes": [2.0, 4.0, 5.0],
+	"bonewave": [3.0, 4.0, 4.0],
+	"chomp": [5.0, 4.0, 2.0],
 }
 
 var level
@@ -398,6 +412,9 @@ func _pick_attack() -> void:
 		"curtain": _atk_curtain()
 		"sweep": _atk_sweep()
 		"crossfire": _atk_crossfire()
+		"eyes": _atk_eyes()
+		"bonewave": _atk_bonewave()
+		"chomp": _atk_chomp()
 	tw.tween_callback(_done)
 
 
@@ -551,7 +568,7 @@ func _fire_pink(y: float) -> void:
 func _atk_summon() -> void:
 	var n := _n(2 + phase)
 	for i in n:
-		tw.tween_callback(_summon.bind((kind == 1 or kind == 3) and i % 2 == 1))
+		tw.tween_callback(_summon.bind((kind == 1 or kind == 3 or kind == 4) and i % 2 == 1))
 		tw.tween_interval(0.7)
 	tw.tween_interval(0.5)
 
@@ -754,6 +771,50 @@ func _fire_crossfire() -> void:
 	AudioManager.sfx("shoot", -10.0, 1.0)
 
 
+# ---- Ataques de la Calavera ----
+
+# Ojos: cada cuenca dispara una ráfaga dirigida (primero una, luego la otra, al final las dos).
+func _atk_eyes() -> void:
+	var volleys := 2 + phase
+	for v in volleys:
+		tw.tween_callback(_fire_eyes.bind(v % 3))
+		tw.tween_interval(0.55 / sp)
+	tw.tween_interval(0.6)
+
+
+func _fire_eyes(which: int) -> void:
+	var eyes := [global_position + Vector2(-20.0, -12.0), global_position + Vector2(18.0, -12.0)]
+	var picks: Array = [0] if which == 0 else ([1] if which == 1 else [0, 1])
+	for i in picks:
+		var origin: Vector2 = eyes[i]
+		var base: float = (_target() - origin).angle()
+		for k in 3:
+			var ang: float = base + deg_to_rad(10.0) * (k - 1)
+			level.add_hazard(origin, Vector2.RIGHT.rotated(ang) * 128.0 * sp, {"col": Color(1.0, 0.45, 0.2), "radius": 4.5, "pink": phase >= 3 and k == 1 and i == 0})
+	AudioManager.sfx("shoot", -9.0, 0.7)
+
+
+# Ola de huesos: bolas que ruedan por el suelo a distintas velocidades; hay que saltarlas (o hacer salto doble).
+func _atk_bonewave() -> void:
+	var n := 3 + phase
+	for i in n:
+		tw.tween_callback(_fire_bone.bind(i))
+		tw.tween_interval(0.62 / sp)
+	tw.tween_interval(0.8)
+
+
+func _fire_bone(i: int) -> void:
+	var spd := (88.0 + 22.0 * float(i % 3)) * sp
+	level.add_hazard(Vector2(global_position.x - radius, Cfg.FLOOR_Y - 8.0), Vector2(-spd, 0), {"style": "wave", "radius": 8.0, "col": _col(), "pink": phase >= 2 and i % 4 == 3})
+	AudioManager.sfx("boom", -16.0, 1.5)
+
+
+# Mordida: la calavera embiste hacia abajo sobre el jugador y, al impactar, escupe dientes en abanico.
+func _atk_chomp() -> void:
+	_atk_slam()
+	tw.tween_callback(_fire_fan.bind(maxi(5, _n(5 + phase)), 120.0, 118.0 * sp, false))
+
+
 func _summon(pink_spore: bool = false) -> void:
 	match kind:
 		0:
@@ -762,7 +823,7 @@ func _summon(pink_spore: bool = false) -> void:
 			level.add_enemy("spore", Vector2(ox + attack_rng.randf_range(40.0, 440.0), -10.0), {"speed": 80.0, "hp": 2.0, "pink": pink_spore})
 		2:
 			level.add_enemy("bat", global_position + Vector2(-radius, 0), {"speed": 95.0, "hp": 2.0, "dir": -1})
-		3:
+		3, 4:
 			if pink_spore:
 				level.add_enemy("bat", global_position + Vector2(-radius, 0), {"speed": 100.0, "hp": 2.0, "dir": -1})
 			else:
@@ -788,6 +849,8 @@ func _draw() -> void:
 			_draw_gargoyle()
 		3:
 			_draw_martian()
+		4:
+			_draw_skull()
 
 
 func _eyes(pos_l: Vector2, pos_r: Vector2, r: float, col: Color, pupil: Color) -> void:
@@ -990,3 +1053,55 @@ func _draw_martian() -> void:
 	if phase >= 3:
 		var pulse := 0.5 + 0.5 * sin(t * 6.0)
 		draw_arc(Vector2(0, 0), 54.0 + pulse * 4.0, 0.0, TAU, 40, Color(0.4, 1.0, 0.9, 0.3 + 0.3 * pulse), 2.0)
+
+
+func _draw_skull() -> void:
+	var bone := Color(0.93, 0.9, 0.78).lerp(Color(0.95, 0.75, 0.6), (phase - 1) * 0.25)
+	var shade := bone.darkened(0.45)
+	var bob := sin(t * 1.8) * 2.0
+	var chomp := 0.0
+	if st == St.FIGHT and busy:
+		chomp = 0.5 + 0.5 * sin(t * 9.0)
+	# Cráneo
+	var cr := PackedVector2Array()
+	var cr2 := PackedVector2Array()
+	for i in 40:
+		var a := TAU * i / 40.0
+		var v := Vector2(cos(a) * 56.0, sin(a) * 50.0 - 8.0 + bob)
+		if sin(a) > 0.35:
+			v.x *= 0.78
+		cr.append(v)
+		cr2.append(v * 0.94 + Vector2(0, -0.5))
+	# Mandíbula: baja cuando ataca
+	var jaw_y := 30.0 + bob + chomp * 14.0
+	var jaw := PackedVector2Array([Vector2(-30, jaw_y), Vector2(30, jaw_y), Vector2(26, jaw_y + 22.0), Vector2(-26, jaw_y + 22.0)])
+	draw_colored_polygon(jaw, shade)
+	draw_colored_polygon(PackedVector2Array([Vector2(-28, jaw_y + 1.0), Vector2(28, jaw_y + 1.0), Vector2(24, jaw_y + 19.0), Vector2(-24, jaw_y + 19.0)]), bone.darkened(0.12))
+	for k in 6:
+		draw_rect(Rect2(-22.0 + k * 8.0, jaw_y - 5.0, 5.0, 8.0), Color(0.98, 0.96, 0.88))
+	draw_colored_polygon(cr, shade)
+	draw_colored_polygon(cr2, bone)
+	for k in 6:
+		draw_rect(Rect2(-22.0 + k * 8.0, 26.0 + bob, 5.0, 8.0 + chomp * 2.0), Color(0.98, 0.96, 0.88))
+	# Grietas
+	if phase >= 2:
+		draw_polyline(PackedVector2Array([Vector2(-8, -52 + bob), Vector2(-14, -38 + bob), Vector2(-6, -30 + bob), Vector2(-16, -18 + bob)]), shade, 2.0)
+	if phase >= 3:
+		draw_polyline(PackedVector2Array([Vector2(22, -48 + bob), Vector2(14, -34 + bob), Vector2(24, -24 + bob)]), shade, 2.0)
+	# Cuencas y fuego de los ojos (siguen al jugador)
+	var glow := Color(1.0, 0.45, 0.2) if phase < 3 else Color(0.5, 1.0, 0.4)
+	for ex in [-22.0, 20.0]:
+		var c := Vector2(ex, -12.0 + bob)
+		draw_circle(c, 15.0, Color(0.06, 0.04, 0.07))
+		draw_circle(c, 9.0 + sin(t * 8.0 + ex) * 1.2, Color(glow.r, glow.g, glow.b, 0.45))
+		draw_circle(c + look * 4.0, 4.0, glow)
+		draw_circle(c + look * 4.0, 2.0, Color(1.0, 1.0, 0.8))
+	# Nariz
+	draw_colored_polygon(PackedVector2Array([Vector2(0, 8 + bob), Vector2(-6, 22 + bob), Vector2(6, 22 + bob)]), Color(0.1, 0.07, 0.1))
+	# Llamas sobre el cráneo en la última fase
+	if phase >= 3:
+		for k in 5:
+			var fx := -36.0 + k * 18.0
+			var h := 16.0 + sin(t * 7.0 + k * 1.7) * 6.0
+			draw_colored_polygon(PackedVector2Array([Vector2(fx - 7, -48 + bob), Vector2(fx, -48 - h + bob), Vector2(fx + 7, -48 + bob)]), Color(0.5, 1.0, 0.35, 0.8))
+			draw_colored_polygon(PackedVector2Array([Vector2(fx - 3, -48 + bob), Vector2(fx, -48 - h * 0.6 + bob), Vector2(fx + 3, -48 + bob)]), Color(0.9, 1.0, 0.6, 0.9))

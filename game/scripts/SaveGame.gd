@@ -131,10 +131,10 @@ func valid(saved: Variant) -> bool:
 	for category in ["stats", "level", "player"]:
 		ok = ok and _shape(saved[category], category, samples[category])
 	if ok:
-		ok = saved.level.index in [0, 1, 2, 3] and saved.level.st in [0, 1, 3]
+		ok = saved.level.index in [0, 1, 2, 3, 4] and saved.level.st in [0, 1, 3]
 		ok = ok and saved.stats.current_level == saved.level.index and saved.level.reached_boss == (saved.level.st == 3)
 		ok = ok and saved.stats.hp > 0 and saved.stats.hp <= Cfg.MAX_HP
-		ok = ok and saved.stats.ingredients.size() in [9, Cfg.ING_TOTAL] and saved.level.ing_spawned.size() == 3
+		ok = ok and saved.stats.ingredients.size() in [9, 12, Cfg.ING_TOTAL] and saved.level.ing_spawned.size() == 3
 		for flag in saved.stats.ingredients + saved.level.ing_spawned:
 			ok = ok and flag is bool
 		for key in ["fire", "bat", "spore", "bolt", "heal", "horde"]:

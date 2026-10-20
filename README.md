@@ -1,7 +1,7 @@
 # Escape del Laboratorio
 
 Juego de acción 2D hecho en Godot 4. Un virus escapó del laboratorio: sobrevive a las oleadas de enemigos,
-recolecta los ingredientes del antídoto, derrota a un jefe en cada uno de los 4 niveles y fabrica la cura.
+recolecta los ingredientes del antídoto, derrota a un jefe en cada uno de los 5 niveles y fabrica la cura.
 
 Práctica 4: conexión a una base de datos. Todo lo que hace el jugador se guarda en **PostgreSQL**, hay un
 **leaderboard** y un **panel web local** para consultar la información.
@@ -167,14 +167,14 @@ Cada nivel tiene dos fases continuas, sin volver al menú:
 | 3 | Azotea | Gárgola Viral | 920 |
 
 Al derrotar al tercer jefe se fabrica el antídoto y se muestra tu puntuación final y tu puesto en el ranking.
-En las batallas contra **los cuatro jefes** aparecen ayudas alternadas: **Disparo x3** aumenta el daño y la
+En las batallas contra **los cinco jefes** aparecen ayudas alternadas: **Disparo x3** aumenta el daño y la
 cadencia durante 10 segundos, y la **Bomba viral** inflige 110 puntos de daño al jefe al recogerla. La primera
 aparece tras 4 segundos de combate y las siguientes cada 14 segundos de combate activo, con un solo objeto
 disponible a la vez. Cada objeto desaparece si no se recoge en 12 segundos. El potenciador no gasta su duración
 durante pausas o transiciones de fase. Si tocas la bomba durante una transición, permanece disponible hasta
 que el jefe vuelva a ser vulnerable. El guardado por fase conserva ayudas, duración y calendario de aparición juntos.
 
-Los cuatro jefes comparten la configuración `BOSS_POWERUPS` de `game/scripts/Cfg.gd`, asignada a cada nivel
+Los cinco jefes comparten la configuración `BOSS_POWERUPS` de `game/scripts/Cfg.gd`, asignada a cada nivel
 mediante `boss_powerups`. Los tiempos de aparición inicial de enemigos están en `START_DELAYS`.
 La duración de cada nivel depende del recorrido y los saltos. El fondo tiene parallax animado con efectos propios de cada nivel.
 
@@ -202,7 +202,7 @@ desde el menú; durante la partida se evitan los mensajes repetidos de instrucci
 |---|---|
 | Mover | A / D o flechas |
 | Apuntar en 8 direcciones | W / S combinadas con A / D |
-| Saltar | Espacio o Z |
+| Saltar (pulsa otra vez en el aire para el **salto doble** con vuelta) | Espacio o Z |
 | Disparar (mantener) | J, X o clic izquierdo |
 | Súper / Ultra | K o V |
 | Dash (invulnerable) | Shift, L o clic derecho |
@@ -280,3 +280,14 @@ docker-compose.yml
 - **Panel, pestaña Jugadores:** mejores tiempos (historia y FinalTop), perfil de cada jugador con un mapa por nivel (movimiento, vidas perdidas, derrotas y los 3 tramos donde más le costó)
   avanzar por nivel y botón "Mapa" que abre su mapa de calor. Endpoint: `GET /api/admin/behavior/profiles`.
 - Pruebas nuevas: `unlock_coins_test.gd`.
+
+## Nivel 5 y salto doble
+
+- **Nivel 5, "Las ruinas"**: ciudad en llamas de fondo, camino largo y una **Calavera gigante** como jefe final.
+  Ataca de muchas maneras: ojos que disparan ráfagas, ola de huesos que rueda por el suelo, mordida que embiste y
+  escupe dientes, además de espirales, muros, meteoros, orbes teledirigidos, cortinas y más. En FINALTOP es el último
+  jefe y el de más vida. El antídoto ahora necesita **15 compuestos**.
+- **Salto doble:** pulsa Saltar otra vez en el aire para un segundo impulso con una **vueltereta** (vuelta completa del
+  personaje, con estela). Se restablece al tocar el suelo o al rebotar. El parry sigue teniendo prioridad si hay un
+  objeto rosa cerca.
+- Pruebas nuevas: `double_jump_test.gd`.

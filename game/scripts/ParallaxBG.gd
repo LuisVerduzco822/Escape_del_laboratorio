@@ -66,6 +66,12 @@ func _process(delta: float) -> void:
 			if b[1] < 200.0:
 				b[1] = 270.0
 				b[0] = randf() * 480.0
+	elif level == 4:
+		for b in bubbles:
+			b[1] -= b[3] * 0.6 * delta
+			if b[1] < -6.0:
+				b[1] = 276.0
+				b[0] = randf() * 480.0
 	elif level == 2:
 		for r in rain:
 			r[0] -= r[2] * 0.25 * delta
@@ -105,6 +111,9 @@ func _draw() -> void:
 			draw_rect(Rect2(d[0], d[1], 2, 4), Color(0.5, 1.0, 0.35, 0.85))
 		for b in bubbles:
 			draw_arc(Vector2(b[0] + sin(t + b[4]) * 5.0, b[1]), b[2], 0.0, TAU, 10, Color(0.6, 1.0, 0.5, 0.4), 1.0)
+	elif level == 4:
+		for b in bubbles:
+			draw_circle(Vector2(b[0] + sin(t + b[4]) * 6.0, b[1]), b[2] * 0.8, Color(1.0, 0.55, 0.2, 0.55))
 	var travel_dir := 1.0 if scrolling else -1.0
 	_tile(far, t * 5.0 + smooth_x * 0.05 * travel_dir)
 	_tile(mid, t * 12.0 + smooth_x * 0.12 * travel_dir)

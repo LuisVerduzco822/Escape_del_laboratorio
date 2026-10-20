@@ -134,8 +134,8 @@ router.put('/progress', auth.requireUser, wrap(async (req, res) => {
   const levelDone = Number(b.level_done);
   const ints = ['parries', 'deaths', 'coins', 'score'].map((k) => Number(b[k] === undefined ? 0 : b[k]));
   const time = Number(b.play_time);
-  if (!Number.isInteger(levelDone) || levelDone < 0 || levelDone > 4 ||
-      typeof b.ingredients !== 'string' || !/^[01]{9}$|^[01]{12}$/.test(b.ingredients) ||
+  if (!Number.isInteger(levelDone) || levelDone < 0 || levelDone > 5 ||
+      typeof b.ingredients !== 'string' || !/^[01]{9}$|^[01]{12}$|^[01]{15}$/.test(b.ingredients) ||
       !Number.isFinite(time) || time < 0 || ints.some((v) => !Number.isInteger(v) || v < 0)) {
     return res.status(400).json({ error: 'Datos de progreso inválidos' });
   }

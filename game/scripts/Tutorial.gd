@@ -4,7 +4,7 @@ const TutorialHUD := preload("res://scripts/TutorialHUD.gd")
 const GATES := [240.0, 500.0, 760.0, 1020.0, 1260.0, 1500.0, 1740.0, 1980.0, 2240.0, 2500.0]
 const LESSONS := [
 	["MOVIMIENTO", "A / D para moverte", "Avanza hasta la luz verde."],
-	["SALTO", "ESPACIO para saltar", "Sube y aterriza en la plataforma iluminada."],
+	["SALTO", "ESPACIO para saltar; otra vez en el aire = vuelta", "Sube y aterriza en la plataforma iluminada."],
 	["DISPARO", "Manten J para disparar", "Destruye el blanco de contencion."],
 	["APUNTAR", "CTRL fija tu posicion; W apunta arriba", "Colocate bajo el blanco y dispara con J."],
 	["DASH", "SHIFT o CLIC DER. para un dash invulnerable", "Cruza la franja roja durante el dash."],

@@ -26,7 +26,7 @@ func _run() -> void:
 	root.get_node("Database").start_offline()
 	var gm = root.get_node("GameManager")
 	for mode in ["story", "finaltop"]:
-		for kind in 4:
+		for kind in 5:
 			gm.reset_run()
 			gm.god = true
 			var level = load("res://scripts/FinalTop.gd" if mode == "finaltop" else "res://scripts/Level.gd").new()
@@ -53,7 +53,7 @@ func _run() -> void:
 					check(not level.boss.busy, "%s boss %d phase %d: attack %s finishes" % [mode, kind + 1, ph, level.boss.last_attack])
 					level.clear_threats()
 			# Los ataques extra de FINALTOP se ejecutan uno por uno (no solo al azar).
-			for extra in ["homing", "grid", "bounce", "curtain", "sweep", "crossfire"]:
+			for extra in ["homing", "grid", "bounce", "curtain", "sweep", "crossfire", "eyes", "bonewave", "chomp"]:
 				level.boss.phase = 3
 				level.boss.last_attack = extra
 				level.boss._new_tw()

@@ -95,7 +95,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtTime = (s) => { s = Math.max(0, Math.round(Number(s) || 0)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 const fmtDate = (d) => d ? new Date(d).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '-';
-const LEVELS = { 1: 'Laboratorio', 2: 'Alcantarillas', 3: 'Azotea', 4: 'Pista de aterrizaje' };
+const LEVELS = { 1: 'Laboratorio', 2: 'Alcantarillas', 3: 'Azotea', 4: 'Pista de aterrizaje', 5: 'Ruinas' };
 
 let adminKey = sessionStorage.getItem('adminKey') || '';
 let tab = 'leaderboard';
@@ -201,7 +201,7 @@ const views = {
     const filter = { user_id: arg.user_id || '', status: arg.status || '' };
     const qs = new URLSearchParams(Object.entries(filter).filter(([, v]) => v)).toString();
     const { runs } = await getJson('/api/admin/runs?limit=100&' + qs, true);
-    const rows = runs.map((r) => `<tr class="click" data-id="${r.id}"><td>${r.id}</td><td>${esc(r.username)}</td><td>${statusBadge(r.status)}</td><td class="gold">${Number(r.score).toLocaleString('es-MX')}</td><td>${fmtTime(r.play_time)}</td><td>${r.level_reached}</td><td>${r.ingredients}/12</td><td>${r.coins}</td><td>${r.parries}</td><td>${r.deaths}</td><td>${fmtTime(r.best_streak)}</td><td>${r.continued ? 'sí' : 'no'}</td><td class="muted">${fmtDate(r.started_at)}</td></tr>`);
+    const rows = runs.map((r) => `<tr class="click" data-id="${r.id}"><td>${r.id}</td><td>${esc(r.username)}</td><td>${statusBadge(r.status)}</td><td class="gold">${Number(r.score).toLocaleString('es-MX')}</td><td>${fmtTime(r.play_time)}</td><td>${r.level_reached}</td><td>${r.ingredients}/15</td><td>${r.coins}</td><td>${r.parries}</td><td>${r.deaths}</td><td>${fmtTime(r.best_streak)}</td><td>${r.continued ? 'sí' : 'no'}</td><td class="muted">${fmtDate(r.started_at)}</td></tr>`);
     $('#view').innerHTML = `<h2>Partidas</h2>
       <div class="tabs"><select id="fStatus"><option value="">Todos los estados</option><option value="completed">Completadas</option><option value="abandoned">Abandonadas</option><option value="in_progress">En curso</option></select>
       ${filter.user_id ? `<span class="badge">Jugador #${esc(filter.user_id)}</span><button class="btn" id="fClear">Quitar filtro</button>` : ''}</div>
@@ -241,7 +241,7 @@ async function showRun(id) {
   d.collectibles.forEach((c) => { const k = `${c.kind}: ${c.name}`; coll[k] = (coll[k] || 0) + c.value; });
   const evRows = d.events.map((e) => `<tr><td>${fmtTime(e.game_time)}</td><td>${e.level ? esc(LEVELS[e.level] || e.level) : '-'}</td><td class="pink">${esc(e.event_type)}</td><td class="muted">${esc(JSON.stringify(e.data))}</td></tr>`);
   $('#detailBody').innerHTML = `<h2>Partida #${r.id} · ${esc(r.username)} ${statusBadge(r.status)}</h2>
-    <div class="kv">${kv('Puntuación', Number(r.score).toLocaleString('es-MX'))}${kv('Tiempo de juego', fmtTime(r.play_time))}${kv('Mejor racha sin daño', fmtTime(r.best_streak))}${kv('Nivel alcanzado', r.level_reached)}${kv('Ingredientes', r.ingredients + '/12')}${kv('Monedas', r.coins)}${kv('Parrys', r.parries)}${kv('Derrotas', r.deaths)}${kv('Disparos', r.shots)}${kv('Saltos', r.jumps)}${kv('Dashes', r.dashes)}${kv('Súper / Ultra', r.supers + ' / ' + r.ultras)}${kv('Daño recibido', r.damage_taken)}${kv('Enemigos vencidos', r.enemies_killed)}${kv('Jefes derrotados', r.bosses_defeated)}${kv('Inicio', fmtDate(r.started_at))}${kv('Fin', fmtDate(r.ended_at))}</div>
+    <div class="kv">${kv('Puntuación', Number(r.score).toLocaleString('es-MX'))}${kv('Tiempo de juego', fmtTime(r.play_time))}${kv('Mejor racha sin daño', fmtTime(r.best_streak))}${kv('Nivel alcanzado', r.level_reached)}${kv('Ingredientes', r.ingredients + '/15')}${kv('Monedas', r.coins)}${kv('Parrys', r.parries)}${kv('Derrotas', r.deaths)}${kv('Disparos', r.shots)}${kv('Saltos', r.jumps)}${kv('Dashes', r.dashes)}${kv('Súper / Ultra', r.supers + ' / ' + r.ultras)}${kv('Daño recibido', r.damage_taken)}${kv('Enemigos vencidos', r.enemies_killed)}${kv('Jefes derrotados', r.bosses_defeated)}${kv('Inicio', fmtDate(r.started_at))}${kv('Fin', fmtDate(r.ended_at))}</div>
     <div class="box"><h3>Coleccionables</h3>${bars(Object.entries(coll).map(([label, value]) => ({ label, value })))}</div>
     <div class="box"><h3>Línea de tiempo (${d.events.length} eventos)</h3><div class="scroll" style="max-height:300px; overflow-y:auto">${table(['Tiempo', 'Nivel', 'Evento', 'Datos'], evRows)}</div></div>`;
   $('#detail').showModal();
