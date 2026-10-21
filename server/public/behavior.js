@@ -15,7 +15,7 @@
   };
   const SOURCES = {
     fireball: 'Bola de fuego', bat: 'Murciélago', spore: 'Espora', rayo: 'Rayo', boss: 'Contacto con el jefe',
-    boss_shot: 'Proyectil del jefe', boss_zone: 'Zona de ataque del jefe', desconocido: 'Sin dato (versión anterior)',
+    boss_shot: 'Proyectil del jefe', robot: 'Robot (contacto)', drone: 'Dron (contacto)', robot_shot: 'Bala de robot/dron', spike: 'Pinchos', saw: 'Sierra', laser: 'Láser', boss_zone: 'Zona de ataque del jefe', desconocido: 'Sin dato (versión anterior)',
   };
   const srcName = (s) => SOURCES[s] || s;
 

@@ -53,7 +53,7 @@ func _run() -> void:
 					check(not level.boss.busy, "%s boss %d phase %d: attack %s finishes" % [mode, kind + 1, ph, level.boss.last_attack])
 					level.clear_threats()
 			# Los ataques extra de FINALTOP se ejecutan uno por uno (no solo al azar).
-			for extra in ["homing", "grid", "bounce", "curtain", "sweep", "crossfire", "eyes", "bonewave", "chomp"]:
+			for extra in ["homing", "grid", "bounce", "curtain", "sweep", "crossfire", "eyes", "bonewave", "chomp", "beat", "pillars", "snipe", "mines", "snake", "lanes"]:
 				level.boss.phase = 3
 				level.boss.last_attack = extra
 				level.boss._new_tw()

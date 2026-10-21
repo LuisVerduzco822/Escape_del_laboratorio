@@ -250,6 +250,7 @@ func remaining_route(index: int) -> void:
 	for key in level.cd:
 		level.cd[key] = 9999.0
 	level.st = level.S.COLLECT
+	level.next_ambush = 1e9
 	await frames(5)
 	print("TRAVERSING LEVEL ", index + 1)
 	await grab(index, 0)
@@ -257,6 +258,7 @@ func remaining_route(index: int) -> void:
 	await picture("level%d-first" % (index + 1))
 	check(level.view_left > 600.0 and level.bg.position.x == level.cam.position.x, "Camera and themed background follow the extended route")
 	# Trigger the actual spawn schedulers after moving beyond the original screen.
+	level.next_ambush = 1e9   # la emboscada también puede traer esporas; aquí se prueba solo el programador
 	level.cd.spore = 0.0
 	level._collect(0.01)
 	var spores := get_nodes_in_group("enemy").filter(func(n): return n.kind == "spore")

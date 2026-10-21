@@ -47,10 +47,14 @@ func _draw() -> void:
 		var a := 0.12 + 0.18 * (0.5 + 0.5 * sin(t * 28.0))
 		draw_rect(r, Color(col.r, col.g, col.b, a))
 		draw_rect(r, Color(col.r, col.g, col.b, 0.8), false, 1.0)
+		# marcas de compás: barras que se cierran hacia el centro hasta el golpe
+		var inset := (1.0 - p) * minf(r.size.x, r.size.y) * 0.6
+		draw_rect(r.grow(-inset * 0.0 + (1.0 - p) * 6.0), Color(col, 0.35 * (1.0 - p)), false, 1.5)
 		var h := r.size.y * p
 		draw_rect(Rect2(r.position.x, r.position.y + r.size.y - h, r.size.x, 2.0), Color(1, 1, 1, 0.6))
 	else:
 		var k := 1.0 - (t - warn) / active
+		draw_rect(r.grow((1.0 - k) * 8.0), Color(col, 0.18 * k))
 		draw_rect(r, Color(col.r, col.g, col.b, 0.55 + 0.4 * k))
 		var inner := Rect2(r.position + Vector2(r.size.x * 0.2, 0), Vector2(r.size.x * 0.6, r.size.y))
 		if r.size.x < r.size.y:

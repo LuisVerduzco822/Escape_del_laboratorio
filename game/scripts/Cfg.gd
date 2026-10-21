@@ -9,6 +9,7 @@ const DEBUG_KEYS := false
 const ING_TOTAL := 15
 # Las pruebas automáticas de recorrido lo apagan para no tener que saltar cada caja.
 var boxes_enabled := true
+const ENEMY_INTERVAL := 0.72   # menor = más enemigos (los intervalos de aparición se multiplican por esto)
 
 # Opening cadence after the introduction; level 1 also waits for W/3 forward travel.
 const START_DELAYS := {"fire": 0.35, "bat": 1.5, "spore": 3.5, "bolt": 7.0, "heal": 30.0, "horde": 12.0}

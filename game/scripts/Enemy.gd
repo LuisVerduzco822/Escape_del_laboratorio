@@ -2,7 +2,8 @@ extends Area2D
 
 const FIRE_TEX := preload("res://assets/enemies/Fireball.png")
 const Pickup := preload("res://scripts/Pickup.gd")
-const POINTS := {"fireball": 100, "bat": 150, "spore": 200}
+const Hazard := preload("res://scripts/Hazard.gd")
+const POINTS := {"fireball": 100, "bat": 150, "spore": 200, "robot": 250, "drone": 220}
 const SPAWN_TIME := 0.6
 
 var kind := "fireball"
@@ -20,6 +21,11 @@ var bound_l := -30.0
 var bound_r := 510.0
 var grounded := false
 var fall_velocity := Vector2.ZERO
+# Robots y drones: ciclo de ataque (0 avanza, 1 carga con el ojo rojo, 2 dispara ráfaga).
+var phase := 0
+var phase_t := 0.0
+var shots_left := 0
+var shot_gap := 0.0
 
 
 func _ready() -> void:
@@ -43,6 +49,16 @@ func _ready() -> void:
 		if pink:
 			sprite.modulate = Color(1.0, 0.55, 0.9)
 		add_child(sprite)
+	elif kind == "robot":
+		var r2 := RectangleShape2D.new()
+		r2.size = Vector2(16, 24)
+		shape = r2
+		phase_t = randf_range(0.6, 1.4)
+	elif kind == "drone":
+		var c2 := CircleShape2D.new()
+		c2.radius = 8.0
+		shape = c2
+		phase_t = randf_range(0.8, 1.6)
 	else:
 		var c := CircleShape2D.new()
 		c.radius = 9.0
@@ -86,8 +102,64 @@ func _physics_process(delta: float) -> void:
 			_bounce()
 		"spore":
 			_move_spore(delta * entrance_speed)
+		"robot", "drone":
+			if age >= SPAWN_TIME:
+				_shooter(delta)
 	_update_appearance()
 	queue_redraw()
+
+
+# Robot: camina hacia el jugador, se planta, carga (ojo rojo) y dispara una ráfaga que se esquiva saltando.
+# Dron: flota a media altura y dispara tiros apuntados tras avisar con un destello.
+func _shooter(delta: float) -> void:
+	var player = get_tree().get_first_node_in_group("player")
+	var target: Vector2 = player.global_position if player and not player.dead else global_position + Vector2(dir * 100.0, 0.0)
+	var to_x := target.x - global_position.x
+	if phase != 2 or kind == "drone":
+		dir = 1 if to_x > 0.0 else -1
+	phase_t -= delta
+	if kind == "drone":
+		position.y = base_y + sin(age * 2.4 + wobble) * 10.0
+		if phase == 0:
+			var want_x := target.x - dir * 110.0 if absf(to_x) > 150.0 else global_position.x
+			position.x = move_toward(position.x, clampf(want_x, bound_l, bound_r), speed * 0.6 * delta)
+	elif phase == 0:
+		if absf(to_x) > 150.0:
+			position.x = clampf(position.x + dir * speed * 0.55 * delta, bound_l, bound_r)
+	if phase == 0 and phase_t <= 0.0:
+		phase = 1
+		phase_t = 0.65
+		AudioManager.sfx("tick", -10.0, 1.6)
+	elif phase == 1 and phase_t <= 0.0:
+		phase = 2
+		shots_left = 3 if kind == "robot" else 1
+		shot_gap = 0.0
+	elif phase == 2:
+		shot_gap -= delta
+		if shot_gap <= 0.0 and shots_left > 0:
+			_fire(target)
+			shots_left -= 1
+			shot_gap = 0.22
+		if shots_left <= 0 and shot_gap <= 0.0:
+			phase = 0
+			phase_t = randf_range(1.3, 2.2) if kind == "robot" else randf_range(1.8, 2.6)
+
+
+func _fire(target: Vector2) -> void:
+	var h := Hazard.new()
+	h.src = "robot_shot"
+	h.col = Color(1.0, 0.25, 0.2)
+	h.radius = 3.5
+	var muzzle := global_position + Vector2(dir * 11.0, -3.0 if kind == "robot" else 4.0)
+	h.position = muzzle
+	var bullet_speed := 125.0 + speed * 0.25
+	if kind == "drone":
+		h.vel = (target + Vector2(0, -4) - muzzle).normalized() * bullet_speed
+	else:
+		h.vel = Vector2(dir * bullet_speed, 0.0)   # a ras de suelo: se salta
+	get_parent().add_child(h)
+	AudioManager.sfx("shoot", -16.0)
+	Fx.burst(get_parent(), muzzle, Color(1.0, 0.5, 0.3), 3, 50.0, 0.2, 1.5)
 
 
 func _prepare_spore_fall() -> void:
@@ -195,6 +267,8 @@ func _color() -> Color:
 			return Color(1.0, 0.55, 0.15)
 		"bat":
 			return Color(0.65, 0.4, 0.95)
+		"robot", "drone":
+			return Color(1.0, 0.3, 0.25)
 	return Color(0.5, 0.95, 0.3)
 
 
@@ -243,6 +317,10 @@ func _draw() -> void:
 		draw_circle(Vector2(2, -1), 1.5, Color(1, 0.9, 0.3))
 		draw_colored_polygon(PackedVector2Array([Vector2(-4, -5), Vector2(-3, -9), Vector2(-1, -5)]), body)
 		draw_colored_polygon(PackedVector2Array([Vector2(4, -5), Vector2(3, -9), Vector2(1, -5)]), body)
+	elif kind == "robot":
+		_draw_robot()
+	elif kind == "drone":
+		_draw_drone()
 	elif kind == "spore":
 		var c := Color(0.45, 0.9, 0.3) if not pink else Color(1.0, 0.5, 0.85)
 		var spin := age * (4.0 if grounded else 2.0) * (1.0 if dir >= 0 else -1.0)
@@ -253,3 +331,46 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, 6.0, c)
 		draw_circle(Vector2(-2, -2), 2.0, Color(1, 1, 0.8, 0.85))
 		draw_circle(Vector2(1.5, 2), 1.2, Color(0.2, 0.5, 0.15))
+
+
+func _eye_color() -> Color:
+	if phase == 1:
+		return Color(1, 0.15, 0.1) if int(age * 16.0) % 2 == 0 else Color(1, 0.8, 0.7)
+	return Color(1.0, 0.35, 0.25) if phase == 2 else Color(1.0, 0.75, 0.2)
+
+
+func _draw_robot() -> void:
+	var f := float(dir)
+	var step := sin(age * 9.0) * 2.0 if phase == 0 else 0.0
+	var steel := Color(0.42, 0.46, 0.55) if not pink else Color(0.85, 0.5, 0.75)
+	# piernas
+	draw_rect(Rect2(-6, 6, 4, 6 + step), steel.darkened(0.4))
+	draw_rect(Rect2(2, 6, 4, 6 - step), steel.darkened(0.4))
+	draw_rect(Rect2(-8, 11 + step, 7, 2), Color(0.15, 0.15, 0.2))
+	draw_rect(Rect2(1, 11 - step, 7, 2), Color(0.15, 0.15, 0.2))
+	# torso
+	draw_rect(Rect2(-8, -4, 16, 12), steel.darkened(0.25))
+	draw_rect(Rect2(-7, -3, 14, 10), steel)
+	draw_rect(Rect2(-5, 1, 10, 2), Color(0.2, 0.9, 1.0, 0.8))
+	# cabeza + ojo
+	draw_rect(Rect2(-6, -12, 12, 8), steel.darkened(0.15))
+	draw_rect(Rect2(-5, -11, 10, 6), steel.lightened(0.1))
+	draw_rect(Rect2(f * 1.0 - 2.0 + f * 2.0, -9, 4, 3), _eye_color())
+	draw_line(Vector2(0, -12), Vector2(0, -16), Color(0.7, 0.7, 0.8), 1.0)
+	draw_circle(Vector2(0, -16.5), 1.5, Color(1, 0.3, 0.25) if int(age * 4.0) % 2 == 0 else Color(0.5, 0.1, 0.1))
+	# brazo-cañón
+	draw_rect(Rect2(f * 6.0 - (0.0 if dir > 0 else 9.0), -2, 9, 4), Color(0.2, 0.22, 0.28))
+	if phase == 1:
+		draw_circle(Vector2(f * 15.0, 0), 2.0 + sin(age * 30.0), Color(1, 0.3, 0.2, 0.9))
+
+
+func _draw_drone() -> void:
+	var steel := Color(0.4, 0.44, 0.54) if not pink else Color(0.85, 0.5, 0.75)
+	var blades := sin(age * 40.0) * 9.0
+	draw_line(Vector2(-blades, -9), Vector2(blades, -9), Color(0.8, 0.85, 0.95), 1.5)
+	draw_line(Vector2(0, -9), Vector2(0, -5), Color(0.5, 0.5, 0.6), 1.5)
+	draw_circle(Vector2.ZERO, 8.0, steel.darkened(0.4))
+	draw_circle(Vector2.ZERO, 7.0, steel)
+	draw_circle(Vector2(dir * 2.0, 0), 3.5, Color(0.1, 0.1, 0.15))
+	draw_circle(Vector2(dir * 2.0, 0), 2.2, _eye_color())
+	draw_rect(Rect2(-3, 6, 6, 3), Color(0.2, 0.22, 0.28))

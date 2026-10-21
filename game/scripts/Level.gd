@@ -33,6 +33,9 @@ var fail_t := 0.0
 var reached_boss := false
 var ing_spawned := [false, false, false]
 var cd := {}
+var shade_mat: ShaderMaterial
+var beat_t := 0.0
+var next_ambush := 520.0
 var view_left := 0.0
 var warning_view_start := 0.0
 var arena_x := 0.0
@@ -82,6 +85,18 @@ func _ready() -> void:
 	cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT
 	add_child(cam)
 	cam.make_current()
+	var polish := CanvasLayer.new()
+	polish.layer = 5
+	add_child(polish)
+	var shade := ColorRect.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://assets/shaders/polish.gdshader")
+	mat.set_shader_parameter("tint", [Vector3(1.0, 1.0, 1.0), Vector3(1.0, 0.98, 1.04), Vector3(1.04, 0.98, 0.96), Vector3(0.96, 1.0, 1.05), Vector3(1.06, 0.97, 0.92)][clampi(index, 0, 4)])
+	shade.material = mat
+	shade_mat = mat
+	polish.add_child(shade)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -287,7 +302,7 @@ func drop_ingredient(_slot: int, _pos: Vector2) -> void:
 
 
 func _can_spawn() -> bool:
-	return get_tree().get_nodes_in_group("enemy").size() < 4 + index
+	return get_tree().get_nodes_in_group("enemy").size() < 9 + index
 
 
 func clear_threats() -> void:
@@ -304,6 +319,11 @@ func boss_left() -> float:
 
 
 func _process(_delta: float) -> void:
+	# Pulso al compás (120 bpm): un destello suave en la pantalla, más fuerte con los jefes.
+	beat_t += _delta
+	if shade_mat:
+		var ph := fmod(beat_t, 0.5) / 0.5
+		shade_mat.set_shader_parameter("pulse", pow(1.0 - ph, 3.0) * (1.0 if reached_boss or start_phase == "boss" else 0.45))
 	if cam:
 		_update_camera()
 	if bg and player:
@@ -405,18 +425,29 @@ func _collect(delta: float) -> void:
 			return
 		enemies_started = true
 	_tick_horde(delta)
+	if scrolling and player.position.x >= next_ambush and next_ambush < arena_x - 300.0:
+		next_ambush += 520.0
+		_ambush(p)
 	cd["fire"] -= delta
 	if cd["fire"] <= 0.0:
-		cd["fire"] = lerpf(sp["fire"][0], sp["fire"][1], p) * randf_range(0.8, 1.25)
+		cd["fire"] = lerpf(sp["fire"][0], sp["fire"][1], p) * randf_range(0.8, 1.25) * Cfg.ENEMY_INTERVAL
 		_spawn_fireball(p)
 	cd["bat"] -= delta
 	if cd["bat"] <= 0.0:
-		cd["bat"] = lerpf(sp["bat"][0], sp["bat"][1], p) * randf_range(0.8, 1.25)
+		cd["bat"] = lerpf(sp["bat"][0], sp["bat"][1], p) * randf_range(0.8, 1.25) * Cfg.ENEMY_INTERVAL
 		_spawn_bat(p)
+	cd["robot"] = float(cd.get("robot", 4.0)) - delta
+	if cd["robot"] <= 0.0:
+		cd["robot"] = lerpf(7.5 - 0.7 * index, 4.2 - 0.4 * index, p) * randf_range(0.8, 1.25) * Cfg.ENEMY_INTERVAL
+		_spawn_robot(p)
+	cd["drone"] = float(cd.get("drone", 9.0)) - delta
+	if cd["drone"] <= 0.0 and index >= 1:
+		cd["drone"] = lerpf(11.0 - index, 6.0 - 0.5 * index, p) * randf_range(0.8, 1.25) * Cfg.ENEMY_INTERVAL
+		_spawn_drone(p)
 	if sp["spore"].size() > 0:
 		cd["spore"] -= delta
 		if cd["spore"] <= 0.0:
-			cd["spore"] = lerpf(sp["spore"][0], sp["spore"][1], p) * randf_range(0.8, 1.25)
+			cd["spore"] = lerpf(sp["spore"][0], sp["spore"][1], p) * randf_range(0.8, 1.25) * Cfg.ENEMY_INTERVAL
 			_spawn_spore(p)
 	if sp["bolt"] > 0.0:
 		cd["bolt"] -= delta
@@ -429,8 +460,8 @@ func _collect(delta: float) -> void:
 		_spawn_heal()
 	cd["horde"] -= delta
 	if cd["horde"] <= 0.0:
-		cd["horde"] = 45.0
-		horde_remaining = 7
+		cd["horde"] = 32.0
+		horde_remaining = 10
 		horde_wait = 0.0
 		horde_p = p
 	if not scrolling and collect_t >= total and GameManager.level_ingredients(index) >= 3:
@@ -455,6 +486,42 @@ func _spawn_bat(p: float) -> void:
 		return
 	var x := minf(arena_x - 25.0, view_left + Cfg.W - 20.0) if scrolling else 500.0
 	add_enemy("bat", Vector2(x, randf_range(70.0, 150.0)), {"speed": 70.0 + 30.0 * p + 8.0 * index, "hp": 2.0, "pink": randf() < 0.1})
+
+
+# Emboscada: cada ~500 px de recorrido aparece un grupo mezclado por delante del jugador.
+func _ambush(p: float) -> void:
+	var front := minf(arena_x - 40.0, view_left + Cfg.W - 20.0)
+	var kinds := ["robot", "bat", "fireball", "robot", "drone", "spore"]
+	var n := 3 + mini(index, 2)
+	for i in n:
+		var k: String = kinds[(i + index + int(next_ambush / 520.0)) % kinds.size()]
+		if k == "drone" and index == 0:
+			k = "bat"
+		match k:
+			"robot":
+				add_enemy("robot", Vector2(front - i * 30.0, Cfg.FLOOR_Y - 13.0), {"speed": 50.0 + 5.0 * index, "hp": 3.0, "dir": -1})
+			"drone":
+				add_enemy("drone", Vector2(front - i * 24.0, randf_range(62.0, 105.0)), {"speed": 75.0, "hp": 2.0, "dir": -1})
+			"bat":
+				add_enemy("bat", Vector2(front - i * 24.0, randf_range(70.0, 150.0)), {"speed": 78.0 + 8.0 * index, "hp": 2.0})
+			"fireball":
+				add_enemy("fireball", Vector2(front, Cfg.FLOOR_Y - 9.0), {"speed": 100.0 + 12.0 * index, "dir": -1})
+			_:
+				add_enemy("spore", Vector2(front - 60.0 - i * 20.0, -10.0), {"speed": 65.0, "hp": 2.0, "dir": -1})
+
+
+func _spawn_robot(p: float) -> void:
+	if not _can_spawn():
+		return
+	var x := minf(arena_x - 30.0, view_left + Cfg.W - 24.0) if scrolling else 470.0
+	add_enemy("robot", Vector2(x, Cfg.FLOOR_Y - 13.0), {"speed": 48.0 + 14.0 * p + 5.0 * index, "hp": 3.0, "dir": -1, "pink": randf() < 0.1})
+
+
+func _spawn_drone(p: float) -> void:
+	if not _can_spawn():
+		return
+	var x := minf(arena_x - 30.0, view_left + Cfg.W - 24.0) if scrolling else 470.0
+	add_enemy("drone", Vector2(x, randf_range(62.0, 105.0)), {"speed": 70.0 + 20.0 * p, "hp": 2.0, "dir": -1, "pink": randf() < 0.1})
 
 
 func _spawn_spore(p: float) -> void:
