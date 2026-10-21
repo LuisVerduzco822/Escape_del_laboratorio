@@ -349,4 +349,29 @@ router.get('/leaderboard', wrap(async (req, res) => {
   res.json({ mode: 'story', type, scope, entries: rows.map((r, i) => ({ rank: i + 1, ...r })) });
 }));
 
+// Mejor tiempo para completar cada nivel (solo ese nivel), modo Historia.
+const LEVEL_COUNT = 5;
+router.get('/leaderboard/levels', wrap(async (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 20);
+  const { rows } = await pool.query(
+    `SELECT level, username, level_time, created_at FROM (
+        SELECT DISTINCT ON (e.level, e.user_id)
+               e.level, u.username, (e.data->>'level_time')::float AS level_time, e.created_at
+          FROM run_events e
+          JOIN users u ON u.id = e.user_id
+          JOIN runs r ON r.id = e.run_id
+         WHERE e.event_type = 'level_complete' AND jsonb_typeof(e.data->'level_time') = 'number'
+           AND r.mode = 'story' AND e.level BETWEEN 1 AND $1
+         ORDER BY e.level, e.user_id, (e.data->>'level_time')::float ASC
+     ) best
+     ORDER BY level, level_time ASC`,
+    [LEVEL_COUNT]
+  );
+  const levels = Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1).map((level) => ({
+    level,
+    entries: rows.filter((r) => r.level === level).slice(0, limit).map((r, i) => ({ rank: i + 1, username: r.username, level_time: r.level_time, at: r.created_at })),
+  }));
+  res.json({ mode: 'story', levels });
+}));
+
 module.exports = router;
