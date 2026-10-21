@@ -230,8 +230,8 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 5",
 		"name": "LAS RUINAS",
-		"music": "background",
-		"boss_music": "boss2",
+		"music": "cinders",        # "Cinders of the Spire", también en el combate con la Calavera
+		"boss_music": "cinders",
 		"collect_time": 320.0,
 		"ing_times": [28.0, 153.0, 264.0],
 		"boss_name": "LA CALAVERA",

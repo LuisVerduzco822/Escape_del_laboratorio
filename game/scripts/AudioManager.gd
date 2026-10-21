@@ -63,9 +63,13 @@ func play_music(name: String) -> void:
 	if name == current and music.playing:
 		return
 	current = name
-	var s := _load("music_%s.wav" % name)
+	# El lobby (menú, login y taller) suena con "Containment Lockdown".
+	var file := ("containment" if name == "menu" else name)
+	var s := _load("music_%s.mp3" % file) if ResourceLoader.exists(DIR + "music_%s.mp3" % file) else _load("music_%s.wav" % file)
 	if s == null:
 		return
+	if s is AudioStreamMP3:
+		(s as AudioStreamMP3).loop = true
 	if s is AudioStreamWAV:
 		var w := s as AudioStreamWAV
 		w.loop_mode = AudioStreamWAV.LOOP_FORWARD
