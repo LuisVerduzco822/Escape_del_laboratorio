@@ -209,6 +209,7 @@ desde el menú; durante la partida se evitan los mensajes repetidos de instrucci
 | Fijar posición | Ctrl o I |
 | Bajar de una plataforma | S + Saltar |
 | Pausa | Esc o P |
+| Pantalla completa / ventana | F11 o Alt+Enter |
 
 **Parry:** salta y pulsa Saltar otra vez en el aire sobre un objeto **rosa** (son inofensivos al contacto).
 **Súper:** con 50 de barra, rayo perforante; con 100, un Ultra que borra proyectiles y enemigos.
@@ -291,3 +292,10 @@ docker-compose.yml
   personaje, con estela). Se restablece al tocar el suelo o al rebotar. El parry sigue teniendo prioridad si hay un
   objeto rosa cerca.
 - Pruebas nuevas: `double_jump_test.gd`.
+
+## Cajas y niveles largos
+
+- Los 5 niveles son más largos (más tramos entre compuestos y más arena de jefe).
+- **Cajas negras**: obstáculo sólido, no se rompen; hay que saltarlas.
+- **Cajas azules**: se destruyen con 4 disparos y sueltan 2 monedas; las cajas apiladas encima caen al romperse la de abajo.
+- La ventana arranca en pantalla completa (F11 o Alt+Enter alterna con ventana).

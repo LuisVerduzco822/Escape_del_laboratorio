@@ -51,6 +51,14 @@ func _on_area(a: Area2D) -> void:
 func _on_body(_b: Node) -> void:
 	if done:
 		return
+	if _b.has_method("take_damage"):
+		# Cajas: las azules se rompen a disparos, las negras no.
+		var absorbed: bool = _b.take_damage(damage)
+		Fx.burst(get_parent(), global_position, Color(0.7, 0.85, 1.0) if absorbed else Color(0.6, 0.6, 0.7), 4, 55.0, 0.25, 2.0)
+		if kind in ["normal", "boost"] or not absorbed:
+			done = true
+			queue_free()
+		return
 	Fx.burst(get_parent(), global_position, Color(0.9, 0.9, 1.0), 3, 40.0, 0.2, 1.5)
 	if kind in ["normal", "boost"]:
 		done = true

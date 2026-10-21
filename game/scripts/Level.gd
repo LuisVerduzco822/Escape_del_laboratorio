@@ -11,6 +11,7 @@ const Hazard := preload("res://scripts/Hazard.gd")
 const Zone := preload("res://scripts/Zone.gd")
 const Enemy := preload("res://scripts/Enemy.gd")
 const Pickup := preload("res://scripts/Pickup.gd")
+const Box := preload("res://scripts/Box.gd")
 const ParallaxBG := preload("res://scripts/ParallaxBG.gd")
 const HUD := preload("res://scripts/HUD.gd")
 const UI := preload("res://scripts/UI.gd")
@@ -107,6 +108,41 @@ func _ready() -> void:
 					_spawn_ingredient(slot)
 
 
+func _build_boxes() -> void:
+	if not Cfg.boxes_enabled or start_phase == "boss" or is_tutorial:
+		return
+	for entry in data.get("boxes", []):
+		var x: float = entry[0]
+		var kinds: Array = entry[1]
+		for i in kinds.size():
+			var b := Box.new()
+			b.kind = "blue" if kinds[i] == "b" else "black"
+			b.level = self
+			b.position = Vector2(x, Cfg.FLOOR_Y - Box.SIZE * (i + 0.5))
+			add_child(b)
+
+
+# Al romper una caja, las que estaban encima caen hasta apoyarse en el suelo o en otra caja.
+func _settle_boxes() -> void:
+	var columns := {}
+	for b in get_tree().get_nodes_in_group("box"):
+		if b.is_queued_for_deletion() or b.get_parent() != self:
+			continue
+		var key := int(round(b.position.x))
+		if not columns.has(key):
+			columns[key] = []
+		columns[key].append(b)
+	for key in columns:
+		var col: Array = columns[key]
+		col.sort_custom(func(a, c): return a.position.y > c.position.y)
+		for i in col.size():
+			var target_y := Cfg.FLOOR_Y - Box.SIZE * (i + 0.5)
+			var bx: Node2D = col[i]
+			if absf(bx.position.y - target_y) > 0.5:
+				var tw := bx.create_tween()
+				tw.tween_property(bx, "position:y", target_y, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
 func _build_world() -> void:
 	var ground := StaticBody2D.new()
 	ground.collision_layer = 1
@@ -121,6 +157,7 @@ func _build_world() -> void:
 		wall.position = Vector2(x, 100)
 		_box(wall, Vector2(20, 900), false)
 		add_child(wall)
+	_build_boxes()
 	for p in data["platforms"]:
 		var plat := StaticBody2D.new()
 		plat.collision_layer = 2

@@ -189,7 +189,7 @@ func _build_how() -> void:
 	_dim(how_layer, 0.88)
 	var box := _center_box(how_layer, 6)
 	box.add_child(_label("CONTROLES", 16, Color(1.0, 0.85, 0.3)))
-	var txt := "MOVER ........ A / D  o  FLECHAS\nAPUNTAR ...... W / S + A / D (8 DIRECC.)\nSALTAR ....... ESPACIO o Z (DOBLE)\nDISPARAR ..... J, X o CLIC IZQ.\nSUPER ........ K o V\nDASH ......... SHIFT, L o CLIC DER.\nFIJAR POS. ... CTRL o I\nPAUSA ........ ESC o P\n\nPARRY: salta, y en el aire pulsa\nSALTAR sobre un objeto ROSA.\nCada parry carga la barra de SUPER."
+	var txt := "MOVER ........ A / D  o  FLECHAS\nAPUNTAR ...... W / S + A / D (8 DIRECC.)\nSALTAR ....... ESPACIO o Z (DOBLE)\nDISPARAR ..... J, X o CLIC IZQ.\nSUPER ........ K o V\nDASH ......... SHIFT, L o CLIC DER.\nFIJAR POS. ... CTRL o I\nPAUSA ........ ESC o P\nPANT. COMPLETA F11\n\nPARRY: salta, y en el aire pulsa\nSALTAR sobre un objeto ROSA.\nCada parry carga la barra de SUPER."
 	var l := _label(txt, 8, Color.WHITE, 3)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	l.add_theme_constant_override("line_spacing", 4)

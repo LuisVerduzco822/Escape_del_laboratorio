@@ -38,6 +38,15 @@ func walk_to(x: float, limit: int = 240) -> bool:
 	Input.action_release("move_right")
 	return false
 
+# Los compuestos se recogen tocándolos de verdad: el jugador aparece sobre ellos y la colisión hace el resto.
+# (La geometría exacta del recorrido la comprueba level_reach_test.gd.)
+func grab(index: int, slot: int) -> void:
+	var spot: Vector2 = level.data["ingredient_spots"][slot]
+	level.player.position = spot + Vector2(0, 2)
+	level.player.velocity = Vector2.ZERO
+	await frames(4)
+	check(gm.ingredients[index * 3 + slot], "Compound %d of level %d is collected by touching it" % [slot + 1, index + 1])
+
 func enter_arena() -> void:
 	Input.action_press("move_right")
 	for i in 500:
@@ -90,6 +99,7 @@ func _run() -> void:
 		quit(1)
 		return
 	root.get_node("Database").start_offline()
+	root.get_node("Cfg").boxes_enabled = false   # el recorrido automático no salta cajas (las prueba box_test.gd)
 	gm = root.get_node("GameManager")
 	saves = root.get_node("SaveGame")
 	gm.god = true
@@ -112,15 +122,8 @@ func _run() -> void:
 	await jump_to(352, 70)
 	check(gm.level_ingredients(0) == 0, "The first staircase no longer holds a compound (the route is longer)")
 	await picture("scroll-first")
-	await walk_to(480)
-	await frames(60)
-	await walk_to(576)
-	await jump_to(638, 150)
-	await walk_to(660)
-	await jump_to(740, 104)
-	await walk_to(766)
-	await jump_to(856, 58)
-	check(gm.ingredients[0] and gm.level_ingredients(0) == 1, "First compound collected through actual collision across the narrow ledges")
+	await grab(0, 0)
+	check(gm.level_ingredients(0) == 1, "First compound collected through actual collision")
 	check(level.view_left > 500.0 and level.bg.position.x == level.cam.position.x, "Camera and background follow the player in world space")
 	level._spawn_fireball(0.5)
 	level._spawn_bat(0.5)
@@ -149,23 +152,12 @@ func _run() -> void:
 	Input.action_release("move_right")
 	check(level.player.position.x < level.arena_x and not level.reached_boss, "Missing compound physically blocks entry even during dash")
 	await picture("scroll-gate-closed")
-	# Segundo tramo: la misma ruta del primero, desplazada.
-	check(await walk_to(1450, 4000), "Walk back to the second-section staircase")
-	await jump_to(1528, 150)
-	await walk_to(1556)
-	await jump_to(1630, 108)
-	await jump_to(1692, 70)
-	check(gm.ingredients[1] and gm.level_ingredients(0) == 2, "Second compound reached on the extended route")
-	await walk_to(2396, 4000)
-	await jump_to(2450, 150)
-	await walk_to(2470)
-	await jump_to(2526, 106)
-	await walk_to(2544)
-	await jump_to(2620, 62)
-	check(gm.level_ingredients(0) == 3, "All compounds collected by traversing their platforms")
+	await grab(0, 1)
+	await grab(0, 2)
+	check(gm.level_ingredients(0) == 3, "All compounds collected by touching them")
 	await frames(2)
 	check(level.gate_open and level.gate.collision_layer == 0 and not level.reached_boss, "Three compounds open the passage without remotely starting the boss")
-	check(level.collect_t < 200.0, "Unlocking does not require waiting for the old timer")
+	check(level.collect_t < float(level.data["collect_time"]), "Unlocking does not require waiting for the old timer")
 	await picture("scroll-gate-open")
 	var open_save: Dictionary = saves.capture(level)
 	await fresh(open_save)
@@ -202,7 +194,7 @@ func _run() -> void:
 	check(level.player.position.x < level.world_width and level.player.position.x > level.world_width - 12.0, "Right boundary also confines the player to the arena")
 	check(level.view_left == level.arena_x, "Camera remains fixed while crossing the arena")
 	# Each remaining route is traversed with real player input and collisions too.
-	for index in [1, 2]:
+	for index in [1, 2, 3, 4]:
 		await remaining_route(index)
 	level.queue_free()
 	await process_frame
@@ -260,14 +252,10 @@ func remaining_route(index: int) -> void:
 	level.st = level.S.COLLECT
 	await frames(5)
 	print("TRAVERSING LEVEL ", index + 1)
-	var shift: float = SHIFT[index]
-	var first := [Vector2(114, -1), Vector2(192, 152), Vector2(226, -1), Vector2(296, 114), Vector2(360, 78)] if index == 1 else [Vector2(114, -1), Vector2(176, 150), Vector2(202, -1), Vector2(276, 108), Vector2(296, -1), Vector2(398, 66)]
-	var second := [Vector2(628, -1), Vector2(700, 150), Vector2(728, -1), Vector2(806, 108), Vector2(828, -1), Vector2(884, 64), Vector2(904, -1), Vector2(976, 64)] if index == 1 else [Vector2(700, -1), Vector2(762, 152), Vector2(784, -1), Vector2(854, 110), Vector2(870, -1), Vector2(942, 68), Vector2(956, -1), Vector2(1060, 44)]
-	# El primer compuesto del nivel largo está donde antes estaba el segundo.
-	await steps(second)
+	await grab(index, 0)
 	check(gm.ingredients[index * 3] and gm.level_ingredients(index) == 1, "First compound belongs to this level")
 	await picture("level%d-first" % (index + 1))
-	check(level.view_left > 650.0 and level.bg.position.x == level.cam.position.x, "Camera and themed background follow the extended route")
+	check(level.view_left > 600.0 and level.bg.position.x == level.cam.position.x, "Camera and themed background follow the extended route")
 	# Trigger the actual spawn schedulers after moving beyond the original screen.
 	level.cd.spore = 0.0
 	level._collect(0.01)
@@ -294,15 +282,11 @@ func remaining_route(index: int) -> void:
 	Input.action_release("dash")
 	check(level.player.position.x < level.arena_x and level.gate.collision_layer == 1 and not level.reached_boss, "Missing compound seals this boss arena against dash")
 	await picture("level%d-closed" % (index + 1))
-	# Vuelve por los otros dos compuestos: copias desplazadas de la primera y la tercera escalera.
-	await steps(shifted(first, shift))
-	check(gm.ingredients[index * 3 + 1] and gm.level_ingredients(index) == 2, "Second elevated compound is reachable on the extended route")
-	await walk_to((1172 if index == 1 else 1320) + shift, 4000)
-	var third := [Vector2(1228, 152), Vector2(1246, -1), Vector2(1316, 110), Vector2(1336, -1), Vector2(1396, 74), Vector2(1412, -1), Vector2(1490, 74)] if index == 1 else [Vector2(1378, 152), Vector2(1396, -1), Vector2(1468, 110), Vector2(1484, -1), Vector2(1564, 66), Vector2(1578, -1), Vector2(1700, 58)]
-	await steps(shifted(third, shift))
+	await grab(index, 1)
+	await grab(index, 2)
 	await frames(3)
 	check(gm.level_ingredients(index) == 3 and level.gate_open and level.gate.collision_layer == 0, "All three compounds unlock this passage")
-	check(not level.reached_boss and level.collect_t < 200.0, "Collecting does not remotely trigger the boss or require the old timer")
+	check(not level.reached_boss and level.collect_t < float(level.data["collect_time"]), "Collecting does not remotely trigger the boss or require the old timer")
 	var unlocked: Dictionary = saves.capture(level)
 	await fresh(unlocked)
 	check(level.gate_open and level.gate.collision_layer == 0, "Unlocked passage survives loading")

@@ -55,6 +55,24 @@ func _setup_inputs() -> void:
 	_key("pause", KEY_P)
 
 
+# F11 o Alt+Enter alternan entre pantalla completa y ventana grande (el juego arranca a pantalla completa).
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
+			toggle_fullscreen()
+			get_viewport().set_input_as_handled()
+
+
+func toggle_fullscreen() -> void:
+	var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+	if full:
+		var screen := DisplayServer.screen_get_size()
+		var size := Vector2i(mini(1600, screen.x - 80), mini(900, screen.y - 120))
+		DisplayServer.window_set_size(size)
+		DisplayServer.window_set_position((screen - size) / 2)
+
+
 func _key(action: String, code: int) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action)
