@@ -306,3 +306,7 @@ docker-compose.yml
 - Más enemigos: intervalos de aparición más cortos, límite más alto, hordas más grandes y una **emboscada** cada ~500 px de recorrido.
 - **Jefes**: seis ataques nuevos para los 5 jefes (Serpiente, Carriles, Pilares, Francotirador, Minas y Compás); FINALTOP suma más.
 - **Gráficos**: pasada de acabado (bloom, viñeta, color) y efectos de neón al estilo Geometry Dash en proyectiles y zonas: estelas, halo que late al compás y destello de pantalla.
+
+## Música
+
+Lobby: Containment Lockdown · Nivel 1: Sector Lockdown · Nivel 2: Iron Gate Assault · Nivel 3: Hardened Core · Nivel 4: Point of Impact · Nivel 5: Cinders of the Spire. Las pistas están en `.ogg` normalizadas y con el final fundido con el inicio para repetirse sin que se note el corte. La música suena por debajo de los efectos (`MUSIC_DB`, `SFX_DB` en `AudioManager.gd`).

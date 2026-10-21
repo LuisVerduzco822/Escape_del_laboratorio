@@ -52,7 +52,7 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 1",
 		"name": "EL LABORATORIO",
-		"music": "lab",
+		"music": "sector",
 		"boss_music": "boss1",
 		"collect_time": 300.0,
 		"ing_times": [30.0, 138.0, 241.0],
@@ -95,7 +95,7 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 2",
 		"name": "LAS ALCANTARILLAS",
-		"music": "sewer",
+		"music": "iron",
 		"boss_music": "boss2",
 		"collect_time": 290.0,
 		"ing_times": [29.0, 138.0, 237.0],
@@ -140,7 +140,7 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 3",
 		"name": "LA AZOTEA",
-		"music": "roof",
+		"music": "hardened",
 		"boss_music": "boss3",
 		"collect_time": 290.0,
 		"ing_times": [29.0, 137.0, 234.0],
@@ -185,7 +185,7 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 4",
 		"name": "LA PISTA",
-		"music": "roof",
+		"music": "impact",
 		"boss_music": "boss3",
 		"collect_time": 290.0,
 		"ing_times": [29.0, 137.0, 234.0],
