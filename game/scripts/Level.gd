@@ -499,9 +499,9 @@ func _ambush(p: float) -> void:
 			k = "bat"
 		match k:
 			"robot":
-				add_enemy("robot", Vector2(front - i * 30.0, Cfg.FLOOR_Y - 13.0), {"speed": 50.0 + 5.0 * index, "hp": 3.0, "dir": -1})
+				add_enemy("robot", Vector2(front - i * 30.0, Cfg.FLOOR_Y - 13.0), {"speed": 46.0 + 4.0 * index, "hp": 2.0, "dir": -1})
 			"drone":
-				add_enemy("drone", Vector2(front - i * 24.0, randf_range(62.0, 105.0)), {"speed": 75.0, "hp": 2.0, "dir": -1})
+				add_enemy("drone", Vector2(front - i * 24.0, randf_range(62.0, 105.0)), {"speed": 70.0, "hp": 1.0, "dir": -1})
 			"bat":
 				add_enemy("bat", Vector2(front - i * 24.0, randf_range(70.0, 150.0)), {"speed": 78.0 + 8.0 * index, "hp": 2.0})
 			"fireball":
@@ -514,14 +514,14 @@ func _spawn_robot(p: float) -> void:
 	if not _can_spawn():
 		return
 	var x := minf(arena_x - 30.0, view_left + Cfg.W - 24.0) if scrolling else 470.0
-	add_enemy("robot", Vector2(x, Cfg.FLOOR_Y - 13.0), {"speed": 48.0 + 14.0 * p + 5.0 * index, "hp": 3.0, "dir": -1, "pink": randf() < 0.1})
+	add_enemy("robot", Vector2(x, Cfg.FLOOR_Y - 13.0), {"speed": 44.0 + 10.0 * p + 4.0 * index, "hp": 2.0, "dir": -1, "pink": randf() < 0.1})
 
 
 func _spawn_drone(p: float) -> void:
 	if not _can_spawn():
 		return
 	var x := minf(arena_x - 30.0, view_left + Cfg.W - 24.0) if scrolling else 470.0
-	add_enemy("drone", Vector2(x, randf_range(62.0, 105.0)), {"speed": 70.0 + 20.0 * p, "hp": 2.0, "dir": -1, "pink": randf() < 0.1})
+	add_enemy("drone", Vector2(x, randf_range(62.0, 105.0)), {"speed": 66.0 + 14.0 * p, "hp": 1.0, "dir": -1, "pink": randf() < 0.1})
 
 
 func _spawn_spore(p: float) -> void:

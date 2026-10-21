@@ -38,7 +38,7 @@ func _run() -> void:
 		for kind in ["robot", "drone"]:
 			lv.player.position = Vector2(100, 170)
 			lv.player.velocity = Vector2.ZERO
-			var e = lv.add_enemy(kind, Vector2(lv.view_left + 300.0, 170.0 if kind == "robot" else 90.0), {"speed": 50.0, "hp": 3.0, "dir": -1})
+			var e = lv.add_enemy(kind, Vector2(lv.view_left + 300.0, 170.0 if kind == "robot" else 90.0), {"speed": 50.0, "hp": 2.0, "dir": -1})
 			var shots := 0
 			for i in 900:
 				await frames(1)
@@ -50,5 +50,31 @@ func _run() -> void:
 			lv.clear_threats()
 		lv.queue_free()
 		await frames(3)
+	# Las balas de robot caducan solas y se destruyen a disparos.
+	var lv2 = load("res://scripts/Level.gd").new()
+	lv2.index = 0
+	root.add_child(lv2)
+	current_scene = lv2
+	await frames(10)
+	var Haz = load("res://scripts/Hazard.gd")
+	var b1 = Haz.new()
+	b1.position = Vector2(300, 100)
+	b1.vel = Vector2(-20, 0)
+	b1.shootable = true
+	b1.life = 0.5
+	lv2.add_child(b1)
+	var b2 = Haz.new()
+	b2.position = Vector2(300, 60)
+	b2.shootable = true
+	b2.life = 5.0
+	lv2.add_child(b2)
+	await frames(3)
+	check(b2.take_damage(1.0), "A robot bullet is destroyed by a hit")
+	await frames(70)
+	check(not is_instance_valid(b1) or b1.is_queued_for_deletion(), "A robot bullet disappears after its lifetime")
+	var b3 = Haz.new()
+	b3.position = Vector2(300, 40)
+	lv2.add_child(b3)
+	check(b3.take_damage(1.0) == false, "Boss bullets are not destroyed by shots")
 	print("ROBOT TESTS: %d failures" % failures)
 	quit(1 if failures > 0 else 0)

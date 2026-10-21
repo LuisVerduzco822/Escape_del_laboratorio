@@ -13,7 +13,7 @@ const SFX_FILES := {
 
 # Música más baja que los efectos: las pistas están normalizadas (-24 LUFS); las .wav antiguas son
 # algo más fuertes y se compensan.
-const MUSIC_DB := -7.0
+const MUSIC_DB := -4.5
 const WAV_COMP_DB := -5.0
 const SFX_DB := 1.0
 

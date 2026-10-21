@@ -128,21 +128,21 @@ func _shooter(delta: float) -> void:
 			position.x = clampf(position.x + dir * speed * 0.55 * delta, bound_l, bound_r)
 	if phase == 0 and phase_t <= 0.0:
 		phase = 1
-		phase_t = 0.65
+		phase_t = 0.85
 		AudioManager.sfx("tick", -10.0, 1.6)
 	elif phase == 1 and phase_t <= 0.0:
 		phase = 2
-		shots_left = 3 if kind == "robot" else 1
+		shots_left = 2 if kind == "robot" else 1
 		shot_gap = 0.0
 	elif phase == 2:
 		shot_gap -= delta
 		if shot_gap <= 0.0 and shots_left > 0:
 			_fire(target)
 			shots_left -= 1
-			shot_gap = 0.22
+			shot_gap = 0.32
 		if shots_left <= 0 and shot_gap <= 0.0:
 			phase = 0
-			phase_t = randf_range(1.3, 2.2) if kind == "robot" else randf_range(1.8, 2.6)
+			phase_t = randf_range(2.0, 3.0) if kind == "robot" else randf_range(2.6, 3.6)
 
 
 func _fire(target: Vector2) -> void:
@@ -150,9 +150,11 @@ func _fire(target: Vector2) -> void:
 	h.src = "robot_shot"
 	h.col = Color(1.0, 0.25, 0.2)
 	h.radius = 3.5
+	h.shootable = true
+	h.life = 2.4
 	var muzzle := global_position + Vector2(dir * 11.0, -3.0 if kind == "robot" else 4.0)
 	h.position = muzzle
-	var bullet_speed := 125.0 + speed * 0.25
+	var bullet_speed := 92.0 + speed * 0.2
 	if kind == "drone":
 		h.vel = (target + Vector2(0, -4) - muzzle).normalized() * bullet_speed
 	else:

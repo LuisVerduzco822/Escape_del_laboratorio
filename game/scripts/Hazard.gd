@@ -21,10 +21,13 @@ var burst_n := 8
 var wave_amp := 0.0
 var wave_f := 6.0
 var trail: Array = []
+# Balas de robot: se pueden destruir a disparos y desaparecen solas pasado `life` segundos (0 = no caducan).
+var shootable := false
+var life := 0.0
 
 
 func _ready() -> void:
-	collision_layer = 8
+	collision_layer = 8 | 16 if shootable else 8
 	collision_mask = 4
 	var cs := CollisionShape2D.new()
 	var c := CircleShape2D.new()
@@ -63,6 +66,9 @@ func _physics_process(delta: float) -> void:
 	if trail.size() > 7:
 		trail.pop_back()
 	age += delta
+	if life > 0.0 and age >= life:
+		vanish()
+		return
 	spin += delta * 6.0
 	var vl: float = get_parent().get("view_left") if get_parent().get("view_left") != null else 0.0
 	if position.x < vl - 60.0 or position.x > vl + 540.0 or position.y < -80 or position.y > 330:
@@ -78,6 +84,15 @@ func _on_body(b: Node) -> void:
 		b.hurt(src)
 		if b.dead or b.invuln > before:
 			vanish()
+
+
+func take_damage(_d: float) -> bool:
+	if not shootable:
+		return false
+	Fx.burst(get_parent(), global_position, col, 5, 70.0, 0.3, 2.0)
+	AudioManager.sfx("hurt", -16.0, 2.0)
+	queue_free()
+	return true
 
 
 func _explode() -> void:
@@ -107,6 +122,8 @@ func vanish() -> void:
 
 func _draw() -> void:
 	var c := Color(1.0, 0.45, 0.8) if pink else col
+	if life > 0.0 and age > life - 0.6:
+		modulate.a = 0.35 + 0.65 * absf(sin(age * 30.0))   # parpadea antes de desaparecer
 	_neon(c)
 	if style == "drop":
 		var pts := PackedVector2Array([Vector2(0, radius * 1.8), Vector2(radius * 0.9, 0), Vector2(0, -radius * 0.8), Vector2(-radius * 0.9, 0)])
