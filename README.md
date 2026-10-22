@@ -317,3 +317,8 @@ Lobby: Containment Lockdown · Nivel 1: Sector Lockdown · Nivel 2: Iron Gate As
 
 - Los jefes ya no se quedan a la derecha: entre ataques cambian de puesto (derecha, izquierda, arriba, flancos), siempre miran al jugador y disparan hacia él (el dibujo se espeja). Cada uno entra por un lado distinto.
 - Cada jefe tiene un ataque propio: **Slime** – charcos de ácido que duran varios segundos · **Pulpo** – tentáculos que brotan en fila de un lado al otro · **Gárgola** – picado en diagonal marcado con una línea roja · **Marciano** – rayo tractor que abduce al jugador hacia la nave (un *dash* lo libera; si llega arriba pierde una vida) · **Calavera** – apagón: la arena queda a oscuras con un círculo de luz alrededor del jugador mientras llueven proyectiles.
+
+## Paso al jefe y tajo de aterrizaje
+
+- Para entrar con el jefe de un nivel hay que reunir los 3 compuestos **y eliminar a todos los enemigos**. Al juntar el tercer compuesto dejan de aparecer enemigos nuevos, el HUD y la puerta muestran cuántos quedan («ELIMINA A LOS ENEMIGOS: N») y los que se quedaron lejos reaparecen por el borde de la pantalla.
+- **Tajo de aterrizaje:** si haces salto doble, al caer la espada golpea el suelo con una onda y elimina a los enemigos que estén en el piso a su alcance (también rompe cajas azules cercanas y destruye balas de robot). Un dash antes de caer lo cancela.

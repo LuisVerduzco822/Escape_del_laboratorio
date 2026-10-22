@@ -115,6 +115,7 @@ func _run() -> void:
 	level.boss._pick_attack()
 	check(level.boss.last_attack == attack, "Reload repeats the same first attack")
 	level.boss._stop_attack()
+	var prev0: String = level.boss.prev_attack
 	var sequence := []
 	for i in 12:
 		level.boss._pick_attack()
@@ -124,6 +125,7 @@ func _run() -> void:
 	level.boss.attack_rng.seed = boss_save.boss.rng_seed
 	level.boss.attack_rng.state = boss_save.boss.rng_state
 	level.boss.last_attack = boss_save.boss.last_attack
+	level.boss.prev_attack = prev0   # el repertorio es más largo: el ataque anterior al anterior también cuenta
 	level.boss._pick_attack()
 	level.boss._stop_attack()
 	var replay := []

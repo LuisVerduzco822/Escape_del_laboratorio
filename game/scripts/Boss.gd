@@ -160,10 +160,12 @@ var boom_t := 0.0
 var sp := 1.0
 var ox := 0.0
 var attack_rng := RandomNumberGenerator.new()
+var move_rng := RandomNumberGenerator.new()   # cambios de puesto: aparte, para no alterar la secuencia de ataques guardada
 
 
 func _ready() -> void:
 	attack_rng.randomize()
+	move_rng.randomize()
 	add_to_group("boss")
 	z_index = -10
 	ox = level.arena_x if level else 0.0
@@ -308,6 +310,7 @@ func _enter_fight() -> void:
 	busy = false
 	moving = false
 	rest = 1.0
+	position = home   # la entrada termina en su puesto de combate, venga del lado que venga
 	level.capture_boss_checkpoint.call_deferred()
 
 
@@ -499,7 +502,7 @@ func _stations() -> Array:
 const SELF_MOVING := ["slam", "chomp", "charge", "blink", "strafe", "dive", "abduct"]
 
 func _relocate(a: String) -> void:
-	if attack_rng.randf() > 0.8:
+	if move_rng.randf() > 0.8:
 		return
 	var options: Array = []
 	var player_x := _target().x
@@ -508,7 +511,7 @@ func _relocate(a: String) -> void:
 			options.append(st_pos)
 	if options.is_empty():
 		return
-	home = options[attack_rng.randi() % options.size()]
+	home = options[move_rng.randi() % options.size()]
 	if a in SELF_MOVING:
 		return   # esos ataques ya se mueven solos y terminan volviendo a `home`
 	tw.tween_callback(func(): moving = true)

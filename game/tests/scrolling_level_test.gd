@@ -47,6 +47,12 @@ func grab(index: int, slot: int) -> void:
 	await frames(4)
 	check(gm.ingredients[index * 3 + slot], "Compound %d of level %d is collected by touching it" % [slot + 1, index + 1])
 
+# Para entrar con el jefe hay que eliminar a todos los enemigos; aquí se despejan para probar el recorrido.
+func clear_enemies() -> void:
+	level.clear_threats()
+	await frames(4)
+
+
 func enter_arena() -> void:
 	Input.action_press("move_right")
 	for i in 500:
@@ -156,6 +162,7 @@ func _run() -> void:
 	await grab(0, 2)
 	check(gm.level_ingredients(0) == 3, "All compounds collected by touching them")
 	await frames(2)
+	await clear_enemies()
 	check(level.gate_open and level.gate.collision_layer == 0 and not level.reached_boss, "Three compounds open the passage without remotely starting the boss")
 	check(level.collect_t < float(level.data["collect_time"]), "Unlocking does not require waiting for the old timer")
 	await picture("scroll-gate-open")
@@ -287,6 +294,7 @@ func remaining_route(index: int) -> void:
 	await grab(index, 1)
 	await grab(index, 2)
 	await frames(3)
+	await clear_enemies()
 	check(gm.level_ingredients(index) == 3 and level.gate_open and level.gate.collision_layer == 0, "All three compounds unlock this passage")
 	check(not level.reached_boss and level.collect_t < float(level.data["collect_time"]), "Collecting does not remotely trigger the boss or require the old timer")
 	var unlocked: Dictionary = saves.capture(level)

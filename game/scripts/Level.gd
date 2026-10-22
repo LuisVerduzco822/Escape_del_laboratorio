@@ -43,6 +43,7 @@ var world_width := float(Cfg.W)
 var scrolling := false
 var gate: StaticBody2D
 var gate_open := false
+var purge_shown := false   # aviso "elimina a los enemigos" mostrado
 var restore_data := {}
 var boss_checkpoint := {}
 var horde_remaining := 0
@@ -230,15 +231,29 @@ func _draw_gate() -> void:
 	for slot in 3:
 		var light := Color(0.3, 1.0, 0.55) if GameManager.ingredients[index * 3 + slot] else Color(0.6, 0.2, 0.15)
 		draw_circle(Vector2(arena_x - 30, 78 + slot * 16), 4, light)
-	var label := "CERRADO" if reached_boss else ("ABIERTO" if gate_open else "3 COMPUESTOS")
+	var label := "CERRADO" if reached_boss else ("ABIERTO" if gate_open else ("ELIMINA ENEMIGOS: %d" % enemies_left() if GameManager.level_ingredients(index) == 3 else "3 COMPUESTOS"))
 	draw_rect(Rect2(arena_x - 190, 101, 160, 18), Color(0.03, 0.07, 0.1, 0.9))
 	UI.text(self, label, arena_x - 110, 114, 8, col, 1)
+
+
+# Enemigos vivos (los que están apareciendo cuentan; los que ya murieron no).
+func enemies_left() -> int:
+	var n := 0
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if not e.is_queued_for_deletion() and not e.get("dead"):
+			n += 1
+	return n
+
+
+func purge_active() -> bool:
+	return scrolling and not is_tutorial and not reached_boss and GameManager.level_ingredients(index) == 3 and not gate_open
 
 
 func _sync_gate() -> void:
 	if not scrolling:
 		return
-	gate_open = GameManager.level_ingredients(index) == 3
+	# Para entrar con el jefe hay que reunir los 3 compuestos Y eliminar a todos los enemigos.
+	gate_open = GameManager.level_ingredients(index) == 3 and (is_tutorial or enemies_left() == 0)
 	gate.collision_layer = 1 if reached_boss or not gate_open else 0
 	queue_redraw()
 
@@ -410,6 +425,9 @@ func _collect(delta: float) -> void:
 		if gate_open and player.position.x >= arena_x + 32.0:
 			_begin_warn()
 			return
+		if GameManager.level_ingredients(index) == 3 and not is_tutorial:
+			_purge(delta)
+			return
 		# Encounters left far behind must not exhaust the active enemy limit.
 		for enemy in get_tree().get_nodes_in_group("enemy"):
 			if absf(enemy.position.x - player.position.x) > Cfg.W + 160.0:
@@ -510,6 +528,23 @@ func _ambush(p: float) -> void:
 				add_enemy("fireball", Vector2(front, Cfg.FLOOR_Y - 9.0), {"speed": 100.0 + 12.0 * index, "dir": -1})
 			_:
 				add_enemy("spore", Vector2(front - 60.0 - i * 20.0, -10.0), {"speed": 65.0, "hp": 2.0, "dir": -1})
+
+
+# Con los 3 compuestos ya no aparecen más enemigos: hay que eliminar a los que quedan para abrir el paso al jefe.
+func _purge(_delta: float) -> void:
+	if not purge_shown:
+		purge_shown = true
+		if enemies_left() > 0:
+			Fx.popup(self, "ELIMINA A TODOS LOS ENEMIGOS", player.position + Vector2(0, -34), Color(1.0, 0.6, 0.4))
+			AudioManager.sfx("warn", -6.0, 1.2)
+	# Los que se quedaron lejos vuelven a entrar por el borde de la pantalla, para no dejar a nadie fuera de alcance.
+	for enemy in get_tree().get_nodes_in_group("enemy"):
+		if enemy.is_queued_for_deletion() or absf(enemy.position.x - player.position.x) <= Cfg.W + 60.0:
+			continue
+		var front := minf(arena_x - 30.0, view_left + Cfg.W - 24.0)
+		enemy.position.x = front
+		enemy.bound_l = maxf(10.0, front - 360.0)
+		enemy.bound_r = arena_x - 20.0
 
 
 func _spawn_robot(p: float) -> void:

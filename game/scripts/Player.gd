@@ -44,6 +44,11 @@ var abduct_t := 0.0   # rayo tractor del Marciano: mientras > 0 el jugador es el
 var abduct_x := 0.0
 var flip_hit := {}   # enemigos ya cortados en esta vueltereta
 const SWORD_REACH := 30.0
+const SLAM_TIME := 0.32
+const SLAM_RANGE := 50.0
+var air_flipped := false   # hizo salto doble y aún no ha tocado el suelo
+var slam_t := 0.0
+var slam_face := 1
 var flip_dir := 1
 var fire_cd := 0.0
 var coyote := 0.0
@@ -121,6 +126,7 @@ func _physics_process(delta: float) -> void:
 	if weapon_power_t > 0.0 and get_parent().can_use_powerups():
 		weapon_power_t = maxf(0.0, weapon_power_t - delta)
 	flash_t = maxf(0.0, flash_t - delta)
+	slam_t = maxf(0.0, slam_t - delta)
 	parry_flash = maxf(0.0, parry_flash - delta)
 	buffer = maxf(0.0, buffer - delta)
 	if drop_t > 0.0:
@@ -143,6 +149,9 @@ func _physics_process(delta: float) -> void:
 		coyote = COYOTE
 		air_dash = true
 		air_jumps = 1
+		if air_flipped:
+			air_flipped = false
+			_landing_slash()
 	else:
 		coyote = maxf(0.0, coyote - delta)
 
@@ -213,6 +222,7 @@ func _double_jump() -> void:
 	flip_t = FLIP_TIME
 	flip_dir = facing
 	flip_hit.clear()
+	air_flipped = true
 	Telemetry.count("jumps")
 	Telemetry.event("double_jump", _where({}))
 	action_performed.emit("double_jump")
@@ -223,6 +233,7 @@ func _double_jump() -> void:
 
 func _start_dash(ax: float) -> void:
 	flip_t = 0.0
+	air_flipped = false   # un dash cancela el tajo de aterrizaje
 	dash_t = DASH_TIME
 	dash_cd = DASH_CD
 	dash_dir = facing if ax == 0.0 else (1 if ax > 0.0 else -1)
@@ -376,6 +387,32 @@ func _sword_hits() -> void:
 				Fx.hitstop(0.05)
 
 
+# Tajo de aterrizaje: tras un salto doble, al caer la espada golpea el suelo y elimina a los enemigos
+# que están en el piso a su alcance (también rompe cajas azules y destruye balas de robot).
+func _landing_slash() -> void:
+	slam_t = SLAM_TIME
+	slam_face = facing
+	var feet := global_position + Vector2(0, 12)
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if not e.has_method("take_damage"):
+			continue
+		var d: Vector2 = e.global_position - feet
+		if absf(d.x) <= SLAM_RANGE and d.y > -34.0 and d.y < 14.0:
+			e.take_damage(3.0)
+			Fx.burst(get_parent(), e.global_position, Color(1.0, 0.95, 0.6), 7, 90.0, 0.3, 2.0)
+	for h in get_tree().get_nodes_in_group("hazard"):
+		if h.get("shootable") == true and absf(h.global_position.x - feet.x) <= SLAM_RANGE and h.global_position.y > feet.y - 40.0:
+			h.take_damage(1.0)
+	for b in get_tree().get_nodes_in_group("box"):
+		if b.has_method("take_damage") and absf(b.global_position.x - feet.x) <= SLAM_RANGE * 0.8 and absf(b.global_position.y - feet.y) < 26.0:
+			b.take_damage(2.0)
+	Fx.burst(get_parent(), feet, Color(1.0, 0.92, 0.7, 0.9), 12, 110.0, 0.35, 2.0)
+	Fx.shake(2.0, 0.15)
+	Fx.hitstop(0.04)
+	AudioManager.sfx("boom", -10.0, 1.3)
+	Telemetry.event("landing_slash", _where({}))
+
+
 func bounce() -> void:
 	velocity.y = BOUNCE_V
 	air_dash = true
@@ -462,21 +499,39 @@ func _weapon_muzzle() -> Vector2:
 
 # Espada: empuñadura en el cuerpo, hoja plateada con filo brillante y un arco de corte detrás.
 func _draw_sword(angle: float) -> void:
-	var c := sprite.position
+	_draw_blade(sprite.position, angle, SWORD_REACH, clampf(flip_t / FLIP_TIME * 3.0, 0.0, 1.0), flip_dir)
+
+
+func _draw_blade(c: Vector2, angle: float, reach: float, fade: float, spin_dir: int) -> void:
 	var dir := Vector2.RIGHT.rotated(angle)
 	var side := dir.orthogonal()
-	var fade := clampf(flip_t / FLIP_TIME * 3.0, 0.0, 1.0)
 	for k in 5:
-		var a0 := angle - flip_dir * (0.25 + k * 0.28)
-		draw_arc(c, SWORD_REACH - 2.0 - k, minf(a0, angle), maxf(a0, angle), 8, Color(0.7, 0.95, 1.0, (0.45 - k * 0.08) * fade), 3.0)
+		var a0 := angle - spin_dir * (0.25 + k * 0.28)
+		draw_arc(c, reach - 2.0 - k, minf(a0, angle), maxf(a0, angle), 8, Color(0.7, 0.95, 1.0, (0.45 - k * 0.08) * fade), 3.0)
 	var guard := c + dir * 6.0
 	draw_line(c + dir * 2.0, guard, Color(0.45, 0.3, 0.2), 2.5)
 	draw_line(guard - side * 3.5, guard + side * 3.5, Color(0.9, 0.75, 0.3), 2.0)
-	var blade_end := c + dir * SWORD_REACH
+	var blade_end := c + dir * reach
 	var blade := PackedVector2Array([guard + side * 3.2, blade_end, guard - side * 3.2])
 	draw_colored_polygon(blade, Color(0.82, 0.9, 1.0))
 	draw_line(guard, blade_end, Color(1, 1, 1, 0.95), 1.0)
 	draw_circle(blade_end, 2.0, Color(1, 1, 1, 0.6 * fade))
+
+
+# Tajo de aterrizaje: la espada baja en arco hasta el suelo y una onda se expande por el piso.
+func _draw_slam() -> void:
+	var p := 1.0 - slam_t / SLAM_TIME
+	var f := float(slam_face)
+	var c := sprite.position + Vector2(0, 2)
+	var a0 := -PI * 0.5 - f * 0.9
+	var a1 := (0.25 if f > 0.0 else PI - 0.25)
+	var ang := lerpf(a0, a1, minf(1.0, p * 1.8))
+	_draw_blade(c, ang, 36.0, 1.0 - p, int(f))
+	var r := 12.0 + p * (SLAM_RANGE - 6.0)
+	var fade := 1.0 - p
+	draw_arc(Vector2(0, 12), r, PI + 0.25, TAU - 0.25, 16, Color(1.0, 0.95, 0.7, 0.85 * fade), 2.5)
+	draw_arc(Vector2(0, 12), r * 0.7, PI + 0.4, TAU - 0.4, 12, Color(1, 1, 1, 0.6 * fade), 1.5)
+	draw_line(Vector2(-r, 12), Vector2(r, 12), Color(1.0, 0.9, 0.6, 0.5 * fade), 1.5)
 
 
 func _draw() -> void:
@@ -505,6 +560,8 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	if fire_cd > FIRE_RATE - 0.06:
 		draw_circle(tip + aim * 3.0, 3.0, Color(1.0, 0.95, 0.5, 0.9))
+	if slam_t > 0.0:
+		_draw_slam()
 	if flip_t > 0.0:
 		# Estela de la vuelta: arcos que se desvanecen detrás del giro.
 		var p := 1.0 - flip_t / FLIP_TIME

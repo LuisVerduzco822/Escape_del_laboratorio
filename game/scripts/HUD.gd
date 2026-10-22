@@ -135,7 +135,10 @@ func _draw_center() -> void:
 			UI.text(self, "%s - %s" % [d["tag"], d["name"]], 240, 12, 8, Color(0.85, 0.95, 1.0), 1)
 			var got := GameManager.level_ingredients(L.index)
 			if L.scrolling:
-				UI.text(self, "COMPUESTOS %d/3" % got, 240, 26, 8, Color(1, 0.9, 0.5), 1)
+				if L.purge_active():
+					UI.text(self, "ELIMINA A LOS ENEMIGOS: %d" % L.enemies_left(), 240, 26, 8, Color(1.0, 0.6, 0.4), 1)
+				else:
+					UI.text(self, "COMPUESTOS %d/3" % got, 240, 26, 8, Color(1, 0.9, 0.5), 1)
 			elif L.collect_left() > 0.0:
 				UI.text(self, "JEFE EN %s   INGREDIENTES %d/3" % [GameManager.format_time(L.collect_left()), got], 240, 26, 8, Color(1, 0.9, 0.5), 1)
 			elif got < 3:
