@@ -5,13 +5,14 @@
   'use strict';
 
   // ---------- paleta (pasos oscuros de la paleta de referencia, sobre la superficie del panel) ----------
-  const COLORS = { blue: '#3987e5', orange: '#d95926', aqua: '#199e70', yellow: '#c98500', magenta: '#d55181', red: '#e66767' };
+  const COLORS = { blue: '#7fc4ea', orange: '#ff8a4c', aqua: '#6df5a0', yellow: '#ffd23f', magenta: '#e58ac0', red: '#ff5a3c' };
   const SERIES = [COLORS.blue, COLORS.orange, COLORS.aqua, COLORS.yellow, COLORS.magenta];
   const LAYERS = {
-    hurt: { label: 'Vidas perdidas', color: COLORS.orange, rgb: [217, 89, 38], unit: 'vidas perdidas' },
-    death: { label: 'Derrotas', color: COLORS.red, rgb: [230, 103, 103], unit: 'derrotas' },
-    time: { label: 'Dónde pasa el tiempo', color: COLORS.blue, rgb: [57, 135, 229], unit: 's' },
-    lowtime: { label: 'Tiempo con pocas vidas', color: COLORS.magenta, rgb: [213, 81, 129], unit: 's' },
+    jumps: { label: 'Saltos', color: COLORS.aqua, rgb: [109, 245, 160], unit: 'saltos' },
+    hurt: { label: 'Vidas perdidas', color: COLORS.orange, rgb: [255, 138, 76], unit: 'vidas perdidas' },
+    death: { label: 'Derrotas', color: COLORS.red, rgb: [255, 90, 60], unit: 'derrotas' },
+    time: { label: 'Dónde pasa el tiempo', color: COLORS.blue, rgb: [127, 196, 234], unit: 's' },
+    lowtime: { label: 'Tiempo con pocas vidas', color: COLORS.magenta, rgb: [229, 138, 192], unit: 's' },
   };
   const SOURCES = {
     fireball: 'Bola de fuego', bat: 'Murciélago', spore: 'Espora', rayo: 'Rayo', boss: 'Contacto con el jefe',
@@ -122,35 +123,42 @@
   views.behavior = async function () {
     if (!players) players = (await getJson('/api/admin/players', true)).players;
     const lv = LEVEL_GEOM.levels;
-    $('#view').innerHTML = `<h2>Comportamiento del jugador</h2>
-      <p class="muted" style="margin:-6px 0 12px">Mapa de dónde se mueven, dónde pierden vidas y cómo juegan cuando van mal. Cada partida aporta una muestra de posición cada medio segundo.</p>
+    $('#view').innerHTML = `<h2>Comportamiento</h2>
+      <div class="who" id="bhWho"></div>
+      <p class="muted" style="margin:0 0 12px">Elige un jugador y un nivel. En el mapa, el 🏃 marca dónde más salta y la 💀 dónde más muere. Todo lo demás está más abajo, en secciones que puedes abrir.</p>
       <div class="filters">
         <label>Nivel <select id="fLevel">${lv.map((l) => `<option value="${l.level}">${l.level}. ${esc(l.name)}</option>`).join('')}</select></label>
         <label>Jugador <select id="fUser"><option value="">Todos</option>${players.filter((p) => p.runs > 0).map((p) => `<option value="${p.id}">${esc(p.username)}</option>`).join('')}</select></label>
-        <label>Fase ${seg('phase', [['', 'Todo'], ['0', 'Recorrido'], ['1', 'Jefe']])}</label>
-        <label>Pocas vidas = ${seg('hpMax', [[1, '1'], [2, '≤ 2'], [3, '≤ 3']])}</label>
       </div>
-      <div class="filters">
-        <label>Mostrar ${seg('layer', Object.entries(LAYERS).map(([k, v]) => [k, v.label]))}</label>
-        <label>Celda ${seg('bin', [[8, '8 px'], [16, '16 px'], [32, '32 px']])}</label>
-        <label class="chk"><input type="checkbox" id="fTrails"> Trayectorias</label>
-        <label id="runPick" style="display:none">Partida <select id="fRun"></select></label>
-      </div>
+      <div class="marks" id="bhCards"></div>
       <div class="box">
+        <div class="filters"><label>Colorear el mapa por ${seg('layer', Object.entries(LAYERS).map(([k, v]) => [k, v.label]))}</label></div>
         <div id="mapNote" class="muted" style="margin-bottom:8px"></div>
         <div id="mapWrap"><canvas id="bmap"></canvas></div>
         <div id="mapLegend" class="legend"></div>
       </div>
-      <div class="grid2">
-        <div class="box"><h3>Zonas donde más se pierden vidas</h3><div id="zonesBox"></div></div>
-        <div class="box"><h3>Qué quita las vidas</h3><div id="srcBox"></div></div>
-      </div>
-      <h2 style="margin-top:22px">Cuando está en problemas (pocas vidas)</h2>
-      <div class="box"><div id="lowInsights"></div></div>
-      <div class="grid2">
-        <div class="box"><h3>Comparación: vidas altas contra pocas vidas</h3><div id="lowCompare"></div></div>
-        <div class="box"><h3>Comportamiento según las vidas que le quedan</h3><div id="lowByHp"></div></div>
-      </div>`;
+      <div class="box"><h3>Quién jugó este nivel</h3><div class="muted" style="margin-bottom:8px">Toca un jugador para ver solo su mapa.</div><div id="whoBox"></div></div>
+      <details class="more"><summary>Más filtros del mapa (fase, pocas vidas, tamaño de celda, trayectorias)</summary>
+        <div class="filters" style="margin-top:10px">
+          <label>Fase ${seg('phase', [['', 'Todo'], ['0', 'Recorrido'], ['1', 'Jefe']])}</label>
+          <label>Pocas vidas = ${seg('hpMax', [[1, '1'], [2, '≤ 2'], [3, '≤ 3']])}</label>
+          <label>Celda ${seg('bin', [[8, '8 px'], [16, '16 px'], [32, '32 px']])}</label>
+          <label class="chk"><input type="checkbox" id="fTrails"> Trayectorias</label>
+          <label id="runPick" style="display:none">Partida <select id="fRun"></select></label>
+        </div>
+      </details>
+      <details class="more"><summary>Más detalle: zonas, causas de daño y comportamiento con pocas vidas</summary>
+        <div class="grid2" style="margin-top:12px">
+          <div class="box"><h3>Zonas donde más se pierden vidas</h3><div id="zonesBox"></div></div>
+          <div class="box"><h3>Qué quita las vidas</h3><div id="srcBox"></div></div>
+        </div>
+        <h3 style="margin:14px 0 8px">Cuando está en problemas (pocas vidas)</h3>
+        <div class="box"><div id="lowInsights"></div></div>
+        <div class="grid2">
+          <div class="box"><h3>Comparación: vidas altas contra pocas vidas</h3><div id="lowCompare"></div></div>
+          <div class="box"><h3>Comportamiento según las vidas que le quedan</h3><div id="lowByHp"></div></div>
+        </div>
+      </details>`;
     $('#fLevel').value = BH.level;
     $('#fUser').value = BH.user;
     $('#fTrails').checked = BH.trails;
@@ -167,18 +175,67 @@
     await draw();
   };
 
+  // ---------- marcas: dónde más salta y dónde más muere ----------
+  const MARK_BIN = 64;
+  const topCell = (h) => h.cells.reduce((best, c) => (!best || Number(c.n) > Number(best.n) ? c : best), null);
+  function buildMarks(jumpHeat, deathHeat) {
+    const mk = (cell, kind, icon, color, label) => (cell ? {
+      kind, icon, color, label, n: Number(cell.n),
+      x0: cell.cx * MARK_BIN, x1: (cell.cx + 1) * MARK_BIN, x: cell.cx * MARK_BIN + MARK_BIN / 2, y: cell.cy * MARK_BIN + MARK_BIN / 2,
+    } : null);
+    return [mk(topCell(jumpHeat), 'jump', '🏃', '#6df5a0', 'Salta más'), mk(topCell(deathHeat), 'death', '💀', '#ff5a3c', 'Muere más')].filter(Boolean);
+  }
+  function drawMark(ctx, m) {
+    const y = Math.min(Math.max(m.y, 26), LEVEL_GEOM.H - 18);
+    ctx.save();
+    ctx.fillStyle = 'rgba(16,26,23,.94)'; ctx.strokeStyle = m.color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(m.x, y, 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.font = '22px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+    ctx.fillText(m.icon, m.x, y + 1);
+    ctx.font = 'bold 11px "Segoe UI", system-ui, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(16,26,23,.95)'; ctx.fillStyle = m.color;
+    const ty = m.kind === 'jump' ? y - 29 : y + 31;
+    const text = `${m.label} · ${m.n}`;
+    ctx.strokeText(text, m.x, ty); ctx.fillText(text, m.x, ty);
+    ctx.restore();
+  }
+
+  function whoTable(profiles, level) {
+    const rows = profiles.map((p) => ({ p, l: (p.levels || []).find((x) => x.level === level) })).filter((x) => x.l)
+      .sort((a, b) => (b.l.seconds + b.l.boss_seconds) - (a.l.seconds + a.l.boss_seconds));
+    if (!rows.length) return '<div class="msg">Nadie tiene recorrido guardado en este nivel</div>';
+    return table(['Jugador', 'Nivel', 'Tiempo en el nivel', 'Vidas perdidas', 'Derrotas'], rows.map(({ p, l }) =>
+      `<tr class="click ${String(p.id) === String(BH.user) ? 'sel' : ''}" data-who="${p.id}"><td><b>${esc(p.username)}</b></td><td>${level}. ${esc(geo(level).name)}</td><td>${fmtDur(l.seconds + l.boss_seconds)}</td><td>${l.hurts + l.boss_hurts}</td><td>${l.deaths}</td></tr>`));
+  }
+
+  function renderSummary(g, zones, marks, profiles) {
+    const u = (players || []).find((p) => String(p.id) === String(BH.user));
+    $('#bhWho').innerHTML = `<span class="pill">Jugador <b>${u ? esc(u.username) : 'Todos los jugadores'}</b></span><span class="pill">Nivel <b>${BH.level}. ${esc(g.name)}</b></span>`;
+    const byKind = Object.fromEntries(marks.map((m) => [m.kind, m]));
+    const where = (m) => `x ${m.x0}–${m.x1} px${m.x0 >= g.arena_x ? ' · arena del jefe' : ''}`;
+    const card = (kind, icon, title, m, unit) => `<div class="mk ${kind}"><span class="mi">${icon}</span><div><b>${title}</b>${m ? `<span>${where(m)}</span><em>${num(m.n)} ${unit}</em>` : '<span>Sin datos con este filtro</span>'}</div></div>`;
+    const hz = zones.zones.slice().sort((a, b) => b.hurts - a.hurts)[0];
+    const hurtM = hz && hz.hurts > 0 ? { x0: hz.x0, x1: hz.x1, n: hz.hurts } : null;
+    $('#bhCards').innerHTML = card('jump', '🏃', 'Salta más', byKind.jump, 'saltos') + card('death', '💀', 'Muere más', byKind.death, 'derrotas') + card('hurt', '💥', 'Pierde más vidas', hurtM, 'golpes');
+    $('#whoBox').innerHTML = whoTable(profiles, BH.level);
+    document.querySelectorAll('[data-who]').forEach((tr) => tr.onclick = () => { BH.user = tr.dataset.who; $('#fUser').value = BH.user; BH.run = ''; draw(); });
+  }
+
   let drawToken = 0;
   async function draw() {
     const token = ++drawToken;
     const g = geo(BH.level);
     $('#mapNote').textContent = 'Cargando…';
-    let heat, zones, sources, low, trails = null, runs = null;
+    let heat, zones, sources, low, jumpHeat, deathHeat, profs, trails = null, runs = null;
     try {
-      [heat, zones, sources, low] = await Promise.all([
+      [heat, zones, sources, low, jumpHeat, deathHeat, profs] = await Promise.all([
         getJson('/api/admin/behavior/heatmap?' + qs({ layer: BH.layer }), true),
         getJson('/api/admin/behavior/zones?' + qs({ width: 160 }), true),
         getJson('/api/admin/behavior/sources?' + qs(), true),
         getJson('/api/admin/behavior/lowhp?' + qs(), true),
+        getJson('/api/admin/behavior/heatmap?' + qs({ layer: 'jumps', bin: MARK_BIN }), true),
+        getJson('/api/admin/behavior/heatmap?' + qs({ layer: 'death', bin: MARK_BIN }), true),
+        getJson('/api/admin/behavior/profiles', true),
       ]);
       if (BH.trails) {
         runs = (await getJson('/api/admin/behavior/runs?' + qs(), true)).runs;
@@ -204,7 +261,9 @@
       ? 'Sin datos para este filtro. Juega con el juego actualizado, o genera partidas de ejemplo con <code>npm run demo</code>.'
       : `<b>${esc(L.label)}</b> en <b>${esc(g.name)}</b>: ${num(heat.total, BH.layer === 'time' || BH.layer === 'lowtime' ? 0 : 0)} ${esc(L.unit)} en total` +
         (BH.layer === 'lowtime' ? ` (con ${BH.hpMax} vida${BH.hpMax > 1 ? 's' : ''} o menos)` : '') + '. Pasa el cursor sobre el mapa para ver cada celda.';
-    drawMap(g, heat, trails);
+    const marks = buildMarks(jumpHeat, deathHeat);
+    drawMap(g, heat, trails, marks);
+    renderSummary(g, zones, marks, profs.players);
     $('#mapLegend').innerHTML = legendHtml(heat, L, trails);
     $('#zonesBox').innerHTML = zonesTable(zones.zones, g);
     $('#srcBox').innerHTML = sourcesView(sources.sources);
@@ -213,7 +272,7 @@
 
   function legendHtml(heat, L, trails) {
     const ramp = `<span class="ramp" style="background:linear-gradient(90deg, rgba(${L.rgb.join(',')},.12), rgba(${L.rgb.join(',')},1))"></span>`;
-    let s = `<span>${ramp} 0 → ${num(heat.max, heat.max % 1 ? 1 : 0)} ${esc(L.unit)} por celda</span>`;
+    let s = `<span>${ramp} 0 → ${num(heat.max, heat.max % 1 ? 1 : 0)} ${esc(L.unit)} por celda</span><span>🏃 donde más salta</span><span>💀 donde más muere</span>`;
     if (trails && trails.length) {
       s += trails.map((t, i) => `<span><i class="dot" style="background:${SERIES[i % SERIES.length]}"></i>#${t.run_id} ${esc(t.username)}</span>`).join('');
       s += '<span><i class="dot ring"></i>golpe</span><span><b class="xmark">×</b> derrota</span>';
@@ -224,7 +283,7 @@
   // ----- mapa en tiras: el nivel se corta en tramos para verlo a escala 1:1 sin hacer scroll horizontal -----
   const GAP = 22;
   let mapState = null;
-  function drawMap(g, heat, trails) {
+  function drawMap(g, heat, trails, marks = []) {
     const canvas = $('#bmap');
     const wrap = $('#mapWrap');
     const bin = BH.bin;
@@ -254,11 +313,11 @@
       ctx.translate(-i * strip, 0);
       const x0 = i * strip;
       // fondo y suelo
-      ctx.fillStyle = '#0a1220';
+      ctx.fillStyle = '#16231f';
       ctx.fillRect(x0, 0, strip, H);
-      ctx.fillStyle = '#10243a';
+      ctx.fillStyle = '#1f322d';
       ctx.fillRect(x0, LEVEL_GEOM.FLOOR_Y, strip, H - LEVEL_GEOM.FLOOR_Y);
-      ctx.fillStyle = '#4a7480';
+      ctx.fillStyle = '#5f7f77';
       ctx.fillRect(x0, LEVEL_GEOM.FLOOR_Y, strip, 2);
       // calor
       const a0 = BH.trails ? 0.62 : 1;
@@ -268,9 +327,9 @@
         ctx.fillRect(c.cx * bin, c.cy * bin, bin, bin);
       }
       // plataformas
-      ctx.fillStyle = '#6aa3ad';
+      ctx.fillStyle = '#8fb3a8';
       g.platforms.forEach(([px, py, pw]) => { ctx.fillRect(px, py, pw, 3); });
-      ctx.fillStyle = 'rgba(106,163,173,.28)';
+      ctx.fillStyle = 'rgba(143,179,168,.28)';
       g.platforms.forEach(([px, py, pw]) => { ctx.fillRect(px, py + 3, pw, 5); });
       // ingredientes y arena
       ctx.fillStyle = '#ffd23f';
@@ -294,8 +353,8 @@
           ctx.globalAlpha = 1;
           t.events.forEach((ev) => {
             if (ev.type === 'hurt') {
-              ctx.fillStyle = '#ff5d6c';
-              ctx.strokeStyle = '#0a1220';
+              ctx.fillStyle = '#ff5a3c';
+              ctx.strokeStyle = '#16231f';
               ctx.lineWidth = 2;
               ctx.beginPath(); ctx.arc(ev.x, ev.y, 4, 0, Math.PI * 2); ctx.stroke(); ctx.fill();
             } else {
@@ -306,9 +365,10 @@
           });
         });
       }
+      marks.forEach((m) => { if (m.x >= x0 - 20 && m.x < x0 + strip + 20) drawMark(ctx, m); });
       ctx.restore();
       // rótulo del tramo
-      ctx.fillStyle = '#8aa0bd';
+      ctx.fillStyle = '#9bb0aa';
       ctx.font = '11px "Segoe UI", system-ui, sans-serif';
       ctx.fillText(`x ${i * strip} – ${Math.min((i + 1) * strip, g.world_width)}`, 2, i * (H + GAP) + 14);
       if (g.arena_x >= i * strip && g.arena_x < (i + 1) * strip) {
@@ -316,7 +376,7 @@
         ctx.fillText('ARENA DEL JEFE →', Math.max(2, g.arena_x - i * strip + 6), i * (H + GAP) + 14);
       }
     }
-    mapState = { strip, bin, strips, H, cells, unit: L.unit, layer: BH.layer, g };
+    mapState = { strip, bin, strips, H, cells, unit: L.unit, layer: BH.layer, g, marks };
     canvas.onmousemove = (e) => {
       const r = canvas.getBoundingClientRect();
       const mx = e.clientX - r.left;
@@ -327,6 +387,8 @@
       const wx = i * strip + mx;
       const cx = Math.floor(wx / bin);
       const cy = Math.floor(ly / bin);
+      const near = mapState.marks.find((m) => Math.hypot(wx - m.x, ly - Math.min(Math.max(m.y, 26), LEVEL_GEOM.H - 18)) < 24);
+      if (near) return showTip(e, `<b>${near.icon} ${esc(near.label)}</b><br>${num(near.n)} ${near.kind === 'jump' ? 'saltos' : 'derrotas'} en x ${near.x0}–${near.x1} px`);
       const n = mapState.cells.get(cx + ',' + cy) || 0;
       const nearArena = wx >= mapState.g.arena_x ? 'arena del jefe' : 'recorrido';
       showTip(e, `<b>${n ? num(n, n % 1 ? 1 : 0) + ' ' + esc(mapState.unit) : 'Sin datos'}</b><br><span class="muted">x ${cx * bin}–${cx * bin + bin} · y ${cy * bin}–${cy * bin + bin} · ${nearArena}</span>`);
@@ -432,25 +494,27 @@
     const maxP = Math.max(...d.players.map((p) => p.seconds), 1);
     const playerRows = d.players.map((p) => `<tr><td>${esc(p.username)}</td><td><div class="mini"><span style="width:${(p.seconds / maxP) * 100}%"></span></div><b>${fmtDur(p.seconds)}</b></td><td>${p.runs}</td><td>${fmtDur(p.avg_run)}</td><td>${p.active_days}</td></tr>`);
 
-    $('#view').innerHTML = `<h2>Tiempo de juego</h2>
+    $('#view').innerHTML = `<h2>Tiempo de juego (general)</h2>
+      <div class="howto" style="margin:-6px 0 14px"><b>Datos generales:</b> esta sección suma el tiempo de <b>todos los jugadores juntos</b>, no el de cada uno. Para ver el horario y el tiempo de un jugador en particular usa <a href="#" id="ptToAct">Actividad</a>.</div>
       <div class="filters">
         <label>Periodo <div class="seg" id="ptDays">${[[7, '7 días'], [30, '30 días'], [90, '90 días']].map(([v, l]) => `<button type="button" data-v="${v}" class="${PT.days === v ? 'on' : ''}">${l}</button>`).join('')}</div></label>
         <label>Modo <div class="seg" id="ptMode">${[['', 'Todos'], ['story', 'Historia'], ['finaltop', 'FinalTop']].map(([v, l]) => `<button type="button" data-v="${v}" class="${PT.mode === v ? 'on' : ''}">${l}</button>`).join('')}</div></label>
       </div>
       <div class="cards">${card(fmtDur(t.seconds), 'Tiempo total jugado')}${card(t.runs, 'Partidas')}${card(t.players, 'Jugadores activos')}${card(fmtDur(t.avg_run), 'Duración media por partida')}${card(fmtDur(t.longest_run), 'Partida más larga')}</div>
-      <div class="box"><h3>Minutos jugados por día</h3><div id="chDay">${barChart(dayItems, { color: COLORS.blue, labelEvery: Math.ceil(dayItems.length / 12), width: 1120, height: 230, id: 'day' })}</div>
+      <div class="box"><h3>Minutos jugados por día (todos los jugadores)</h3><div id="chDay">${barChart(dayItems, { color: COLORS.blue, labelEvery: Math.ceil(dayItems.length / 12), width: 1120, height: 230, id: 'day' })}</div>
         <details><summary>Ver tabla</summary><div class="scroll"><table><thead><tr><th>Día</th><th>Tiempo</th><th>Partidas</th><th>Jugadores</th></tr></thead><tbody>${d.daily.slice().reverse().map((x) => `<tr><td>${x.day}</td><td>${fmtDur(x.seconds)}</td><td>${x.runs}</td><td>${x.players}</td></tr>`).join('')}</tbody></table></div></details></div>
       <div class="grid2">
-        <div class="box"><h3>A qué hora del día se juega (minutos)</h3><div id="chHour">${barChart(hourItems, { color: COLORS.aqua, labelEvery: 3, width: 540, id: 'hour' })}</div></div>
-        <div class="box"><h3>Cuánto dura cada partida (cantidad de partidas)</h3><div id="chDur">${barChart(durItems, { color: COLORS.orange, width: 540, id: 'dur' })}</div></div>
+        <div class="box"><h3>A qué hora del día se juega (todos los jugadores, minutos)</h3><div id="chHour">${barChart(hourItems, { color: COLORS.aqua, labelEvery: 3, width: 540, id: 'hour' })}</div></div>
+        <div class="box"><h3>Cuánto dura cada partida (todos los jugadores)</h3><div id="chDur">${barChart(durItems, { color: COLORS.orange, width: 540, id: 'dur' })}</div></div>
       </div>
       <div class="grid2">
-        <div class="box"><h3>Tiempo por nivel</h3>${d.levels.length ? bars(d.levels.map((l) => ({ label: LEVELS[l.level] || 'Nivel ' + l.level, value: l.seconds })), fmtDur) : '<div class="msg">Sin muestras de posición todavía</div>'}</div>
-        <div class="box"><h3>Quién juega más</h3>${d.players.length ? `<div class="scroll"><table><thead><tr><th>Jugador</th><th>Tiempo total</th><th>Partidas</th><th>Media</th><th>Días activos</th></tr></thead><tbody>${playerRows.join('')}</tbody></table></div>` : '<div class="msg">Sin partidas en este periodo</div>'}</div>
+        <div class="box"><h3>Tiempo por nivel (todos los jugadores)</h3>${d.levels.length ? bars(d.levels.map((l) => ({ label: LEVELS[l.level] || 'Nivel ' + l.level, value: l.seconds })), fmtDur) : '<div class="msg">Sin muestras de posición todavía</div>'}</div>
+        <div class="box"><h3>Quién juega más (resumen; el detalle por jugador está en Actividad)</h3>${d.players.length ? `<div class="scroll"><table><thead><tr><th>Jugador</th><th>Tiempo total</th><th>Partidas</th><th>Media</th><th>Días activos</th></tr></thead><tbody>${playerRows.join('')}</tbody></table></div>` : '<div class="msg">Sin partidas en este periodo</div>'}</div>
       </div>`;
     wireBars($('#chDay'), 'day', dayItems);
     wireBars($('#chHour'), 'hour', hourItems);
     wireBars($('#chDur'), 'dur', durItems);
+    const toAct = $('#ptToAct'); if (toAct) toAct.onclick = (e) => { e.preventDefault(); go('activity'); };
     document.querySelectorAll('#ptDays button').forEach((b) => b.onclick = () => { PT.days = Number(b.dataset.v); go('playtime'); });
     document.querySelectorAll('#ptMode button').forEach((b) => b.onclick = () => { PT.mode = b.dataset.v; go('playtime'); });
   };

@@ -6,71 +6,93 @@
 <title>Escape del Laboratorio - Panel</title>
 <style>
   :root {
-    --bg: #070b14; --panel: #0e1626; --panel2: #121c30; --line: #24344f;
-    --text: #e6edf7; --muted: #8aa0bd; --cyan: #5fe7ff; --gold: #ffd23f;
-    --green: #6bff8e; --red: #ff5d6c; --pink: #ff7ad9;
+    --bg: #17211f; --panel: #1e2b28; --panel2: #273732; --line: #3a4d48; --text: #eef2ee; --muted: #9bb0aa;
+    --cyan: #8fe3b8; --gold: #ffd23f; --green: #6df5a0; --red: #ff5a3c; --pink: #a9d6f5;
+    --head: "Bahnschrift", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: radial-gradient(circle at 20% 0%, #0f1d38, var(--bg) 55%); color: var(--text);
-         font: 14px/1.45 "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-           padding: 14px 24px; border-bottom: 1px solid var(--line); background: rgba(7,11,20,.85); position: sticky; top: 0; z-index: 5; }
-  h1 { margin: 0; font: 700 18px "Courier New", monospace; letter-spacing: 1px; color: var(--gold); }
-  h1 span { color: var(--cyan); }
-  nav { display: flex; gap: 6px; flex-wrap: wrap; }
-  nav button, .btn { background: var(--panel); color: var(--text); border: 1px solid var(--line); padding: 7px 14px;
-                     border-radius: 6px; cursor: pointer; font: inherit; }
-  nav button:hover, .btn:hover { border-color: var(--cyan); }
-  nav button.active { background: var(--cyan); color: #04101a; border-color: var(--cyan); font-weight: 600; }
-  .lock { color: var(--muted); font-size: 12px; }
-  main { max-width: 1200px; margin: 0 auto; padding: 22px 24px 60px; }
-  h2 { margin: 0 0 14px; font-size: 16px; color: var(--cyan); }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
-  .card .n { font: 700 26px "Courier New", monospace; color: var(--gold); }
-  .card .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
-  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
-  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
-  .box h3 { margin: 0 0 10px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+  .side { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: #121b19; border-right: 1px solid var(--line); padding: 22px 14px; display: flex; flex-direction: column; }
+  .brand { padding: 0 10px; }
+  .brand b { display: block; font: 600 19px/1.15 var(--head); }
+  .brand span { color: var(--muted); font-size: 12px; }
+  nav { margin: 22px 0 14px; flex: 1; }
+  .ngroup { margin-bottom: 16px; }
+  .ngroup h4 { margin: 0 0 4px; padding: 0 10px; font: 600 12px var(--head); color: var(--muted); }
+  nav button { display: block; width: 100%; text-align: left; background: transparent; color: var(--text); border: 0; border-left: 3px solid transparent;
+               padding: 7px 10px; cursor: pointer; font: inherit; }
+  nav button:hover { background: var(--panel); }
+  nav button.active { background: var(--panel); border-left-color: var(--green); font-weight: 600; }
+  nav .lk { margin-left: 6px; font-size: 11px; font-style: normal; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; }
+  .lock { padding: 0 10px; color: var(--muted); font-size: 12px; }
+  main { padding: 28px 34px 60px; max-width: 1280px; width: 100%; }
+  h2 { margin: 0 0 16px; font: 600 24px/1.2 var(--head); }
+  .btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line); padding: 6px 12px; border-radius: 3px; cursor: pointer; font: inherit; }
+  .btn:hover { border-color: var(--muted); }
+  .btn.active { background: var(--green); border-color: var(--green); color: #0b1a14; font-weight: 600; }
+  button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; margin-bottom: 22px; background: var(--line); border: 1px solid var(--line); }
+  .card { background: var(--panel); padding: 12px 14px; }
+  .card .n { font: 600 26px/1.2 var(--head); }
+  .card .l { color: var(--muted); font-size: 12px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; margin-bottom: 16px; }
+  .box h3 { margin: 0 0 10px; font: 600 15px var(--head); }
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
   tbody tr:hover { background: var(--panel2); }
   tr.click { cursor: pointer; }
+  tr.sel { background: var(--panel2); box-shadow: inset 3px 0 0 var(--green); }
   .scroll { overflow-x: auto; }
   .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
-  select, input { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font: inherit; }
+  select, input { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 3px; padding: 6px 10px; font: inherit; }
   .gold { color: var(--gold); } .green { color: var(--green); } .red { color: var(--red); } .pink { color: var(--pink); } .muted { color: var(--muted); }
-  .badge { padding: 2px 8px; border-radius: 10px; font-size: 12px; border: 1px solid var(--line); }
+  .badge { padding: 1px 8px; border-radius: 3px; font-size: 12px; border: 1px solid var(--line); }
   .badge.completed { color: var(--green); border-color: var(--green); }
   .badge.abandoned { color: var(--red); border-color: var(--red); }
   .badge.in_progress { color: var(--gold); border-color: var(--gold); }
   .bars { display: flex; flex-direction: column; gap: 6px; }
   .bar { display: grid; grid-template-columns: 150px 1fr 54px; gap: 8px; align-items: center; font-size: 12px; }
-  .bar .track { background: var(--panel2); border-radius: 4px; height: 14px; overflow: hidden; }
-  .bar .fill { height: 100%; background: linear-gradient(90deg, var(--cyan), #3b8bff); }
+  .bar .track { background: var(--panel2); height: 12px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--green); }
   .bar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
-  .bar .val { text-align: right; font-family: "Courier New", monospace; }
+  .bar .val { text-align: right; }
   .msg { padding: 24px; text-align: center; color: var(--muted); }
   .err { color: var(--red); }
-  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--cyan); border-radius: 10px; padding: 20px; }
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 20px; }
   dialog::backdrop { background: rgba(0,0,0,.6); }
   .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
-  .kv div { background: var(--panel2); border-radius: 6px; padding: 8px 10px; }
-  .kv b { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
-  .podium td:first-child { font-family: "Courier New", monospace; font-weight: 700; }
-  .rank1 td:first-child { color: var(--gold); } .rank2 td:first-child { color: #cfd8e6; } .rank3 td:first-child { color: #d9955f; }
+  .kv div { background: var(--panel2); border-radius: 3px; padding: 8px 10px; }
+  .kv b { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+  .podium td:first-child { font-weight: 700; }
+  td.big { font: 600 18px var(--head); }
+  .best { display: flex; align-items: baseline; gap: 10px; margin: -2px 0 10px; padding: 8px 12px; background: var(--panel2); border-left: 4px solid var(--gold); border-radius: 3px; }
+  .best span { color: var(--muted); font-size: 12px; } .best b { font: 600 18px var(--head); } .best em { margin-left: auto; font: 600 20px var(--head); font-style: normal; color: var(--green); }
+  .rank1 td:first-child { color: var(--gold); } .rank2 td:first-child { color: #cfd6d3; } .rank3 td:first-child { color: #d99a6c; }
   code { color: var(--pink); }
+  @media (max-width: 860px) {
+    .app { display: block; }
+    .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 14px 12px; }
+    nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 12px 0; }
+    .ngroup { margin: 0; } .ngroup h4 { display: none; }
+    nav button { width: auto; border-left: 0; border-bottom: 3px solid transparent; }
+    nav button.active { border-bottom-color: var(--green); }
+    main { padding: 20px 14px 50px; }
+  }
 </style>
 <link rel="stylesheet" href="behavior.css">
 </head>
 <body>
-<header>
-  <h1>ESCAPE DEL <span>LABORATORIO</span> · PANEL</h1>
+<div class="app">
+<aside class="side">
+  <div class="brand"><b>Escape del Laboratorio</b><span>Panel de partidas</span></div>
   <nav id="nav"></nav>
   <div class="lock" id="lock"></div>
-</header>
+</aside>
 <main id="view"></main>
+</div>
 
 <dialog id="login">
   <form method="dialog" id="loginForm">
@@ -101,10 +123,16 @@ let adminKey = sessionStorage.getItem('adminKey') || '';
 let tab = 'leaderboard';
 let timer = null;
 const tabs = [
-  ['leaderboard', 'Leaderboard', false], ['summary', 'Resumen', true], ['behavior', 'Comportamiento', true],
-  ['playtime', 'Tiempo de juego', true], ['players', 'Jugadores', true],
-  ['runs', 'Partidas', true], ['events', 'Eventos', true], ['export', 'Exportar', true],
+  ['leaderboard', 'Leaderboard', false, 'Ranking'],
+  ['players', 'Jugadores', true, 'Jugadores'], ['activity', 'Actividad', true, 'Jugadores'],
+  ['summary', 'Resumen', true, 'Análisis'], ['behavior', 'Comportamiento', true, 'Análisis'], ['playtime', 'Tiempo de juego', true, 'Análisis'],
+  ['runs', 'Partidas', true, 'Datos'], ['events', 'Eventos', true, 'Datos'], ['export', 'Exportar', true, 'Datos'],
 ];
+const MODES = { story: 'Historia', finaltop: 'FinalTop' };
+const fmtLevelTime = (s) => { s = Math.max(0, Number(s) || 0); const m = Math.floor(s / 60); return String(m).padStart(2, '0') + ':' + (s - m * 60).toFixed(1).padStart(4, '0'); };
+const fmtDay = (d) => d ? new Date(d).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }) : '–';
+const fmtHour = (d) => d ? new Date(d).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '–';
+const lvLabel = (l) => (l ? `${l}. ${LEVELS[l] || 'Nivel ' + l}` : '–');
 
 async function api(path, admin) {
   const res = await fetch(path, { headers: admin ? { 'x-admin-key': adminKey } : {} });
@@ -131,9 +159,10 @@ function ask() {
 }
 
 function renderNav() {
-  $('#nav').innerHTML = tabs.map(([id, name, locked]) =>
-    `<button data-tab="${id}" class="${tab === id ? 'active' : ''}">${name}${locked && !adminKey ? ' 🔒' : ''}</button>`).join('');
-  $('#lock').innerHTML = adminKey ? '<a href="#" id="logout" style="color:var(--muted)">Cerrar sesión de administrador</a>' : 'Modo público';
+  const groups = [...new Set(tabs.map((t) => t[3]))];
+  $('#nav').innerHTML = groups.map((g) => `<div class="ngroup"><h4>${g}</h4>${tabs.filter((t) => t[3] === g).map(([id, name, locked]) =>
+    `<button data-tab="${id}" class="${tab === id ? 'active' : ''}">${name}${locked && !adminKey ? '<i class="lk">admin</i>' : ''}</button>`).join('')}</div>`).join('');
+  $('#lock').innerHTML = adminKey ? '<a href="#" id="logout" style="color:var(--muted)">Cerrar sesión de administrador</a>' : 'Vista pública';
   const lo = $('#logout'); if (lo) lo.onclick = (e) => { e.preventDefault(); adminKey = ''; sessionStorage.removeItem('adminKey'); go('leaderboard'); };
   document.querySelectorAll('#nav button').forEach((b) => b.onclick = () => go(b.dataset.tab));
 }
@@ -160,15 +189,40 @@ const statusBadge = (s) => `<span class="badge ${esc(s)}">${{ completed: 'comple
 
 const views = {
   async leaderboard() {
-    const kinds = [['score', 'Mayor puntuación'], ['time', 'Mejor tiempo'], ['coins', 'Más monedas'], ['parries', 'Más parrys'], ['streak', 'Mejor racha sin daño']];
-    const kind = sessionStorage.getItem('lbKind') || 'score';
+    const mode = sessionStorage.getItem('lbMode') === 'finaltop' ? 'finaltop' : 'story';
+    const kinds = mode === 'finaltop' ? [['time', 'Mejor tiempo']] : [['score', 'Mayor puntuación'], ['time', 'Mejor tiempo por nivel'], ['coins', 'Más monedas'], ['streak', 'Mejor racha sin daño']];
+    let kind = sessionStorage.getItem('lbKind') || 'score';
+    if (!kinds.some((k) => k[0] === kind)) kind = kinds[0][0];
     const scope = sessionStorage.getItem('lbScope') || 'all';
-    const onlyDone = kind === 'time' || kind === 'deaths';
-    const data = await getJson(`/api/leaderboard?type=${kind}&scope=${scope}&limit=20`);
-    const rows = data.entries.map((e) => `<tr class="rank${e.rank}"><td>#${e.rank}</td><td>${esc(e.username)}</td><td class="gold">${Number(e.score).toLocaleString('es-MX')}</td><td>${fmtTime(e.play_time)}</td><td>${e.coins}</td><td>${e.parries}</td><td>${e.deaths}</td><td>${fmtTime(e.best_streak)}</td><td>${e.status === 'completed' ? '<span class="badge completed">completada</span>' : `<span class="badge in_progress">nivel ${e.level_reached}</span>`}</td><td class="muted">${fmtDate(e.ended_at)}</td></tr>`);
+    const perLevel = mode === 'story' && kind === 'time';
+    const note = mode === 'finaltop' ? 'Mejor tiempo de cada jugador en sus partidas completadas'
+      : perLevel ? 'Mejor tiempo para completar cada nivel por separado: cuenta solo lo que tardó en ese nivel, no la partida completa'
+      : kind === 'streak' ? 'Más tiempo seguido sin recibir daño que logró cada jugador en una partida' : 'Mejor partida de cada jugador';
+    let body;
+    if (perLevel) {
+      const d = await getJson('/api/leaderboard/levels?limit=5');
+      body = `<div class="grid2">${d.levels.map((l) => `<div class="box"><h3>${l.level}. ${esc(LEVELS[l.level])}</h3>${l.entries.length
+        ? `<div class="best"><span>Récord del nivel</span><b>${esc(l.entries[0].username)}</b><em>${fmtLevelTime(l.entries[0].level_time)}</em></div>${table(['#', 'Jugador', 'Tiempo en el nivel', 'Día'], l.entries.map((e) => `<tr class="rank${e.rank}"><td>#${e.rank}</td><td><b>${esc(e.username)}</b></td><td class="green">${fmtLevelTime(e.level_time)}</td><td>${fmtDay(e.at)}</td></tr>`), { cls: 'podium' })}`
+        : '<div class="msg">Nadie ha completado este nivel todavía</div>'}</div>`).join('')}</div>`;
+    } else {
+      const url = mode === 'finaltop' ? '/api/leaderboard?mode=finaltop&limit=20' : `/api/leaderboard?type=${kind}&scope=${scope}&limit=20`;
+      const data = await getJson(url);
+      const streak = kind === 'streak' && mode === 'story';
+      const rows = data.entries.map((e) => {
+        const state = e.status ? statusBadge(e.status) : '<span class="badge completed">completada</span>';
+        const lv = e.level_reached ? esc(lvLabel(e.level_reached)) : (mode === 'finaltop' ? 'Pista' : '–');
+        const when = e.ended_at;
+        if (streak) return `<tr class="rank${e.rank}"><td>#${e.rank}</td><td><b>${esc(e.username)}</b></td><td>${MODES[mode]}</td><td class="green big">${fmtTime(e.best_streak)}</td><td>${lv}</td><td>${state}</td><td>${fmtDay(when)}</td><td>${fmtHour(when)}</td></tr>`;
+        return `<tr class="rank${e.rank}"><td>#${e.rank}</td><td><b>${esc(e.username)}</b></td><td>${MODES[mode]}</td><td>${lv}</td><td>${state}</td><td class="gold">${Number(e.score).toLocaleString('es-MX')}</td><td>${fmtTime(e.play_time)}</td><td>${e.coins ?? '–'}</td><td>${e.deaths}</td><td>${fmtDay(when)}</td><td>${fmtHour(when)}</td></tr>`;
+      });
+      const head = streak ? ['#', 'Jugador', 'Modo', 'Tiempo sin recibir daño', 'Nivel', 'Estado', 'Día', 'Hora'] : ['#', 'Jugador', 'Modo', 'Nivel', 'Estado', 'Puntos', 'Tiempo', 'Monedas', 'Derrotas', 'Día', 'Hora'];
+      body = `<div class="box">${rows.length ? table(head, rows, { cls: 'podium' }) : '<div class="msg">Todavía no hay partidas en este ranking</div>'}</div>`;
+    }
     $('#view').innerHTML = `<h2>Leaderboard</h2>
-      <div class="tabs">${kinds.map(([k, n]) => `<button class="btn ${k === kind ? 'active' : ''}" data-k="${k}" style="${k === kind ? 'background:var(--gold);color:#201800;border-color:var(--gold)' : ''}">${n}</button>`).join('')}${onlyDone ? '' : `<button class="btn" id="scopeBtn">${scope === 'all' ? 'Mostrar solo completadas' : 'Mostrar todas las partidas'}</button>`}<span class="muted">${onlyDone ? 'El tiempo solo cuenta en partidas completadas' : 'Mejor partida de cada jugador'} · se actualiza cada 10 s</span></div>
-      <div class="box">${rows.length || !onlyDone ? table(['#', 'Jugador', 'Puntos', 'Tiempo', 'Monedas', 'Parrys', 'Derrotas', 'Racha', 'Estado', 'Fecha'], rows, { cls: 'podium' }) : '<div class="msg">Nadie ha completado el juego todavía</div>'}</div>`;
+      <div class="filters"><label>Modo <span class="seg" id="lbMode">${Object.entries(MODES).map(([v, n]) => `<button type="button" data-v="${v}" class="${mode === v ? 'on' : ''}">${n}</button>`).join('')}</span></label></div>
+      <div class="tabs">${kinds.map(([k, n]) => `<button class="btn ${k === kind ? 'active' : ''}" data-k="${k}">${n}</button>`).join('')}${mode === 'story' && !perLevel ? `<button class="btn" id="scopeBtn">${scope === 'all' ? 'Mostrar solo completadas' : 'Mostrar todas las partidas'}</button>` : ''}<span class="muted">${note}</span></div>
+      ${body}`;
+    document.querySelectorAll('#lbMode button').forEach((b) => b.onclick = () => { sessionStorage.setItem('lbMode', b.dataset.v); go('leaderboard'); });
     document.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => { sessionStorage.setItem('lbKind', b.dataset.k); go('leaderboard'); });
     if ($('#scopeBtn')) $('#scopeBtn').onclick = () => { sessionStorage.setItem('lbScope', scope === 'all' ? 'completed' : 'all'); go('leaderboard'); };
     timer = setInterval(() => { if (tab === 'leaderboard') views.leaderboard().catch(() => {}); }, 10000);
@@ -190,25 +244,24 @@ const views = {
       </div>`;
   },
 
-  async players() {
-    const { players } = await getJson('/api/admin/players', true);
-    const rows = players.map((p) => `<tr class="click" data-id="${p.id}"><td>${p.id}</td><td>${esc(p.username)}</td><td>${p.runs}</td><td>${p.completed}</td><td class="gold">${Number(p.best_score).toLocaleString('es-MX')}</td><td>${p.best_time == null ? '-' : fmtTime(p.best_time)}</td><td>${p.coins}</td><td>${p.parries}</td><td>${p.deaths}</td><td class="muted">${fmtDate(p.created_at)}</td><td class="muted">${fmtDate(p.last_run)}</td></tr>`);
-    $('#view').innerHTML = `<h2>Jugadores (${players.length})</h2><div class="muted" style="margin-bottom:8px">Haz clic en un jugador para ver sus partidas.</div><div class="box">${table(['ID', 'Usuario', 'Partidas', 'Completadas', 'Mejor puntuación', 'Mejor tiempo', 'Monedas', 'Parrys', 'Derrotas', 'Registro', 'Última partida'], rows)}</div>`;
-    document.querySelectorAll('tr[data-id]').forEach((tr) => tr.onclick = () => go('runs', { user_id: tr.dataset.id }));
-  },
-
   async runs(arg = {}) {
-    const filter = { user_id: arg.user_id || '', status: arg.status || '' };
-    const qs = new URLSearchParams(Object.entries(filter).filter(([, v]) => v)).toString();
-    const { runs } = await getJson('/api/admin/runs?limit=100&' + qs, true);
-    const rows = runs.map((r) => `<tr class="click" data-id="${r.id}"><td>${r.id}</td><td>${esc(r.username)}</td><td>${statusBadge(r.status)}</td><td class="gold">${Number(r.score).toLocaleString('es-MX')}</td><td>${fmtTime(r.play_time)}</td><td>${r.level_reached}</td><td>${r.ingredients}/15</td><td>${r.coins}</td><td>${r.parries}</td><td>${r.deaths}</td><td>${fmtTime(r.best_streak)}</td><td>${r.continued ? 'sí' : 'no'}</td><td class="muted">${fmtDate(r.started_at)}</td></tr>`);
+    const filter = { user_id: arg.user_id || '', status: arg.status || '', mode: arg.mode || '', level: arg.level || '' };
+    const qs = new URLSearchParams(Object.entries({ user_id: filter.user_id, status: filter.status }).filter(([, v]) => v)).toString();
+    const [{ runs: all }, { players }] = await Promise.all([getJson('/api/admin/runs?limit=200&' + qs, true), getJson('/api/admin/players', true)]);
+    const runs = all.filter((r) => (!filter.mode || r.mode === filter.mode) && (!filter.level || String(r.level_reached) === String(filter.level)));
+    const rows = runs.map((r) => `<tr class="click" data-id="${r.id}"><td>${r.id}</td><td><b>${esc(r.username)}</b></td><td>${esc(MODES[r.mode] || r.mode || 'Historia')}</td><td>${esc(lvLabel(r.level_reached))}</td><td>${statusBadge(r.status)}</td><td class="gold">${Number(r.score).toLocaleString('es-MX')}</td><td>${fmtTime(r.play_time)}</td><td>${r.coins}</td><td>${r.ingredients}/15</td><td>${r.deaths}</td><td>${fmtTime(r.best_streak)}</td><td>${fmtDay(r.started_at)}</td><td>${fmtHour(r.started_at)}</td></tr>`);
+    const opt = (v, n, cur) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${n}</option>`;
     $('#view').innerHTML = `<h2>Partidas</h2>
-      <div class="tabs"><select id="fStatus"><option value="">Todos los estados</option><option value="completed">Completadas</option><option value="abandoned">Abandonadas</option><option value="in_progress">En curso</option></select>
-      ${filter.user_id ? `<span class="badge">Jugador #${esc(filter.user_id)}</span><button class="btn" id="fClear">Quitar filtro</button>` : ''}</div>
-      <div class="box">${table(['ID', 'Jugador', 'Estado', 'Puntos', 'Tiempo', 'Nivel', 'Ingred.', 'Monedas', 'Parrys', 'Derrotas', 'Racha', 'Continuada', 'Inicio'], rows)}</div>`;
-    $('#fStatus').value = filter.status;
-    $('#fStatus').onchange = (e) => go('runs', { ...filter, status: e.target.value });
-    const clear = $('#fClear'); if (clear) clear.onclick = () => go('runs', { status: filter.status });
+      <div class="filters">
+        <label>Jugador <select id="fUser">${opt('', 'Todos', filter.user_id)}${players.map((p) => opt(p.id, esc(p.username), filter.user_id)).join('')}</select></label>
+        <label>Modo <select id="fMode">${opt('', 'Todos', filter.mode)}${Object.entries(MODES).map(([v, n]) => opt(v, n, filter.mode)).join('')}</select></label>
+        <label>Nivel <select id="fLevel">${opt('', 'Todos', filter.level)}${Object.entries(LEVELS).map(([v, n]) => opt(v, v + '. ' + n, filter.level)).join('')}</select></label>
+        <label>Estado <select id="fStatus">${opt('', 'Todos', filter.status)}${opt('completed', 'Completadas', filter.status)}${opt('abandoned', 'Abandonadas', filter.status)}${opt('in_progress', 'En curso', filter.status)}</select></label>
+        <span class="muted">${runs.length} partidas · se muestran las 200 más recientes</span>
+      </div>
+      <div class="box">${table(['ID', 'Jugador', 'Modo', 'Nivel', 'Estado', 'Puntos', 'Tiempo', 'Monedas', 'Ingred.', 'Derrotas', 'Racha', 'Día', 'Hora'], rows)}</div>`;
+    const apply = () => go('runs', { user_id: $('#fUser').value, mode: $('#fMode').value, level: $('#fLevel').value, status: $('#fStatus').value });
+    ['#fUser', '#fMode', '#fLevel', '#fStatus'].forEach((id) => { $(id).onchange = apply; });
     document.querySelectorAll('tr[data-id]').forEach((tr) => tr.onclick = () => showRun(tr.dataset.id));
   },
 
@@ -223,7 +276,7 @@ const views = {
 
   async export() {
     const items = [['players', 'Jugadores'], ['runs', 'Partidas'], ['events', 'Eventos'], ['collectibles', 'Coleccionables']];
-    $('#view').innerHTML = `<h2>Exportar datos a CSV</h2><div class="box"><p class="muted">Archivos compatibles con Excel y Google Sheets.</p><div class="tabs">${items.map(([k, n]) => `<button class="btn" data-x="${k}">⬇ ${n}</button>`).join('')}</div></div>`;
+    $('#view').innerHTML = `<h2>Exportar datos a CSV</h2><div class="box"><p class="muted">Archivos compatibles con Excel y Google Sheets.</p><div class="tabs">${items.map(([k, n]) => `<button class="btn" data-x="${k}">${n}</button>`).join('')}</div></div>`;
     document.querySelectorAll('[data-x]').forEach((b) => b.onclick = async () => {
       const res = await api('/api/admin/export/' + b.dataset.x, true);
       const url = URL.createObjectURL(await res.blob());
@@ -253,6 +306,7 @@ go('leaderboard');
 </script>
 <script src="levels.js"></script>
 <script src="behavior.js"></script>
+<script src="activity.js"></script>
 <script src="players.js"></script>
 </body>
 </html>

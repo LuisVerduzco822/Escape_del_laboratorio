@@ -94,7 +94,7 @@ router.get('/overview', wrap(async (req, res) => {
 
 router.get('/heatmap', wrap(async (req, res) => {
   const f = readFilters(req.query);
-  const layer = ['hurt', 'death', 'time', 'lowtime'].includes(req.query.layer) ? req.query.layer : 'hurt';
+  const layer = ['hurt', 'death', 'time', 'lowtime', 'jumps'].includes(req.query.layer) ? req.query.layer : 'hurt';
   const params = [f.bin];
   let sql;
   if (layer === 'hurt' || layer === 'death') {
@@ -105,6 +105,12 @@ router.get('/heatmap', wrap(async (req, res) => {
                   count(*)::int AS n
              FROM run_events e
             WHERE e.event_type = ${type} AND ${HAS_XY}${filterSql('events', f, params)}
+            GROUP BY 1, 2`;
+  } else if (layer === 'jumps') {
+    sql = `SELECT floor(p.x / $1::float)::int AS cx, floor(p.y / $1::float)::int AS cy,
+                  sum(p.jumps)::int AS n
+             FROM run_positions p
+            WHERE p.jumps > 0${filterSql('positions', f, params)}
             GROUP BY 1, 2`;
   } else {
     let hp = '';
@@ -123,7 +129,7 @@ router.get('/heatmap', wrap(async (req, res) => {
   const max = rows.reduce((m, r) => Math.max(m, Number(r.n)), 0);
   res.json({
     level: f.level, layer, bin: f.bin, hp_max: f.hpMax,
-    unit: layer === 'time' || layer === 'lowtime' ? 'segundos' : layer === 'death' ? 'muertes' : 'vidas perdidas',
+    unit: layer === 'time' || layer === 'lowtime' ? 'segundos' : layer === 'death' ? 'muertes' : layer === 'jumps' ? 'saltos' : 'vidas perdidas',
     cells: rows, max, total: round1(total),
   });
 }));
