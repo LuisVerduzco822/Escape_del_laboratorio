@@ -14,10 +14,20 @@ var home_t := 0.0
 var home_turn := 1.5
 # Rebota en el suelo esta cantidad de veces.
 var bounces := 0
+# Mina: se queda flotando y a los burst_t segundos estalla en burst_n proyectiles.
+var burst_t := 0.0
+var burst_n := 8
+# Serpiente: oscila de lado a lado respecto a su dirección.
+var wave_amp := 0.0
+var wave_f := 6.0
+var trail: Array = []
+# Balas de robot: se pueden destruir a disparos y desaparecen solas pasado `life` segundos (0 = no caducan).
+var shootable := false
+var life := 0.0
 
 
 func _ready() -> void:
-	collision_layer = 8
+	collision_layer = 8 | 16 if shootable else 8
 	collision_mask = 4
 	var cs := CollisionShape2D.new()
 	var c := CircleShape2D.new()
@@ -40,12 +50,25 @@ func _physics_process(delta: float) -> void:
 			var turn := clampf(vel.angle_to(want), -home_turn * delta, home_turn * delta)
 			vel = vel.rotated(turn)
 	vel += accel * delta
+	if burst_t > 0.0:
+		burst_t -= delta
+		if burst_t <= 0.0:
+			_explode()
+			return
+	if wave_amp > 0.0 and vel.length() > 1.0:
+		position += vel.orthogonal().normalized() * cos(age * wave_f) * wave_amp * delta
 	if bounces > 0 and vel.y > 0.0 and position.y >= Cfg.FLOOR_Y - 6.0:
 		position.y = Cfg.FLOOR_Y - 6.0
 		vel.y = -vel.y * 0.86
 		bounces -= 1
 	position += vel * delta
+	trail.push_front(global_position)
+	if trail.size() > 7:
+		trail.pop_back()
 	age += delta
+	if life > 0.0 and age >= life:
+		vanish()
+		return
 	spin += delta * 6.0
 	var vl: float = get_parent().get("view_left") if get_parent().get("view_left") != null else 0.0
 	if position.x < vl - 60.0 or position.x > vl + 540.0 or position.y < -80 or position.y > 330:
@@ -63,6 +86,30 @@ func _on_body(b: Node) -> void:
 			vanish()
 
 
+func take_damage(_d: float) -> bool:
+	if not shootable:
+		return false
+	Fx.burst(get_parent(), global_position, col, 5, 70.0, 0.3, 2.0)
+	AudioManager.sfx("hurt", -16.0, 2.0)
+	queue_free()
+	return true
+
+
+func _explode() -> void:
+	var off := randf() * TAU
+	for i in burst_n:
+		var h = get_script().new()
+		h.position = position
+		h.vel = Vector2.RIGHT.rotated(off + TAU * i / burst_n) * 82.0
+		h.col = col
+		h.radius = 4.0
+		h.src = src
+		get_parent().add_child(h)
+	Fx.burst(get_parent(), global_position, col, 8, 90.0, 0.35, 2.5)
+	AudioManager.sfx("boom", -16.0, 1.4)
+	queue_free()
+
+
 func parried() -> void:
 	Fx.burst(get_parent(), global_position, Color(1, 0.5, 0.85), 8, 90.0, 0.4, 2.5)
 	queue_free()
@@ -75,6 +122,9 @@ func vanish() -> void:
 
 func _draw() -> void:
 	var c := Color(1.0, 0.45, 0.8) if pink else col
+	if life > 0.0 and age > life - 0.6:
+		modulate.a = 0.35 + 0.65 * absf(sin(age * 30.0))   # parpadea antes de desaparecer
+	_neon(c)
 	if style == "drop":
 		var pts := PackedVector2Array([Vector2(0, radius * 1.8), Vector2(radius * 0.9, 0), Vector2(0, -radius * 0.8), Vector2(-radius * 0.9, 0)])
 		draw_colored_polygon(pts, c.darkened(0.3))
@@ -90,9 +140,22 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, radius * 0.75, c)
 		draw_circle(Vector2(0, -radius * 0.2), radius * 0.35, Color(1, 1, 1, 0.7))
 		return
+	if burst_t > 0.0:
+		var arm := 1.0 + 0.25 * sin(age * 14.0)
+		draw_arc(Vector2.ZERO, (radius + 4.0) * arm, 0.0, TAU, 20, Color(c, 0.8), 1.2)
 	draw_circle(Vector2.ZERO, radius + 1.5, c.darkened(0.55))
 	draw_circle(Vector2.ZERO, radius, c)
 	draw_circle(Vector2(-radius * 0.25, -radius * 0.25), radius * 0.35, Color(1, 1, 1, 0.85))
 	if pink:
 		var pulse := 1.0 + sin(age * 12.0) * 0.12
 		draw_arc(Vector2.ZERO, (radius + 4.0) * pulse, 0.0, TAU, 20, Color(1, 0.6, 0.9, 0.9), 1.5)
+
+
+# Efecto de neón al estilo Geometry Dash: estela que se desvanece, halo que late al compás y un destello blanco.
+func _neon(c: Color) -> void:
+	for i in range(1, trail.size()):
+		var f := 1.0 - float(i) / float(trail.size())
+		draw_circle(to_local(trail[i]), radius * (0.35 + 0.55 * f), Color(c, 0.32 * f))
+	var beat := 0.5 + 0.5 * cos(age * TAU / 0.5)
+	draw_circle(Vector2.ZERO, radius * (2.1 + 0.5 * beat), Color(c, 0.10 + 0.08 * beat))
+	draw_circle(Vector2.ZERO, radius * 1.5, Color(c, 0.22))

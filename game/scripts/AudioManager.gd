@@ -11,6 +11,12 @@ const SFX_FILES := {
 	"gameover": "sfx_gameover.wav", "victory": "sfx_victory.wav",
 }
 
+# Música más baja que los efectos: las pistas están normalizadas (-24 LUFS); las .wav antiguas son
+# algo más fuertes y se compensan.
+const MUSIC_DB := -4.5
+const WAV_COMP_DB := -5.0
+const SFX_DB := 1.0
+
 var music: AudioStreamPlayer
 var pool: Array = []
 var cache := {}
@@ -22,11 +28,11 @@ var ducked := false
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	music = AudioStreamPlayer.new()
-	music.volume_db = -9.0
+	music.volume_db = MUSIC_DB
 	add_child(music)
 	for i in 10:
 		var p := AudioStreamPlayer.new()
-		p.volume_db = -4.0
+		p.volume_db = SFX_DB
 		add_child(p)
 		pool.append(p)
 
@@ -53,7 +59,7 @@ func sfx(name: String, vol: float = 0.0, pitch: float = 1.0) -> void:
 	for p in pool:
 		if not p.playing:
 			p.stream = s
-			p.volume_db = -4.0 + vol
+			p.volume_db = SFX_DB + vol
 			p.pitch_scale = pitch
 			p.play()
 			return
@@ -63,9 +69,16 @@ func play_music(name: String) -> void:
 	if name == current and music.playing:
 		return
 	current = name
-	var s := _load("music_%s.wav" % name)
+	# El lobby (menú, login y taller) suena con "Containment Lockdown".
+	var file := ("containment" if name == "menu" else name)
+	var is_ogg := ResourceLoader.exists(DIR + "music_%s.ogg" % file)
+	var s := _load("music_%s.ogg" % file) if is_ogg else _load("music_%s.wav" % file)
 	if s == null:
 		return
+	# Las pistas .ogg ya vienen preparadas para repetirse sin corte (el final se funde con el inicio).
+	if s is AudioStreamOggVorbis:
+		(s as AudioStreamOggVorbis).loop = true
+		(s as AudioStreamOggVorbis).loop_offset = 0.0
 	if s is AudioStreamWAV:
 		var w := s as AudioStreamWAV
 		w.loop_mode = AudioStreamWAV.LOOP_FORWARD
@@ -74,8 +87,13 @@ func play_music(name: String) -> void:
 	if music_tween:
 		music_tween.kill()
 	music.stream = s
-	music.volume_db = -9.0 if not ducked else -18.0
+	music.volume_db = _music_db()
 	music.play()
+
+
+func _music_db() -> float:
+	var base := MUSIC_DB + (WAV_COMP_DB if music.stream is AudioStreamWAV else 0.0)
+	return base - (9.0 if ducked else 0.0)
 
 
 func stop_music(fade: float = 0.4) -> void:
@@ -91,4 +109,4 @@ func stop_music(fade: float = 0.4) -> void:
 
 func duck(on: bool) -> void:
 	ducked = on
-	music.volume_db = -18.0 if on else -9.0
+	music.volume_db = _music_db()

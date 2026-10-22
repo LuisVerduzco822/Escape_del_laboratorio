@@ -62,6 +62,17 @@ const POOLS_FT := {
 		3: ["eyes", "bonewave", "chomp", "spiral", "wall", "strafe", "meteors", "ring", "beam", "zones", "bolts", "summon", "blink", "homing", "grid", "bounce", "curtain", "sweep", "crossfire", "pink", "slam", "charge", "fan", "aimed"],
 	},
 }
+# Ataques nuevos disponibles para los 5 jefes (se suman a su repertorio propio según la fase).
+const EXTRA := {
+	1: ["snake", "lanes"],
+	2: ["snake", "lanes", "pillars", "snipe"],
+	3: ["snake", "lanes", "pillars", "snipe", "mines", "beat"],
+}
+const EXTRA_FT := {
+	1: ["mines", "pillars"],
+	2: ["mines", "beat"],
+	3: [],
+}
 const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3), Color(0.35, 0.92, 1.0), Color(0.95, 0.92, 0.78)]
 const RADII := [46.0, 44.0, 42.0, 44.0, 58.0]
 const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100), Vector2(366, 102), Vector2(356, 104)]
@@ -96,6 +107,12 @@ const ATTACK_WEIGHTS := {
 	"eyes": [2.0, 4.0, 5.0],
 	"bonewave": [3.0, 4.0, 4.0],
 	"chomp": [5.0, 4.0, 2.0],
+	"beat": [2.0, 4.0, 5.0],
+	"pillars": [4.0, 4.0, 3.0],
+	"snipe": [1.0, 4.0, 6.0],
+	"mines": [3.0, 4.0, 4.0],
+	"snake": [2.0, 4.0, 5.0],
+	"lanes": [2.0, 4.0, 5.0],
 }
 
 var level
@@ -361,6 +378,13 @@ func _choose_attack() -> String:
 	var band := 0 if distance <= CLOSE_RANGE else (2 if distance >= FAR_RANGE else 1)
 	var pools: Dictionary = POOLS_FT if _is_finaltop() and POOLS_FT.has(kind) else POOLS
 	var pool: Array = pools[kind][phase].duplicate()
+	for extra in EXTRA[phase]:
+		if not pool.has(extra):
+			pool.append(extra)
+	if _is_finaltop():
+		for extra in EXTRA_FT[phase]:
+			if not pool.has(extra):
+				pool.append(extra)
 	# Some pools intentionally contain duplicates as an extra weighting.
 	# Remove every occurrence of the previous attack to avoid back-to-back repeats.
 	while pool.size() > 1 and pool.has(last_attack):
@@ -415,6 +439,12 @@ func _pick_attack() -> void:
 		"eyes": _atk_eyes()
 		"bonewave": _atk_bonewave()
 		"chomp": _atk_chomp()
+		"beat": _atk_beat()
+		"pillars": _atk_pillars()
+		"snipe": _atk_snipe()
+		"mines": _atk_mines()
+		"snake": _atk_snake()
+		"lanes": _atk_lanes()
 	tw.tween_callback(_done)
 
 
@@ -769,6 +799,110 @@ func _fire_crossfire() -> void:
 		var a: float = (_target() - corner).angle()
 		level.add_hazard(corner, Vector2.RIGHT.rotated(a) * 118.0 * sp, {"col": _col(), "radius": 5.0})
 	AudioManager.sfx("shoot", -10.0, 1.0)
+
+
+# ---- Ataques nuevos (todos los jefes) ----
+
+# Compás: franjas de suelo que se encienden al ritmo, de izquierda a derecha; hay que saltar con el pulso.
+func _atk_beat() -> void:
+	var beats := 4 + phase
+	for i in beats:
+		var x := ox + 40.0 + float(i % 5) * 96.0
+		tw.tween_callback(level.add_zone.bind(Vector2(x, Cfg.FLOOR_Y - 9.0), Vector2(70, 18), 0.6, 0.3, _col()))
+		tw.tween_interval(0.42 / sp)
+	tw.tween_interval(0.9)
+
+
+# Pilares: columnas verticales que brotan donde está el jugador, una tras otra.
+func _atk_pillars() -> void:
+	var n := 3 + phase
+	for i in n:
+		tw.tween_callback(_fire_pillar)
+		tw.tween_interval(0.75 / sp)
+	tw.tween_interval(0.9)
+
+
+func _fire_pillar() -> void:
+	var x := clampf(_target().x, ox + 30.0, ox + 450.0)
+	level.add_zone(Vector2(x, Cfg.FLOOR_Y * 0.5), Vector2(26.0, Cfg.FLOOR_Y), 0.7, 0.35, _col())
+
+
+# Francotirador: una línea de mira horizontal marca la altura del jugador y, al acabar el aviso, dispara una ráfaga.
+func _atk_snipe() -> void:
+	var rounds := phase
+	for r in rounds:
+		tw.tween_callback(_fire_snipe_warn)
+		tw.tween_interval(0.95)
+		tw.tween_callback(_fire_snipe_shot)
+		tw.tween_interval(0.9 / sp)
+	tw.tween_interval(0.3)
+
+
+var snipe_y := 120.0
+
+func _fire_snipe_warn() -> void:
+	snipe_y = clampf(_target().y, 20.0, Cfg.FLOOR_Y - 8.0)
+	level.add_zone(Vector2(ox + 240.0, snipe_y), Vector2(480, 5), 0.9, 0.12, Color(1, 0.3, 0.3), "boss_zone")
+	AudioManager.sfx("warn", -8.0, 1.3)
+
+
+func _fire_snipe_shot() -> void:
+	for k in 3:
+		level.add_hazard(Vector2(global_position.x - radius, snipe_y), Vector2(-190.0 * sp, 0.0), {"col": Color(1, 0.35, 0.3), "radius": 4.0})
+	AudioManager.sfx("shoot", -8.0, 1.4)
+
+
+# Minas: orbes que se quedan flotando y estallan en anillo.
+func _atk_mines() -> void:
+	var n := 2 + phase
+	for i in n:
+		tw.tween_callback(_fire_mine)
+		tw.tween_interval(0.6 / sp)
+	tw.tween_interval(1.6)
+
+
+func _fire_mine() -> void:
+	var x := clampf(_target().x + attack_rng.randf_range(-90.0, 90.0), ox + 40.0, ox + 450.0)
+	var y := attack_rng.randf_range(50.0, Cfg.FLOOR_Y - 40.0)
+	var m: Node = level.add_hazard(global_position, (Vector2(x, y) - global_position) * 2.2, {"col": _col(), "radius": 6.0, "accel": Vector2.ZERO, "burst_t": 1.5, "burst_n": 6 + phase * 2})
+	# frena a media travesía: la mina se detiene y arma la explosión
+	var drag := create_tween()
+	drag.tween_property(m, "vel", Vector2.ZERO, 0.45)
+	AudioManager.sfx("shoot", -10.0, 0.6)
+
+
+# Serpiente: un chorro de orbes que ondula de arriba abajo.
+func _atk_snake() -> void:
+	var n := 8 + 2 * phase
+	for i in n:
+		tw.tween_callback(_fire_snake)
+		tw.tween_interval(0.14 / sp)
+	tw.tween_interval(0.9)
+
+
+func _fire_snake() -> void:
+	level.add_hazard(_muzzle(), Vector2.LEFT * 96.0 * sp, {"col": _col(), "radius": 4.5, "wave_amp": 75.0, "wave_f": 5.5})
+	AudioManager.sfx("shoot", -14.0, 1.2)
+
+
+# Carriles: tres filas de proyectiles a distinta altura con un solo carril libre (salta, agáchate o quédate).
+func _atk_lanes() -> void:
+	var rounds := 1 + phase
+	for r in rounds:
+		tw.tween_callback(_fire_lanes)
+		tw.tween_interval(1.5 / sp)
+	tw.tween_interval(0.4)
+
+
+func _fire_lanes() -> void:
+	var ys := [Cfg.FLOOR_Y - 10.0, Cfg.FLOOR_Y - 52.0, Cfg.FLOOR_Y - 94.0]
+	var free := attack_rng.randi_range(0, 2)
+	for lane in 3:
+		if lane == free:
+			continue
+		for k in 4:
+			level.add_hazard(Vector2(global_position.x - radius + k * 26.0, ys[lane]), Vector2(-100.0 * sp, 0.0), {"col": _col(), "radius": 5.0})
+	AudioManager.sfx("warn", -8.0, 0.9)
 
 
 # ---- Ataques de la Calavera ----

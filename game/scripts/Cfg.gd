@@ -9,6 +9,7 @@ const DEBUG_KEYS := false
 const ING_TOTAL := 15
 # Las pruebas automáticas de recorrido lo apagan para no tener que saltar cada caja.
 var boxes_enabled := true
+const ENEMY_INTERVAL := 0.72   # menor = más enemigos (los intervalos de aparición se multiplican por esto)
 
 # Opening cadence after the introduction; level 1 also waits for W/3 forward travel.
 const START_DELAYS := {"fire": 0.35, "bat": 1.5, "spore": 3.5, "bolt": 7.0, "heal": 30.0, "horde": 12.0}
@@ -51,8 +52,8 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 1",
 		"name": "EL LABORATORIO",
-		"music": "lab",
-		"boss_music": "boss1",
+		"music": "sector",
+		"boss_music": "sector",   # la canción del nivel sigue sonando en el combate con el jefe
 		"collect_time": 300.0,
 		"ing_times": [30.0, 138.0, 241.0],
 		"boss_name": "GELATINA MUTANTE",
@@ -94,8 +95,8 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 2",
 		"name": "LAS ALCANTARILLAS",
-		"music": "sewer",
-		"boss_music": "boss2",
+		"music": "iron",
+		"boss_music": "iron",   # la canción del nivel sigue sonando en el combate con el jefe
 		"collect_time": 290.0,
 		"ing_times": [29.0, 138.0, 237.0],
 		"boss_name": "PULPO TOXICO",
@@ -139,8 +140,8 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 3",
 		"name": "LA AZOTEA",
-		"music": "roof",
-		"boss_music": "boss3",
+		"music": "hardened",
+		"boss_music": "hardened",   # la canción del nivel sigue sonando en el combate con el jefe
 		"collect_time": 290.0,
 		"ing_times": [29.0, 137.0, 234.0],
 		"boss_name": "GARGOLA VIRAL",
@@ -184,8 +185,8 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 4",
 		"name": "LA PISTA",
-		"music": "roof",
-		"boss_music": "boss3",
+		"music": "impact",
+		"boss_music": "impact",   # la canción del nivel sigue sonando en el combate con el jefe
 		"collect_time": 290.0,
 		"ing_times": [29.0, 137.0, 234.0],
 		"boss_name": "EL MARCIANO",
@@ -229,8 +230,8 @@ const LEVELS := [
 	{
 		"tag": "NIVEL 5",
 		"name": "LAS RUINAS",
-		"music": "background",
-		"boss_music": "boss2",
+		"music": "cinders",        # "Cinders of the Spire", también en el combate con la Calavera
+		"boss_music": "cinders",
 		"collect_time": 320.0,
 		"ing_times": [28.0, 153.0, 264.0],
 		"boss_name": "LA CALAVERA",

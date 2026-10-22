@@ -299,3 +299,16 @@ docker-compose.yml
 - **Cajas negras**: obstáculo sólido, no se rompen; hay que saltarlas.
 - **Cajas azules**: se destruyen con 4 disparos y sueltan 2 monedas; las cajas apiladas encima caen al romperse la de abajo.
 - La ventana arranca en pantalla completa (F11 o Alt+Enter alterna con ventana).
+
+## Enemigos, robots y efectos
+
+- **Robots** (en el suelo) y **drones** (en el aire) disparan balas rojas que hay que esquivar: el robot carga con el ojo en rojo y suelta una ráfaga a ras de suelo (se salta); el dron apunta al jugador. Aparecen en los 5 niveles (drones desde el nivel 2).
+- Más enemigos: intervalos de aparición más cortos, límite más alto, hordas más grandes y una **emboscada** cada ~500 px de recorrido.
+- **Jefes**: seis ataques nuevos para los 5 jefes (Serpiente, Carriles, Pilares, Francotirador, Minas y Compás); FINALTOP suma más.
+- **Gráficos**: pasada de acabado (bloom, viñeta, color) y efectos de neón al estilo Geometry Dash en proyectiles y zonas: estelas, halo que late al compás y destello de pantalla.
+
+## Música
+
+Lobby: Containment Lockdown · Nivel 1: Sector Lockdown · Nivel 2: Iron Gate Assault · Nivel 3: Hardened Core · Nivel 4: Point of Impact · Nivel 5: Cinders of the Spire. Las pistas están en `.ogg` normalizadas y con el final fundido con el inicio para repetirse sin que se note el corte. La música suena por debajo de los efectos (`MUSIC_DB`, `SFX_DB` en `AudioManager.gd`).
+
+**Espada del salto doble:** durante la vueltereta del salto doble el jugador saca una espada que corta a los enemigos cercanos (una vez cada uno), destruye las balas de robot y hace daño moderado al jefe. La canción de cada nivel también suena durante el combate con su jefe.
