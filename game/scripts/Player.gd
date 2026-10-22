@@ -40,6 +40,8 @@ var dash_dir := 1
 var air_dash := true
 var air_jumps := 1
 var flip_t := 0.0
+var flip_hit := {}   # enemigos ya cortados en esta vueltereta
+const SWORD_REACH := 30.0
 var flip_dir := 1
 var fire_cd := 0.0
 var coyote := 0.0
@@ -201,6 +203,7 @@ func _double_jump() -> void:
 	velocity.y = DOUBLE_JUMP_V
 	flip_t = FLIP_TIME
 	flip_dir = facing
+	flip_hit.clear()
 	Telemetry.count("jumps")
 	Telemetry.event("double_jump", _where({}))
 	action_performed.emit("double_jump")
@@ -326,9 +329,42 @@ func _animate_flip() -> void:
 		sprite.rotation = flip_dir * TAU * eased
 		var tuck := sin(p * PI)
 		sprite.scale = Vector2(1.0 - 0.1 * tuck, 1.0 - 0.14 * tuck)
+		_sword_hits()
 	elif sprite.rotation != 0.0:
 		sprite.rotation = 0.0
 		sprite.scale = Vector2.ONE
+
+
+# Ángulo de la espada durante la vueltereta: gira junto con el cuerpo.
+func _sword_angle() -> float:
+	var p := 1.0 - flip_t / FLIP_TIME
+	return flip_dir * TAU * (p * p * (3.0 - 2.0 * p)) - PI / 2.0
+
+
+# La espada del salto doble corta a los enemigos cercanos (una vez cada uno), destruye las balas
+# de robot que tocan el giro y hace un daño moderado al jefe.
+func _sword_hits() -> void:
+	var c := global_position + sprite.position
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if flip_hit.has(e.get_instance_id()) or not e.has_method("take_damage"):
+			continue
+		if e.global_position.distance_to(c) <= SWORD_REACH + 8.0:
+			flip_hit[e.get_instance_id()] = true
+			e.take_damage(3.0)
+			Fx.burst(get_parent(), e.global_position, Color(0.85, 0.97, 1.0), 6, 80.0, 0.3, 2.0)
+			Fx.hitstop(0.04)
+			AudioManager.sfx("parry", -8.0, 1.5)
+	for h in get_tree().get_nodes_in_group("hazard"):
+		if h.get("shootable") == true and h.global_position.distance_to(c) <= SWORD_REACH + 6.0:
+			h.take_damage(1.0)
+	var boss = get_parent().get("boss")
+	if boss and is_instance_valid(boss) and not flip_hit.has(boss.get_instance_id()):
+		var br: float = float(boss.get("radius")) if boss.get("radius") != null else 40.0
+		if boss.global_position.distance_to(c) <= br + SWORD_REACH * 0.6:
+			flip_hit[boss.get_instance_id()] = true
+			if boss.take_damage(6.0):
+				Fx.burst(get_parent(), c, Color(0.85, 0.97, 1.0), 8, 90.0, 0.3, 2.0)
+				Fx.hitstop(0.05)
 
 
 func bounce() -> void:
@@ -415,6 +451,25 @@ func _weapon_muzzle() -> Vector2:
 	return _weapon_hand() + muzzle.rotated(aim.angle())
 
 
+# Espada: empuñadura en el cuerpo, hoja plateada con filo brillante y un arco de corte detrás.
+func _draw_sword(angle: float) -> void:
+	var c := sprite.position
+	var dir := Vector2.RIGHT.rotated(angle)
+	var side := dir.orthogonal()
+	var fade := clampf(flip_t / FLIP_TIME * 3.0, 0.0, 1.0)
+	for k in 5:
+		var a0 := angle - flip_dir * (0.25 + k * 0.28)
+		draw_arc(c, SWORD_REACH - 2.0 - k, minf(a0, angle), maxf(a0, angle), 8, Color(0.7, 0.95, 1.0, (0.45 - k * 0.08) * fade), 3.0)
+	var guard := c + dir * 6.0
+	draw_line(c + dir * 2.0, guard, Color(0.45, 0.3, 0.2), 2.5)
+	draw_line(guard - side * 3.5, guard + side * 3.5, Color(0.9, 0.75, 0.3), 2.0)
+	var blade_end := c + dir * SWORD_REACH
+	var blade := PackedVector2Array([guard + side * 3.2, blade_end, guard - side * 3.2])
+	draw_colored_polygon(blade, Color(0.82, 0.9, 1.0))
+	draw_line(guard, blade_end, Color(1, 1, 1, 0.95), 1.0)
+	draw_circle(blade_end, 2.0, Color(1, 1, 1, 0.6 * fade))
+
+
 func _draw() -> void:
 	if dead:
 		# A soft toxic halo keeps the body readable against the dark scenery.
@@ -445,6 +500,7 @@ func _draw() -> void:
 		# Estela de la vuelta: arcos que se desvanecen detrás del giro.
 		var p := 1.0 - flip_t / FLIP_TIME
 		var head := flip_dir * TAU * (p * p * (3.0 - 2.0 * p)) - PI / 2.0
+		_draw_sword(head)
 		for k in 3:
 			var a0 := head - flip_dir * (0.5 + k * 0.5)
 			draw_arc(sprite.position, 13.0 + k * 2.0, minf(a0, head), maxf(a0, head), 10, Color(0.85, 0.97, 1.0, 0.5 - k * 0.15), 2.0)

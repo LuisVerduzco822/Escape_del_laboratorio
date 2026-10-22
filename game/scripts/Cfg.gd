@@ -53,7 +53,7 @@ const LEVELS := [
 		"tag": "NIVEL 1",
 		"name": "EL LABORATORIO",
 		"music": "sector",
-		"boss_music": "boss1",
+		"boss_music": "sector",   # la canción del nivel sigue sonando en el combate con el jefe
 		"collect_time": 300.0,
 		"ing_times": [30.0, 138.0, 241.0],
 		"boss_name": "GELATINA MUTANTE",
@@ -96,7 +96,7 @@ const LEVELS := [
 		"tag": "NIVEL 2",
 		"name": "LAS ALCANTARILLAS",
 		"music": "iron",
-		"boss_music": "boss2",
+		"boss_music": "iron",   # la canción del nivel sigue sonando en el combate con el jefe
 		"collect_time": 290.0,
 		"ing_times": [29.0, 138.0, 237.0],
 		"boss_name": "PULPO TOXICO",
@@ -141,7 +141,7 @@ const LEVELS := [
 		"tag": "NIVEL 3",
 		"name": "LA AZOTEA",
 		"music": "hardened",
-		"boss_music": "boss3",
+		"boss_music": "hardened",   # la canción del nivel sigue sonando en el combate con el jefe
 		"collect_time": 290.0,
 		"ing_times": [29.0, 137.0, 234.0],
 		"boss_name": "GARGOLA VIRAL",
@@ -186,7 +186,7 @@ const LEVELS := [
 		"tag": "NIVEL 4",
 		"name": "LA PISTA",
 		"music": "impact",
-		"boss_music": "boss3",
+		"boss_music": "impact",   # la canción del nivel sigue sonando en el combate con el jefe
 		"collect_time": 290.0,
 		"ing_times": [29.0, 137.0, 234.0],
 		"boss_name": "EL MARCIANO",
