@@ -25,13 +25,13 @@ func sample(boss, player, offset: Vector2) -> Dictionary:
 	var no_repeats := true
 	for i in 4000:
 		var attack: String = boss._choose_attack()
-		valid = valid and (attack in boss.POOLS[boss.kind][boss.phase] or attack in boss.EXTRA[boss.phase])
+		valid = valid and (attack in boss.POOLS[boss.kind][boss.phase] or attack in boss.EXTRA[boss.phase] or attack in boss.SIGNATURE[boss.kind])
 		no_repeats = no_repeats and attack != boss.last_attack
 		counts[attack] = counts.get(attack, 0) + 1
 		boss.prev_attack = boss.last_attack
 		boss.last_attack = attack
 	check(valid and no_repeats, "Boss %d phase %d at %s: unlocked attacks, no repeats" % [boss.kind, boss.phase, offset])
-	for attack in boss.POOLS[boss.kind][boss.phase] + boss.EXTRA[boss.phase]:
+	for attack in boss.POOLS[boss.kind][boss.phase] + boss.EXTRA[boss.phase] + boss.SIGNATURE[boss.kind]:
 		check(counts.has(attack), "Pattern %s remains available" % attack)
 	return counts
 

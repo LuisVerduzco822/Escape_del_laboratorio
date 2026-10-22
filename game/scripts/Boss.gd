@@ -73,6 +73,8 @@ const EXTRA_FT := {
 	2: ["mines", "beat"],
 	3: [],
 }
+# Ataque propio de cada jefe (se suma a su repertorio en todas las fases).
+const SIGNATURE := {0: ["puddle"], 1: ["tentacles"], 2: ["dive"], 3: ["abduct"], 4: ["blackout"]}
 const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3), Color(0.35, 0.92, 1.0), Color(0.95, 0.92, 0.78)]
 const RADII := [46.0, 44.0, 42.0, 44.0, 58.0]
 const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100), Vector2(366, 102), Vector2(356, 104)]
@@ -113,6 +115,11 @@ const ATTACK_WEIGHTS := {
 	"mines": [3.0, 4.0, 4.0],
 	"snake": [2.0, 4.0, 5.0],
 	"lanes": [2.0, 4.0, 5.0],
+	"puddle": [4.0, 5.0, 5.0],
+	"tentacles": [4.0, 5.0, 5.0],
+	"dive": [2.0, 5.0, 6.0],
+	"abduct": [3.0, 6.0, 7.0],
+	"blackout": [3.0, 5.0, 5.0],
 }
 
 var level
@@ -141,6 +148,11 @@ var blink_alpha := 1.0
 var wing_shapes := []
 var tick_cd := 0.0
 var look := Vector2.LEFT
+var fdir := -1.0          # hacia dónde mira el jefe: -1 izquierda, +1 derecha (siempre hacia el jugador)
+var base_home := Vector2.ZERO
+var abducting := false     # rayo tractor del Marciano activo
+var grab_cd := 0.0
+var lift := 0.0
 var warn_x := -1.0
 var warn_y := -1.0
 var radius := 46.0
@@ -157,7 +169,15 @@ func _ready() -> void:
 	ox = level.arena_x if level else 0.0
 	radius = RADII[kind]
 	home = HOMES[kind] + Vector2(ox, 0)
-	start_pos = Vector2(home.x + 270.0, home.y)
+	base_home = home
+	# Cada jefe entra por un lado distinto: derecha (slime), izquierda (pulpo), arriba (gárgola y Marciano) o derecha (calavera).
+	match [0, 1, 2, 2, 0][kind]:
+		0:
+			start_pos = Vector2(home.x + 270.0, home.y)
+		1:
+			start_pos = Vector2(ox - 90.0, home.y)
+		_:
+			start_pos = Vector2(ox + 240.0, -110.0)
 	hp = max_hp
 	hurtbox = Area2D.new()
 	hurtbox.collision_layer = 16
@@ -220,7 +240,7 @@ func _target() -> Vector2:
 
 
 func _muzzle() -> Vector2:
-	return global_position + Vector2(-radius * 0.8, 8)
+	return global_position + Vector2(fdir * radius * 0.8, 8)
 
 
 func _col() -> Color:
@@ -234,8 +254,17 @@ func _physics_process(delta: float) -> void:
 	tick_cd = maxf(0.0, tick_cd - delta)
 	if not wing_shapes.is_empty():
 		_update_wings()
+	grab_cd = maxf(0.0, grab_cd - delta)
 	if level and level.player and not level.player.dead:
-		look = (_target() - global_position).normalized()
+		var to_p := _target() - global_position
+		look = to_p.normalized()
+		# Mira al jugador, con un margen para no girar de golpe cuando pasa por debajo.
+		if absf(to_p.x) > 14.0 and moving == false or absf(to_p.x) > 40.0:
+			fdir = 1.0 if to_p.x > 0.0 else -1.0
+		if fdir > 0.0:
+			look.x = -look.x   # el dibujo se espeja, así que la mirada también
+	if abducting:
+		_abduct_tick(delta)
 	match st:
 		St.ENTER:
 			var p := clampf(st_t / 2.6, 0.0, 1.0)
@@ -322,6 +351,8 @@ func _try_drop_hearts() -> void:
 func _stop_attack() -> void:
 	if tw:
 		tw.kill()
+	abducting = false
+	_set_darkness(0.5)
 	busy = false
 	moving = false
 	contact_on = false
@@ -347,6 +378,8 @@ func _phase_change(n: int) -> void:
 
 
 func _die() -> void:
+	abducting = false
+	_set_darkness(0.5)
 	hp = 0.0
 	st = St.DEAD
 	pending_hearts = 0
@@ -381,6 +414,9 @@ func _choose_attack() -> String:
 	for extra in EXTRA[phase]:
 		if not pool.has(extra):
 			pool.append(extra)
+	for extra in SIGNATURE[kind]:
+		if not pool.has(extra):
+			pool.append(extra)
 	if _is_finaltop():
 		for extra in EXTRA_FT[phase]:
 			if not pool.has(extra):
@@ -413,6 +449,7 @@ func _pick_attack() -> void:
 	prev_attack = last_attack
 	last_attack = a
 	_new_tw()
+	_relocate(a)
 	match a:
 		"fan": _atk_fan()
 		"aimed": _atk_aimed()
@@ -445,7 +482,38 @@ func _pick_attack() -> void:
 		"mines": _atk_mines()
 		"snake": _atk_snake()
 		"lanes": _atk_lanes()
+		"puddle": _atk_puddle()
+		"tentacles": _atk_tentacles()
+		"dive": _atk_dive()
+		"abduct": _atk_abduct()
+		"blackout": _atk_blackout()
 	tw.tween_callback(_done)
+
+
+# Puestos desde los que ataca el jefe: derecha, izquierda, centro arriba y dos flancos altos.
+func _stations() -> Array:
+	return [base_home, Vector2(ox + 480.0 - (base_home.x - ox), base_home.y), Vector2(ox + 240.0, 64.0), Vector2(ox + 150.0, 98.0), Vector2(ox + 330.0, 98.0)]
+
+
+# Entre ataques el jefe cambia de sitio (casi siempre) y mira al jugador desde el nuevo puesto.
+const SELF_MOVING := ["slam", "chomp", "charge", "blink", "strafe", "dive", "abduct"]
+
+func _relocate(a: String) -> void:
+	if attack_rng.randf() > 0.8:
+		return
+	var options: Array = []
+	var player_x := _target().x
+	for st_pos in _stations():
+		if absf(st_pos.x - player_x) > 110.0 and st_pos.distance_to(home) > 50.0:
+			options.append(st_pos)
+	if options.is_empty():
+		return
+	home = options[attack_rng.randi() % options.size()]
+	if a in SELF_MOVING:
+		return   # esos ataques ya se mueven solos y terminan volviendo a `home`
+	tw.tween_callback(func(): moving = true)
+	tw.tween_property(self, "position", home, 0.75).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func(): moving = false)
 
 
 func _atk_fan() -> void:
@@ -562,19 +630,24 @@ func _impact() -> void:
 	for dir in [-1, 1]:
 		level.add_hazard(Vector2(x + dir * 34.0, Cfg.FLOOR_Y - 8.0), Vector2(dir * 140.0 * sp, 0), {"style": "wave", "radius": 8.0, "col": _col()})
 	if phase >= 3:
-		level.add_hazard(Vector2(x - 60.0, Cfg.FLOOR_Y - 8.0), Vector2(-90.0, 0), {"style": "wave", "radius": 8.0, "pink": true})
+		level.add_hazard(Vector2(x + fdir * 60.0, Cfg.FLOOR_Y - 8.0), Vector2(fdir * 90.0, 0), {"style": "wave", "radius": 8.0, "pink": true})
 
 
 func _atk_charge() -> void:
 	moving = true
-	tw.tween_property(self, "position", Vector2(ox + 436.0, 70.0), 0.5).set_trans(Tween.TRANS_SINE)
+	# Embiste de un lado al otro: sale del borde más cercano a su puesto y cruza toda la arena.
+	var from_right := position.x > ox + 240.0
+	var start_x := ox + 436.0 if from_right else ox + 44.0
+	var end_x := ox - 10.0 if from_right else ox + 490.0
+	var off_x := ox + 560.0 if from_right else ox - 80.0
+	tw.tween_property(self, "position", Vector2(start_x, 70.0), 0.5).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(_set_warn_y)
 	tw.tween_interval(0.75)
 	tw.tween_callback(_set_contact.bind(true))
 	tw.tween_callback(AudioManager.sfx.bind("dash", 2.0, 0.6))
-	tw.tween_property(self, "position:x", ox - 10.0, 0.7 / sp).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(self, "position:x", end_x, 0.7 / sp).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(_set_contact.bind(false))
-	tw.tween_callback(func(): position = Vector2(ox + 560.0, 90.0))
+	tw.tween_callback(func(): position = Vector2(off_x, 90.0))
 	tw.tween_property(self, "position", home, 1.1).set_trans(Tween.TRANS_SINE)
 
 
@@ -591,7 +664,7 @@ func _atk_pink() -> void:
 
 
 func _fire_pink(y: float) -> void:
-	level.add_hazard(Vector2(global_position.x - radius, y), Vector2(-110.0, 0), {"col": Color(1.0, 0.45, 0.8), "radius": 7.0, "pink": true})
+	level.add_hazard(Vector2(global_position.x + fdir * radius, y), Vector2(fdir * 110.0, 0), {"col": Color(1.0, 0.45, 0.8), "radius": 7.0, "pink": true})
 	AudioManager.sfx("select", -2.0, 0.7)
 
 
@@ -616,9 +689,9 @@ func _atk_spiral() -> void:
 
 
 func _fire_spiral(i: int, arms: int) -> void:
-	var o := global_position + Vector2(-radius * 0.4, 0.0)
+	var o := global_position + Vector2(fdir * radius * 0.4, 0.0)
 	for a in arms:
-		var ang := PI + i * 0.42 + TAU * a / float(arms)
+		var ang := (PI if fdir < 0.0 else 0.0) + fdir * -1.0 * i * 0.42 + TAU * a / float(arms)
 		level.add_hazard(o, Vector2.RIGHT.rotated(ang) * 82.0 * sp, {"col": _col(), "radius": 4.5, "pink": phase >= 2 and a == 0 and i % 9 == 4})
 	AudioManager.sfx("shoot", -14.0, 1.2)
 
@@ -641,7 +714,7 @@ func _fire_wall() -> void:
 	for r in rows:
 		if r >= gap and r < gap + gap_rows:
 			continue
-		level.add_hazard(Vector2(global_position.x - radius, top + r * step), Vector2(-78.0 * sp, 0.0), {"col": _col(), "radius": 5.0})
+		level.add_hazard(Vector2(global_position.x + fdir * radius, top + r * step), Vector2(fdir * 78.0 * sp, 0.0), {"col": _col(), "radius": 5.0})
 	AudioManager.sfx("warn", -8.0, 0.8)
 
 
@@ -649,7 +722,8 @@ func _fire_wall() -> void:
 func _atk_strafe() -> void:
 	moving = true
 	var shots := 5 + 2 * phase
-	tw.tween_property(self, "position", Vector2(ox + 430.0, 34.0), 0.5).set_trans(Tween.TRANS_SINE)
+	var edge_x := ox + 430.0 if position.x > ox + 240.0 else ox + 50.0
+	tw.tween_property(self, "position", Vector2(edge_x, 34.0), 0.5).set_trans(Tween.TRANS_SINE)
 	for i in shots:
 		var y := lerpf(34.0, 150.0, float(i) / float(shots - 1))
 		tw.tween_property(self, "position:y", y, 0.24 / sp)
@@ -679,7 +753,7 @@ func _blink_out() -> void:
 
 
 func _blink_in() -> void:
-	position = Vector2(ox + attack_rng.randf_range(250.0, 440.0), attack_rng.randf_range(50.0, 150.0))
+	position = Vector2(ox + attack_rng.randf_range(70.0, 440.0), attack_rng.randf_range(50.0, 150.0))
 	blink_alpha = 1.0
 	Fx.burst(get_parent(), global_position, _col(), 10, 90.0, 0.4, 2.5)
 	AudioManager.sfx("phase", -12.0, 1.6)
@@ -695,8 +769,8 @@ func _atk_meteors() -> void:
 
 
 func _fire_meteor() -> void:
-	var x := clampf(_target().x + attack_rng.randf_range(60.0, 200.0), ox + 120.0, ox + 520.0)
-	level.add_hazard(Vector2(x, -12.0), Vector2(-62.0 * sp, 70.0 * sp), {"col": _col(), "radius": 6.0, "accel": Vector2(0, 40.0)})
+	var x := clampf(_target().x - fdir * attack_rng.randf_range(60.0, 200.0), ox - 40.0, ox + 520.0)
+	level.add_hazard(Vector2(x, -12.0), Vector2(fdir * 62.0 * sp, 70.0 * sp), {"col": _col(), "radius": 6.0, "accel": Vector2(0, 40.0)})
 	AudioManager.sfx("shoot", -12.0, 0.9)
 
 
@@ -713,7 +787,7 @@ func _atk_homing() -> void:
 
 func _fire_homing() -> void:
 	var m := _muzzle()
-	var dir := Vector2.LEFT.rotated(attack_rng.randf_range(-0.7, 0.7))
+	var dir := Vector2(fdir, 0.0).rotated(attack_rng.randf_range(-0.7, 0.7) * -fdir)
 	level.add_hazard(m, dir * 72.0 * sp, {"col": _col(), "radius": 6.0, "home_t": 1.9, "home_turn": 1.5})
 	AudioManager.sfx("shoot", -10.0, 0.5)
 
@@ -745,7 +819,7 @@ func _atk_bounce() -> void:
 
 func _fire_bounce() -> void:
 	var m := _muzzle()
-	level.add_hazard(m, Vector2(-(95.0 + attack_rng.randf_range(0.0, 30.0)) * sp, -50.0), {"col": _col(), "radius": 6.0, "accel": Vector2(0, 260.0), "bounces": 3})
+	level.add_hazard(m, Vector2(fdir * (95.0 + attack_rng.randf_range(0.0, 30.0)) * sp, -50.0), {"col": _col(), "radius": 6.0, "accel": Vector2(0, 260.0), "bounces": 3})
 	AudioManager.sfx("shoot", -10.0, 0.8)
 
 
@@ -780,7 +854,7 @@ func _atk_sweep() -> void:
 
 func _fire_sweep(i: int, n: int, from_top: bool) -> void:
 	var f := float(i) / float(n - 1)
-	var ang := PI + deg_to_rad(lerpf(-48.0, 48.0, f if from_top else 1.0 - f))
+	var ang := (PI if fdir < 0.0 else 0.0) + deg_to_rad(lerpf(-48.0, 48.0, f if from_top else 1.0 - f)) * -fdir
 	level.add_hazard(_muzzle(), Vector2.RIGHT.rotated(ang) * 120.0 * sp, {"col": _col(), "radius": 4.5})
 	AudioManager.sfx("shoot", -14.0, 1.1)
 
@@ -848,7 +922,7 @@ func _fire_snipe_warn() -> void:
 
 func _fire_snipe_shot() -> void:
 	for k in 3:
-		level.add_hazard(Vector2(global_position.x - radius, snipe_y), Vector2(-190.0 * sp, 0.0), {"col": Color(1, 0.35, 0.3), "radius": 4.0})
+		level.add_hazard(Vector2(global_position.x + fdir * radius, snipe_y), Vector2(fdir * 190.0 * sp, 0.0), {"col": Color(1, 0.35, 0.3), "radius": 4.0})
 	AudioManager.sfx("shoot", -8.0, 1.4)
 
 
@@ -881,7 +955,7 @@ func _atk_snake() -> void:
 
 
 func _fire_snake() -> void:
-	level.add_hazard(_muzzle(), Vector2.LEFT * 96.0 * sp, {"col": _col(), "radius": 4.5, "wave_amp": 75.0, "wave_f": 5.5})
+	level.add_hazard(_muzzle(), Vector2(fdir, 0.0) * 96.0 * sp, {"col": _col(), "radius": 4.5, "wave_amp": 75.0, "wave_f": 5.5})
 	AudioManager.sfx("shoot", -14.0, 1.2)
 
 
@@ -901,8 +975,157 @@ func _fire_lanes() -> void:
 		if lane == free:
 			continue
 		for k in 4:
-			level.add_hazard(Vector2(global_position.x - radius + k * 26.0, ys[lane]), Vector2(-100.0 * sp, 0.0), {"col": _col(), "radius": 5.0})
+			level.add_hazard(Vector2(global_position.x + fdir * (radius + k * 26.0), ys[lane]), Vector2(fdir * 100.0 * sp, 0.0), {"col": _col(), "radius": 5.0})
 	AudioManager.sfx("warn", -8.0, 0.9)
+
+
+# ---- Ataques propios de cada jefe ----
+
+# Slime (nivel 1) — Charcos: manchas de ácido en el suelo que duran varios segundos; hay que saltar a una plataforma.
+func _atk_puddle() -> void:
+	var n := 2 + phase
+	for i in n:
+		tw.tween_callback(_fire_puddle)
+		tw.tween_interval(0.55 / sp)
+	tw.tween_interval(2.2)
+
+
+func _fire_puddle() -> void:
+	var x := clampf(_target().x + attack_rng.randf_range(-70.0, 70.0), ox + 40.0, ox + 440.0)
+	level.add_zone(Vector2(x, Cfg.FLOOR_Y - 7.0), Vector2(66.0, 14.0), 0.7, 3.0, Color(0.55, 1.0, 0.25))
+	Fx.burst(get_parent(), Vector2(x, Cfg.FLOOR_Y - 10.0), Color(0.55, 1.0, 0.25), 6, 60.0, 0.4, 2.0)
+	AudioManager.sfx("boom", -14.0, 1.3)
+
+
+# Pulpo (nivel 2) — Tentáculos: brotan del suelo en fila, desde el lado del jefe hasta el opuesto; en fase 2+ regresan.
+func _atk_tentacles() -> void:
+	var sweeps := 1 if phase == 1 else 2
+	for sw in sweeps:
+		var from_left := (fdir > 0.0) != (sw % 2 == 1)
+		for i in 8:
+			var x := ox + 30.0 + float(i if from_left else 7 - i) * 60.0
+			tw.tween_callback(level.add_zone.bind(Vector2(x, Cfg.FLOOR_Y - 55.0), Vector2(24.0, 110.0), 0.5, 0.35, _col()))
+			tw.tween_interval(0.2 / sp)
+		tw.tween_interval(0.9)
+
+
+# Gárgola (nivel 3) — Picado: sube a un extremo, marca al jugador y se lanza en diagonal; atraviesa y vuelve.
+func _atk_dive() -> void:
+	moving = true
+	var left_side := _target().x > ox + 240.0
+	var sx := ox + 40.0 if left_side else ox + 440.0
+	tw.tween_property(self, "position", Vector2(sx, 44.0), 0.55).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(_dive_mark)
+	tw.tween_interval(0.7)
+	tw.tween_callback(_set_contact.bind(true))
+	tw.tween_callback(AudioManager.sfx.bind("dash", 2.0, 0.7))
+	tw.tween_method(_dive_step, 0.0, 1.0, 0.75 / sp)
+	tw.tween_callback(_set_contact.bind(false))
+	tw.tween_property(self, "position", home, 1.0).set_trans(Tween.TRANS_SINE)
+
+
+var dive_from := Vector2.ZERO
+var dive_to := Vector2.ZERO
+
+func _dive_mark() -> void:
+	dive_from = position
+	var tgt := _target()
+	var dirv := (tgt - position).normalized()
+	dive_to = position + dirv * 560.0
+	warn_dive = true
+	get_tree().create_timer(0.7).timeout.connect(func(): warn_dive = false)
+
+
+var warn_dive := false
+
+func _dive_step(f: float) -> void:
+	position = dive_from.lerp(dive_to, f * f)
+
+
+# Marciano (nivel 4) — Abducción: un rayo tractor baja sobre el jugador y lo eleva hacia la nave.
+# Si llega arriba pierde una vida; un dash (o salir del haz) lo libera.
+func _atk_abduct() -> void:
+	moving = true
+	var px := clampf(_target().x, ox + 50.0, ox + 430.0)
+	tw.tween_property(self, "position", Vector2(px, 52.0), 0.7 / sp).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(func(): beam_warn = true)
+	tw.tween_interval(0.9)
+	tw.tween_callback(func(): beam_warn = false; abducting = true; lift = 0.0; AudioManager.sfx("phase", -6.0, 0.6))
+	# la nave persigue lentamente al jugador mientras dura el haz
+	tw.tween_method(_abduct_follow, 0.0, 1.0, 2.8)
+	tw.tween_callback(func(): abducting = false)
+	tw.tween_interval(0.3)
+	tw.tween_property(self, "position", home, 0.9).set_trans(Tween.TRANS_SINE)
+
+
+var beam_warn := false
+
+func _abduct_follow(_f: float) -> void:
+	position.x = move_toward(position.x, clampf(_target().x, ox + 30.0, ox + 450.0), 22.0 * get_physics_process_delta_time() * 3.0)
+
+
+func _abduct_tick(delta: float) -> void:
+	var pl = level.player if level else null
+	if pl == null or pl.dead:
+		return
+	var dx := absf(pl.global_position.x - global_position.x)
+	var in_beam: bool = dx < 24.0 and pl.global_position.y > global_position.y
+	if pl.dash_t > 0.0 and in_beam:
+		grab_cd = 1.0     # el dash lo libera y le da un respiro antes de otro intento
+		pl.abduct_t = 0.0
+	if in_beam and grab_cd <= 0.0:
+		pl.abduct_t = 0.12
+		pl.abduct_x = global_position.x
+		if pl.global_position.y <= global_position.y + radius * 0.6 + 8.0:
+			pl.abduct_t = 0.0
+			pl.hurt("abduction")
+			grab_cd = 1.2
+			Fx.burst(get_parent(), pl.global_position, Color(0.5, 1.0, 1.0), 10, 90.0, 0.4, 2.5)
+
+
+func _draw_abduct_beam() -> void:
+	if not (abducting or beam_warn):
+		return
+	var h := Cfg.FLOOR_Y - position.y
+	var w_top := 8.0
+	var w_bot := 26.0
+	var pts := PackedVector2Array([Vector2(-w_top, radius * 0.4), Vector2(w_top, radius * 0.4), Vector2(w_bot, h), Vector2(-w_bot, h)])
+	if beam_warn:
+		var a := 0.12 + 0.12 * (0.5 + 0.5 * sin(t * 30.0))
+		draw_colored_polygon(pts, Color(0.5, 1.0, 1.0, a))
+		draw_polyline(PackedVector2Array([pts[0], pts[3], pts[2], pts[1], pts[0]]), Color(0.6, 1.0, 1.0, 0.7), 1.0)
+		return
+	draw_colored_polygon(pts, Color(0.55, 1.0, 0.9, 0.26))
+	for k in 6:
+		var yy := fposmod(-t * 70.0 + k * (h / 6.0), h - radius * 0.4) + radius * 0.4
+		var half := lerpf(w_top, w_bot, yy / h)
+		draw_line(Vector2(-half, yy), Vector2(half, yy), Color(0.8, 1.0, 1.0, 0.5), 1.5)
+	draw_polyline(PackedVector2Array([pts[0], pts[3]]), Color(0.7, 1.0, 1.0, 0.8), 1.5)
+	draw_polyline(PackedVector2Array([pts[1], pts[2]]), Color(0.7, 1.0, 1.0, 0.8), 1.5)
+
+
+# Calavera (nivel 5) — Apagón: la arena se oscurece y solo se ve alrededor del jugador mientras llueven proyectiles desde los bordes.
+func _atk_blackout() -> void:
+	tw.tween_method(_set_darkness, 0.5, 0.97, 0.7)
+	for i in 6 + phase * 2:
+		tw.tween_callback(_fire_blackout.bind(i))
+		tw.tween_interval(0.5 / sp)
+	tw.tween_interval(0.6)
+	tw.tween_method(_set_darkness, 0.97, 0.5, 0.7)
+
+
+func _set_darkness(v: float) -> void:
+	# v va de 0.5 (normal) a 0.97 (apagón total salvo un círculo de luz alrededor del jugador)
+	if level and level.get("shade_mat") != null:
+		level.shade_mat.set_shader_parameter("dark", clampf((v - 0.5) / 0.47, 0.0, 1.0))
+
+
+func _fire_blackout(i: int) -> void:
+	var from_left := i % 2 == 0
+	var origin := Vector2(ox + (6.0 if from_left else 474.0), attack_rng.randf_range(30.0, Cfg.FLOOR_Y - 14.0))
+	var a := (_target() - origin).angle() + attack_rng.randf_range(-0.12, 0.12)
+	level.add_hazard(origin, Vector2.RIGHT.rotated(a) * 96.0 * sp, {"col": Color(1.0, 0.5, 0.2), "radius": 5.0})
+	AudioManager.sfx("warn", -12.0, 0.5)
 
 
 # ---- Ataques de la Calavera ----
@@ -917,7 +1140,7 @@ func _atk_eyes() -> void:
 
 
 func _fire_eyes(which: int) -> void:
-	var eyes := [global_position + Vector2(-20.0, -12.0), global_position + Vector2(18.0, -12.0)]
+	var eyes := [global_position + Vector2(-20.0 * -fdir, -12.0), global_position + Vector2(18.0 * -fdir, -12.0)]
 	var picks: Array = [0] if which == 0 else ([1] if which == 1 else [0, 1])
 	for i in picks:
 		var origin: Vector2 = eyes[i]
@@ -939,7 +1162,7 @@ func _atk_bonewave() -> void:
 
 func _fire_bone(i: int) -> void:
 	var spd := (88.0 + 22.0 * float(i % 3)) * sp
-	level.add_hazard(Vector2(global_position.x - radius, Cfg.FLOOR_Y - 8.0), Vector2(-spd, 0), {"style": "wave", "radius": 8.0, "col": _col(), "pink": phase >= 2 and i % 4 == 3})
+	level.add_hazard(Vector2(global_position.x + fdir * radius, Cfg.FLOOR_Y - 8.0), Vector2(fdir * spd, 0), {"style": "wave", "radius": 8.0, "col": _col(), "pink": phase >= 2 and i % 4 == 3})
 	AudioManager.sfx("boom", -16.0, 1.5)
 
 
@@ -952,16 +1175,16 @@ func _atk_chomp() -> void:
 func _summon(pink_spore: bool = false) -> void:
 	match kind:
 		0:
-			level.add_enemy("fireball", Vector2(global_position.x - radius, Cfg.FLOOR_Y - 9.0), {"speed": 130.0, "dir": -1})
+			level.add_enemy("fireball", Vector2(global_position.x + fdir * radius, Cfg.FLOOR_Y - 9.0), {"speed": 130.0, "dir": int(fdir)})
 		1:
 			level.add_enemy("spore", Vector2(ox + attack_rng.randf_range(40.0, 440.0), -10.0), {"speed": 80.0, "hp": 2.0, "pink": pink_spore})
 		2:
-			level.add_enemy("bat", global_position + Vector2(-radius, 0), {"speed": 95.0, "hp": 2.0, "dir": -1})
+			level.add_enemy("bat", global_position + Vector2(fdir * radius, 0), {"speed": 95.0, "hp": 2.0, "dir": int(fdir)})
 		3, 4:
 			if pink_spore:
-				level.add_enemy("bat", global_position + Vector2(-radius, 0), {"speed": 100.0, "hp": 2.0, "dir": -1})
+				level.add_enemy("bat", global_position + Vector2(fdir * radius, 0), {"speed": 100.0, "hp": 2.0, "dir": int(fdir)})
 			else:
-				level.add_enemy("fireball", Vector2(global_position.x - radius, Cfg.FLOOR_Y - 9.0), {"speed": 140.0, "dir": -1})
+				level.add_enemy("fireball", Vector2(global_position.x + fdir * radius, Cfg.FLOOR_Y - 9.0), {"speed": 140.0, "dir": int(fdir)})
 	AudioManager.sfx("select", -2.0, 0.5)
 
 
@@ -974,6 +1197,12 @@ func _draw() -> void:
 	if warn_y >= 0.0 and not contact_on:
 		var ly := warn_y - position.y
 		draw_rect(Rect2(ox - position.x - 10.0, ly - radius, 520.0, radius * 2.0), Color(1, 0.2, 0.2, 0.12 + 0.08 * sin(t * 30.0)))
+	if warn_dive:
+		var dv := dive_to - position
+		draw_line(Vector2.ZERO, to_local(dive_to), Color(1.0, 0.3, 0.3, 0.35 + 0.3 * sin(t * 30.0)), 5.0)
+	_draw_abduct_beam()
+	if fdir > 0.0:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0, 1.0))
 	match kind:
 		0:
 			_draw_blob()

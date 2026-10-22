@@ -312,3 +312,8 @@ docker-compose.yml
 Lobby: Containment Lockdown · Nivel 1: Sector Lockdown · Nivel 2: Iron Gate Assault · Nivel 3: Hardened Core · Nivel 4: Point of Impact · Nivel 5: Cinders of the Spire. Las pistas están en `.ogg` normalizadas y con el final fundido con el inicio para repetirse sin que se note el corte. La música suena por debajo de los efectos (`MUSIC_DB`, `SFX_DB` en `AudioManager.gd`).
 
 **Espada del salto doble:** durante la vueltereta del salto doble el jugador saca una espada que corta a los enemigos cercanos (una vez cada uno), destruye las balas de robot y hace daño moderado al jefe. La canción de cada nivel también suena durante el combate con su jefe.
+
+## Jefes dinámicos
+
+- Los jefes ya no se quedan a la derecha: entre ataques cambian de puesto (derecha, izquierda, arriba, flancos), siempre miran al jugador y disparan hacia él (el dibujo se espeja). Cada uno entra por un lado distinto.
+- Cada jefe tiene un ataque propio: **Slime** – charcos de ácido que duran varios segundos · **Pulpo** – tentáculos que brotan en fila de un lado al otro · **Gárgola** – picado en diagonal marcado con una línea roja · **Marciano** – rayo tractor que abduce al jugador hacia la nave (un *dash* lo libera; si llega arriba pierde una vida) · **Calavera** – apagón: la arena queda a oscuras con un círculo de luz alrededor del jugador mientras llueven proyectiles.

@@ -323,6 +323,8 @@ func _process(_delta: float) -> void:
 	beat_t += _delta
 	if shade_mat:
 		var ph := fmod(beat_t, 0.5) / 0.5
+		if player:
+			shade_mat.set_shader_parameter("spot", Vector2((player.global_position.x - view_left) / Cfg.W, (player.global_position.y - 6.0) / 270.0))
 		shade_mat.set_shader_parameter("pulse", pow(1.0 - ph, 3.0) * (1.0 if reached_boss or start_phase == "boss" else 0.45))
 	if cam:
 		_update_camera()

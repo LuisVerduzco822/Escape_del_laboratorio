@@ -83,7 +83,7 @@ func _run() -> void:
 	check(distinct.size() >= 24, "FinalTop final phases combine at least 20 distinct attacks")
 	for k in 5:
 		for ph in [1, 2, 3]:
-			for a in boss_script.POOLS[k][ph] + boss_script.POOLS_FT[k][ph] + boss_script.EXTRA[ph] + boss_script.EXTRA_FT[ph]:
+			for a in boss_script.POOLS[k][ph] + boss_script.POOLS_FT[k][ph] + boss_script.EXTRA[ph] + boss_script.EXTRA_FT[ph] + boss_script.SIGNATURE[k]:
 				check(boss_script.ATTACK_WEIGHTS.has(a), "Attack %s has weights (boss %d, phase %d)" % [a, k + 1, ph])
 	# Las alas de la gárgola reciben daño.
 	gm.reset_run()

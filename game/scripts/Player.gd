@@ -40,6 +40,8 @@ var dash_dir := 1
 var air_dash := true
 var air_jumps := 1
 var flip_t := 0.0
+var abduct_t := 0.0   # rayo tractor del Marciano: mientras > 0 el jugador es elevado hacia la nave
+var abduct_x := 0.0
 var flip_hit := {}   # enemigos ya cortados en esta vueltereta
 const SWORD_REACH := 30.0
 var flip_dir := 1
@@ -176,6 +178,13 @@ func _physics_process(delta: float) -> void:
 		if Input.is_action_just_released("jump") and velocity.y < -120.0:
 			velocity.y *= 0.45
 
+	if abduct_t > 0.0:
+		abduct_t -= delta
+		if dash_t > 0.0:
+			abduct_t = 0.0   # el dash rompe el agarre
+		else:
+			velocity.x = (abduct_x - global_position.x) * 5.0
+			velocity.y = -64.0
 	if Input.is_action_pressed("shoot") and fire_cd <= 0.0 and dash_t <= 0.0:
 		_shoot()
 	if Input.is_action_just_pressed("super") and dash_t <= 0.0:
@@ -504,6 +513,9 @@ func _draw() -> void:
 		for k in 3:
 			var a0 := head - flip_dir * (0.5 + k * 0.5)
 			draw_arc(sprite.position, 13.0 + k * 2.0, minf(a0, head), maxf(a0, head), 10, Color(0.85, 0.97, 1.0, 0.5 - k * 0.15), 2.0)
+	if abduct_t > 0.0:
+		for k in 3:
+			draw_arc(Vector2(0, 3), 12.0 + k * 3.0 + sin(Time.get_ticks_msec() * 0.02 + k) * 1.5, 0.0, TAU, 20, Color(0.6, 1.0, 1.0, 0.5 - k * 0.12), 1.5)
 	if locked:
 		draw_arc(Vector2(0, 3), 13.0, 0.0, TAU, 20, Color(1, 1, 1, 0.25), 1.0)
 	if weapon_power_t > 0.0:

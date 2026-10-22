@@ -43,6 +43,7 @@ func _run() -> void:
 			for ph in [1, 2, 3]:
 				level.boss.phase = ph
 				for n in 14:
+					level.boss_t = 0.0
 					level.boss.rest = 0.0
 					level.boss._pick_attack()
 					seen[level.boss.last_attack] = true
@@ -53,14 +54,15 @@ func _run() -> void:
 					check(not level.boss.busy, "%s boss %d phase %d: attack %s finishes" % [mode, kind + 1, ph, level.boss.last_attack])
 					level.clear_threats()
 			# Los ataques extra de FINALTOP se ejecutan uno por uno (no solo al azar).
-			for extra in ["homing", "grid", "bounce", "curtain", "sweep", "crossfire", "eyes", "bonewave", "chomp", "beat", "pillars", "snipe", "mines", "snake", "lanes"]:
+			for extra in ["homing", "grid", "bounce", "curtain", "sweep", "crossfire", "eyes", "bonewave", "chomp", "beat", "pillars", "snipe", "mines", "snake", "lanes", "puddle", "tentacles", "dive", "abduct", "blackout"]:
+				level.boss_t = 0.0   # los ataques nuevos son largos: que no venza el reloj del jefe
 				level.boss.phase = 3
 				level.boss.last_attack = extra
 				level.boss._new_tw()
 				level.boss.call("_atk_" + extra)
 				level.boss.tw.tween_callback(level.boss._done)
 				var guard2 := 0
-				while level.boss.busy and guard2 < 900:
+				while level.boss.busy and guard2 < 2000:
 					await frames(1)
 					guard2 += 1
 				check(not level.boss.busy, "%s boss %d: extra attack %s finishes" % [mode, kind + 1, extra])

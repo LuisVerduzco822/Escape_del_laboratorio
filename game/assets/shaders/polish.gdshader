@@ -8,6 +8,8 @@ uniform float saturation = 1.14;
 uniform float contrast = 1.07;
 uniform vec3 tint = vec3(1.0);
 uniform float pulse = 0.0;
+uniform float dark : hint_range(0.0, 1.0) = 0.0;   // apagón: solo se ve alrededor del jugador
+uniform vec2 spot = vec2(0.5, 0.6);
 
 void fragment() {
 	vec2 uv = SCREEN_UV;
@@ -31,5 +33,7 @@ void fragment() {
 	col *= tint;
 	col *= 1.0 - vignette * smoothstep(0.12, 0.62, edge * 1.8);
 	col += pulse * vec3(0.06, 0.02, 0.02);
+	float d = distance((uv - spot) * vec2(1.7778, 1.0), vec2(0.0));
+	col *= mix(1.0, 0.06 + 0.94 * smoothstep(0.34, 0.12, d), dark);
 	COLOR = vec4(col, 1.0);
 }
