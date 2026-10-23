@@ -727,7 +727,7 @@ func _on_level_failed(info: Dictionary) -> void:
 	if mode == "finaltop":
 		var penalty := float(Cfg.FINALTOP["death_penalty"])
 		GameManager.play_time += penalty
-		fail_info_label.text = "Sigues en el jefe %d de 3.\nRecuperas todas tus vidas.\nEl reloj sigue: +%d s de penalizacion.\nTIEMPO %s" % [int(info["level"]) + 1, int(penalty), GameManager.format_clock(GameManager.play_time)]
+		fail_info_label.text = "Sigues en el jefe %d de %d.\nRecuperas todas tus vidas.\nEl reloj sigue: +%d s de penalizacion.\nTIEMPO %s" % [int(info["level"]) + 1, Cfg.LEVELS.size(), int(penalty), GameManager.format_clock(GameManager.play_time)]
 	elif info["phase"] == "boss":
 		fail_info_label.text = "¿Quieres reintentarlo?\nEl combate completo empieza de nuevo.\nRecuperas todas tus vidas\ny conservas tus ingredientes."
 	else:
