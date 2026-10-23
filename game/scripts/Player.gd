@@ -27,6 +27,10 @@ const DASH_CD := 0.45
 const FIRE_RATE := 0.11
 const COYOTE := 0.09
 const BUFFER := 0.1
+# Aterrizaje fuerte: al tocar el suelo cayendo más rápido que HARD_LAND_V hay vibración, polvo y un golpe sordo.
+const HARD_LAND_V := 300.0
+const HARD_LAND_SHAKE := 2.2
+const HARD_LAND_TIME := 0.14
 
 var sprite: AnimatedSprite2D
 var parry_area: Area2D
@@ -199,7 +203,14 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("super") and dash_t <= 0.0:
 		_super()
 
+	var was_floor := is_on_floor()
+	var fall_v := velocity.y
 	move_and_slide()
+	if not was_floor and is_on_floor() and fall_v > HARD_LAND_V and not dead:
+		var power := clampf((fall_v - HARD_LAND_V) / 200.0, 0.0, 1.0)
+		Fx.shake(HARD_LAND_SHAKE * (0.7 + 0.6 * power), HARD_LAND_TIME)
+		Fx.burst(get_parent(), global_position + Vector2(0, 12), Color(0.85, 0.85, 0.9, 0.8), 8, 70.0, 0.3, 2.0)
+		AudioManager.sfx("boom", -16.0 - 4.0 * (1.0 - power), 1.5)
 	on_platform = false
 	for i in get_slide_collision_count():
 		var c := get_slide_collision(i)
@@ -283,7 +294,7 @@ func _shoot() -> void:
 	s.position = to_global(_weapon_muzzle() + aim * 2.0)
 	s.vel = dir * 360.0
 	get_parent().add_child(s)
-	AudioManager.sfx("shoot", -10.0, randf_range(0.95, 1.08))
+	AudioManager.sfx("pshoot", -10.0, randf_range(0.95, 1.08))
 	mute_flash = 0.05
 
 

@@ -322,3 +322,63 @@ Lobby: Containment Lockdown · Nivel 1: Sector Lockdown · Nivel 2: Iron Gate As
 
 - Para entrar con el jefe de un nivel hay que reunir los 3 compuestos **y eliminar a todos los enemigos**. Al juntar el tercer compuesto dejan de aparecer enemigos nuevos, el HUD y la puerta muestran cuántos quedan («ELIMINA A LOS ENEMIGOS: N») y los que se quedaron lejos reaparecen por el borde de la pantalla.
 - **Tajo de aterrizaje:** si haces salto doble, al caer la espada golpea el suelo con una onda y elimina a los enemigos que estén en el piso a su alcance (también rompe cajas azules cercanas y destruye balas de robot). Un dash antes de caer lo cancela.
+
+## Práctica 5: Game feel y juice
+
+Las mejoras no tocan la base de datos, el progreso, el leaderboard ni el panel web: son cambios de jugabilidad, cámara, sonido e interfaz (`Player.gd`, `Fx.gd`, `Pickup.gd`, `AudioManager.gd` y un shader de pantalla). Se verifican con `game/tests/game_feel_test.gd` (más el resto de la suite).
+
+### 1. Input buffering
+| Parámetro | Valor | Dónde |
+|---|---|---|
+| Ventana del buffer de salto | **0.10 s** (`BUFFER`) | `Player.gd` |
+
+Si el jugador pulsa salto hasta 0.10 s *antes* de poder saltar (por ejemplo justo antes de tocar el suelo, con el salto doble ya gastado), la pulsación se guarda y el salto se ejecuta en cuanto es posible. La pulsación caduca si el aterrizaje tarda más. Con el salto doble disponible, pulsar salto en el aire hace la vueltereta de inmediato.
+
+### 2. Coyote time
+| Parámetro | Valor | Dónde |
+|---|---|---|
+| Tiempo de gracia tras dejar el suelo | **0.09 s** (`COYOTE`) | `Player.gd` |
+
+Tras salir del borde de una plataforma se puede saltar como si aún se estuviera en el suelo (no gasta el salto doble). Pasados 0.09 s, la pulsación se convierte en salto doble.
+
+### 3. Screenshake (vibración de cámara)
+`Fx.shake(amplitud_px, duración_s)` desplaza la cámara con un desplazamiento aleatorio de hasta *amplitud* píxeles (en la resolución 480x270 del juego) que se apaga al cumplirse la duración. Si llegan varios temblores a la vez se conserva el más fuerte.
+
+| Momento | Amplitud | Duración |
+|---|---|---|
+| Recibir daño | 3.0 px | 0.25 s |
+| Aterrizaje fuerte (caída a más de 300 px/s) | 1.5–2.9 px según la velocidad | 0.14 s |
+| Tajo de espada al aterrizar tras el salto doble | 2.0 px | 0.15 s |
+| Super | 2.5 px | 0.20 s |
+| Ultra | 4.0 px | 0.60 s |
+| Zona de ataque del jefe al impactar | 2.5 px | 0.25 s |
+| Impacto/embestida del jefe | 5.0 px | 0.40 s |
+| Cambio de fase del jefe | 4.0 px | 0.60 s |
+| Bomba al jefe | 3.0 px | 0.30 s |
+| Romper una caja azul | 1.5 px | 0.12 s |
+| Derrotar al jefe | 5.0 px | 0.80 s |
+
+### 4. Feedback visual, sonoro y de interfaz
+| Acción | Feedback |
+|---|---|
+| Recibir daño | Destello rojo de pantalla (0.35, 0.3 s), *hit-stop* de 0.08 s, parpadeo de invulnerabilidad 1.5 s, sonido de golpe, temblor |
+| Disparar / impacto en enemigos | Fogonazo en el cañón, chispas en el impacto, sonido de disparo, *popup* de puntos al vencer |
+| Matar enemigos | Explosión de partículas, `+puntos` flotante, contador de combo y monedas que salen del enemigo |
+| Monedas | Destello dorado, sonido cuyo **tono sube** al recoger varias seguidas (cadena de 0.6 s, hasta x1.7), imán automático y contador en el HUD |
+| Compuestos / vidas / power-ups | Estallido de partículas del color del objeto, texto flotante («+1 VIDA», «DISPARO X3», nombre del compuesto), sonido propio |
+| Salto doble | Vueltereta con estela, anillo de aire bajo los pies, sonido más agudo |
+| Espada del salto doble | Corte con arco luminoso, *hit-stop* corto (0.04 s) y chispas por cada enemigo cortado |
+| Aterrizaje fuerte | Polvo, golpe sordo (volumen según la velocidad) y temblor |
+| Ultra / jefe vencido | Destello blanco, *hit-stop* (0.18 s y 0.35 s) y temblor |
+| Ambiente | Pasada de acabado (bloom, viñeta y color), balas con estela de neón y halo que late al compás, destello de pantalla a 120 bpm, zonas de ataque con aviso pulsante |
+| Interfaz | Mensajes grandes («¡ADVERTENCIA!», «ELIMINA A LOS ENEMIGOS: N»), barras de vida/super, contador del jefe y del reloj |
+| Audio | Música por nivel, normalizada y con bucle sin corte, por debajo de los efectos (`MUSIC_DB` -4.5, `SFX_DB` +1) |
+
+Capturas en `docs/capturas/` (daño con flash y screenshake, monedas y compuesto, golpe al jefe, tajo de aterrizaje).
+
+## Fluidez y presión continua de los jefes
+
+- **Rendimiento:** las balas (`Hazard.gd`) dibujan su brillo con una textura compartida en vez de varios círculos por fotograma. Con más de 40 balas en pantalla se quita la estela y se redibuja menos. `Fx.burst` limita las ráfagas de partículas simultáneas. Medido con 90 balas: 51 ms → 29 ms por fotograma; con 270: 102 ms → 49 ms (renderizado por software).
+- **Presión continua:** mientras pelea, cada jefe suma entre sus ataques rayos del cielo, rayos de piso y lluvia de balas (`Boss._ambient`). La frecuencia y la cantidad suben con el número de jefe (1 a 5) y con la fase; en FinalTop es 1.3 veces más intensa. No aparecen si ya hay demasiadas balas. El descanso entre ataques también se acorta con el jefe.
+- **Volumen:** los sonidos de ataques y alertas (`shoot`, `warn`, `phase`, `boom`, `select`) se atenúan en `AudioManager.ATTACK_DB`, y el mismo sonido no se repite más de una vez cada 40 ms. El disparo del jugador conserva su volumen (`pshoot`).
+- Prueba: `game/tests/boss_ambient_test.gd`.

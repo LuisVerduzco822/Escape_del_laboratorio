@@ -2,6 +2,7 @@ extends Node2D
 
 signal defeated
 
+const HazardCls := preload("res://scripts/Hazard.gd")
 enum St { ENTER, FIGHT, PHASE, DEAD }
 
 const POOLS := {
@@ -160,12 +161,15 @@ var boom_t := 0.0
 var sp := 1.0
 var ox := 0.0
 var attack_rng := RandomNumberGenerator.new()
+var amb_rng := RandomNumberGenerator.new()   # presión ambiental: aparte para no alterar la secuencia de ataques
+var amb_t := 3.0
 var move_rng := RandomNumberGenerator.new()   # cambios de puesto: aparte, para no alterar la secuencia de ataques guardada
 
 
 func _ready() -> void:
 	attack_rng.randomize()
 	move_rng.randomize()
+	amb_rng.randomize()
 	add_to_group("boss")
 	z_index = -10
 	ox = level.arena_x if level else 0.0
@@ -277,6 +281,7 @@ func _physics_process(delta: float) -> void:
 		St.FIGHT:
 			if not moving:
 				position = home + Vector2(sin(t * 1.3) * 14.0, sin(t * 2.1) * 9.0)
+			_ambient(delta)
 			if not busy:
 				_try_drop_hearts()
 				rest -= delta
@@ -405,7 +410,7 @@ func _done() -> void:
 	contact_on = false
 	warn_x = -1.0
 	warn_y = -1.0
-	rest = maxf(0.5, 1.4 - 0.25 * (phase - 1) - 0.1 * kind) + float(Cfg.BOSS["rest_add"])
+	rest = maxf(0.4, 1.4 - 0.25 * (phase - 1) - 0.13 * kind) + float(Cfg.BOSS["rest_add"])
 	_try_drop_hearts()
 
 
@@ -517,6 +522,48 @@ func _relocate(a: String) -> void:
 	tw.tween_callback(func(): moving = true)
 	tw.tween_property(self, "position", home, 0.75).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(func(): moving = false)
+
+
+# Presión continua: mientras pelea, el jefe suma rayos del cielo, rayos de piso y lluvia de balas
+# entre sus ataques. Sube con el número de jefe y con la fase; en FinalTop es 1.3 veces más intensa.
+func ambient_level() -> float:
+	var k := clampf(float(kind) / 4.0 * 0.62 + float(phase - 1) / 2.0 * 0.38, 0.0, 1.0)
+	return k * (1.3 if _is_finaltop() else 1.0)
+
+
+func ambient_interval() -> float:
+	return clampf(lerpf(4.2, 1.5, ambient_level() / 1.3 if _is_finaltop() else ambient_level()) / (1.3 if _is_finaltop() else 1.0), 1.0, 4.2)
+
+
+func _ambient(delta: float) -> void:
+	if abducting or level == null or level.player == null or level.player.dead:
+		return
+	amb_t -= delta
+	if amb_t > 0.0:
+		return
+	amb_t = ambient_interval() * amb_rng.randf_range(0.85, 1.15)
+	if HazardCls.live > 45:
+		return
+	var lv := ambient_level()
+	var roll := amb_rng.randf()
+	var px := clampf(_target().x, ox + 20.0, ox + 460.0)
+	if roll < 0.40:
+		# Rayo del cielo sobre (o junto a) el jugador; con más nivel caen 2 y 3 a la vez.
+		var n := 1 + int(lv > 0.45) + int(lv > 0.9)
+		for i in n:
+			var x := clampf(px + (0.0 if i == 0 else amb_rng.randf_range(-90.0, 90.0)), ox + 20.0, ox + 460.0)
+			level.add_zone(Vector2(x, Cfg.FLOOR_Y * 0.5), Vector2(20, Cfg.FLOOR_Y), 0.95 - 0.1 * lv, 0.35, _col())
+	elif roll < 0.70 and kind >= 1:
+		# Rayo rasante de piso: obliga a saltar.
+		var w := 150.0 + 90.0 * lv
+		var x2 := clampf(px + amb_rng.randf_range(-60.0, 60.0), ox + w * 0.5, ox + 480.0 - w * 0.5)
+		level.add_zone(Vector2(x2, Cfg.FLOOR_Y - 8.0), Vector2(w, 16), 0.9 - 0.1 * lv, 0.45, _col())
+	else:
+		# Lluvia corta de balas (4 a 9 gotas, repartidas).
+		var drops := 4 + int(lv * 5.0)
+		for i in drops:
+			var x3 := clampf(px + amb_rng.randf_range(-110.0, 110.0), ox + 10.0, ox + 470.0)
+			level.add_hazard(Vector2(x3, -10.0 - amb_rng.randf_range(0.0, 50.0)), Vector2(0, 60.0), {"style": "drop", "radius": 4.5, "col": _col(), "accel": Vector2(0, 70.0)})
 
 
 func _atk_fan() -> void:

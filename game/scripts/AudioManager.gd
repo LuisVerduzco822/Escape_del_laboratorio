@@ -50,10 +50,22 @@ func _load(file: String) -> AudioStream:
 	return s
 
 
+# Ataques y alertas (jefes, enemigos, avisos) suenan más bajo que el resto de efectos.
+const ATTACK_DB := {"shoot": -7.0, "warn": -9.0, "phase": -7.0, "boom": -6.0, "select": -6.0, "tick": -3.0}
+const MIN_GAP_MS := 40
+var last_ms := {}
+
+
 func sfx(name: String, vol: float = 0.0, pitch: float = 1.0) -> void:
-	if not SFX_FILES.has(name):
+	var key := "shoot" if name == "pshoot" else name
+	if not SFX_FILES.has(key):
 		return
-	var s := _load(SFX_FILES[name])
+	var now := Time.get_ticks_msec()
+	if now - int(last_ms.get(name, -1000)) < MIN_GAP_MS:
+		return   # evita apilar el mismo sonido decenas de veces (ráfagas de balas)
+	last_ms[name] = now
+	vol += float(ATTACK_DB.get(name, 0.0))
+	var s := _load(SFX_FILES[key])
 	if s == null:
 		return
 	for p in pool:

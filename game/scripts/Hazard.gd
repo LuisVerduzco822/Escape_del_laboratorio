@@ -21,6 +21,27 @@ var burst_n := 8
 var wave_amp := 0.0
 var wave_f := 6.0
 var trail: Array = []
+# Rendimiento: con muchas balas en pantalla se simplifica el dibujo (sin estela, halo fijo) y se redibuja menos.
+const BUSY_LIMIT := 40
+static var live := 0
+static var glow_tex: Texture2D
+var frame_i := 0
+
+
+static func glow() -> Texture2D:
+	if glow_tex == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		var t := GradientTexture2D.new()
+		t.gradient = g
+		t.fill = GradientTexture2D.FILL_RADIAL
+		t.fill_from = Vector2(0.5, 0.5)
+		t.fill_to = Vector2(1.0, 0.5)
+		t.width = 32
+		t.height = 32
+		glow_tex = t
+	return glow_tex
 # Balas de robot: se pueden destruir a disparos y desaparecen solas pasado `life` segundos (0 = no caducan).
 var shootable := false
 var life := 0.0
@@ -39,6 +60,12 @@ func _ready() -> void:
 		add_to_group("parry")
 	body_entered.connect(_on_body)
 	z_index = 4
+	live += 1
+	frame_i = randi() % 3
+
+
+func _exit_tree() -> void:
+	live = maxi(0, live - 1)
 
 
 func _physics_process(delta: float) -> void:
@@ -62,9 +89,12 @@ func _physics_process(delta: float) -> void:
 		vel.y = -vel.y * 0.86
 		bounces -= 1
 	position += vel * delta
-	trail.push_front(global_position)
-	if trail.size() > 7:
-		trail.pop_back()
+	if live <= BUSY_LIMIT:
+		trail.push_front(global_position)
+		if trail.size() > 5:
+			trail.pop_back()
+	elif not trail.is_empty():
+		trail.clear()
 	age += delta
 	if life > 0.0 and age >= life:
 		vanish()
@@ -73,7 +103,10 @@ func _physics_process(delta: float) -> void:
 	var vl: float = get_parent().get("view_left") if get_parent().get("view_left") != null else 0.0
 	if position.x < vl - 60.0 or position.x > vl + 540.0 or position.y < -80 or position.y > 330:
 		queue_free()
-	queue_redraw()
+	# Sin estela ni pulso el dibujo es estático: basta redibujar de vez en cuando.
+	frame_i += 1
+	if live <= BUSY_LIMIT or frame_i % 4 == 0 or pink:
+		queue_redraw()
 
 
 func _on_body(b: Node) -> void:
@@ -153,9 +186,11 @@ func _draw() -> void:
 
 # Efecto de neón al estilo Geometry Dash: estela que se desvanece, halo que late al compás y un destello blanco.
 func _neon(c: Color) -> void:
+	var tex := glow()
 	for i in range(1, trail.size()):
 		var f := 1.0 - float(i) / float(trail.size())
-		draw_circle(to_local(trail[i]), radius * (0.35 + 0.55 * f), Color(c, 0.32 * f))
-	var beat := 0.5 + 0.5 * cos(age * TAU / 0.5)
-	draw_circle(Vector2.ZERO, radius * (2.1 + 0.5 * beat), Color(c, 0.10 + 0.08 * beat))
-	draw_circle(Vector2.ZERO, radius * 1.5, Color(c, 0.22))
+		var r: float = radius * (0.9 + 0.9 * f)
+		draw_texture_rect(tex, Rect2(to_local(trail[i]) - Vector2(r, r), Vector2(r, r) * 2.0), false, Color(c, 0.55 * f))
+	var beat := 0.5 + 0.5 * cos(age * TAU / 0.5) if live <= BUSY_LIMIT else 0.5
+	var hr: float = radius * (2.4 + 0.6 * beat)
+	draw_texture_rect(tex, Rect2(Vector2(-hr, -hr), Vector2(hr, hr) * 2.0), false, Color(c, 0.55 + 0.2 * beat))

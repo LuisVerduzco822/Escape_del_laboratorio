@@ -65,7 +65,16 @@ func reset() -> void:
 	flash_rect.color.a = 0.0
 
 
+# Rendimiento: límite de ráfagas de partículas simultáneas; con muchas, las nuevas son más pequeñas o se omiten.
+static var live_bursts := 0
+
+
 func burst(parent: Node, pos: Vector2, color: Color, n: int = 10, speed: float = 90.0, life: float = 0.5, size: float = 2.0) -> void:
+	if live_bursts > 36:
+		return
+	if live_bursts > 16:
+		n = maxi(2, n / 3)
+	live_bursts += 1
 	var p := CPUParticles2D.new()
 	p.position = pos
 	p.amount = n
@@ -86,7 +95,9 @@ func burst(parent: Node, pos: Vector2, color: Color, n: int = 10, speed: float =
 	p.z_index = 20
 	parent.add_child(p)
 	p.emitting = true
-	p.finished.connect(p.queue_free)
+	p.finished.connect(func():
+		live_bursts = maxi(0, live_bursts - 1)
+		p.queue_free())
 
 
 func popup(parent: Node, text: String, pos: Vector2, color: Color = Color.WHITE) -> void:
