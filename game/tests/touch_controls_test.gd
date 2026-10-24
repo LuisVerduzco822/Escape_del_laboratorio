@@ -61,6 +61,9 @@ func _run() -> void:
 	await main._start_level(0, "tutorial", false)
 	await frames()
 	check(touch.visible and main.touch_gameplay_available(), "Touch overlay available in tutorial")
+	root.get_node("Cfg").show_key_hints = false
+	await frames(1)
+	check(touch.visible, "Remote clean HUD setting does not hide touch controls")
 	check(not main.level.hud.controls_hint.visible, "Desktop control hints do not overlap touch")
 	check("STICK" in main.level.current_lesson()[1].to_upper(), "Tutorial displays touch movement instructions")
 	gm.clear_input_activity()

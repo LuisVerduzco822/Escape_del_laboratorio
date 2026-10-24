@@ -112,7 +112,7 @@ func _draw_super() -> void:
 				col = col.lightened(0.3)
 		draw_rect(Rect2(x, y0, 46 * fill, 8), col)
 		draw_rect(Rect2(x, y0, 46, 1), Color(1, 1, 1, 0.25))
-	if not GameManager.touch_controls_visible():
+	if Cfg.show_key_hints and not GameManager.touch_controls_visible():
 		ControlsHint.draw_binding(self, GameManager.primary_binding("super"), Vector2(76, 243))
 	if m >= 50.0:
 		UI.text(self, "ULTRA" if m >= 100.0 else "LISTO", x0 + 104.0, y0 + 8.0, 8, Color(1.0, 0.5, 0.9) if m >= 100.0 else Color(1.0, 0.9, 0.4), 0, 3)

@@ -32,6 +32,10 @@ func _run() -> void:
 	current_scene = level
 	await frames(3)
 	var guide = level.hud.controls_hint
+	var cfg = root.get_node("Cfg")
+	check(not cfg.show_key_hints and not guide.visible, "Guide is hidden by default (clean HUD)")
+	cfg.show_key_hints = true
+	await frames(2)
 	check(guide.visible, "Guide is visible during ordinary gameplay outside tutorial")
 	check(Rect2(Vector2.ZERO, root.get_visible_rect().size).encloses(guide.get_rect()), "Compact guide fits the 480x270 viewport")
 	check(guide.position.x > 200 and guide.position.y > 230, "Guide uses the free bottom-right HUD space")
@@ -69,6 +73,16 @@ func _run() -> void:
 	level.is_tutorial = false
 	await frames(2)
 	check(guide.visible, "Guide returns for normal gameplay")
+	gm.touch_visibility = "on"
+	await frames(2)
+	check(not guide.visible and cfg.show_key_hints, "Touch hides keyboard hints even when the clean HUD option is disabled")
+	gm.touch_visibility = "off"
+	await frames(2)
+	check(guide.visible, "Configured keyboard hints return after hiding touch controls")
+	cfg.show_key_hints = false
+	await frames(2)
+	check(not guide.visible, "Clean HUD can hide hints again during gameplay")
+	cfg.show_key_hints = true
 	level.player.dead = true
 	await frames(2)
 	check(not guide.visible, "Guide hides on defeat")
