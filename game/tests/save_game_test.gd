@@ -77,6 +77,24 @@ func _run() -> void:
 	var again: Dictionary = saves.capture(level)
 	check(again.actors == saved.actors, "All actor properties survive reconstruction")
 	check(level.ing_spawned == [true, true, true], "Ingredient spawn flags restored")
+	# Legacy snapshots must restore all current slots before the level or HUD reads them.
+	for count in [9, 12]:
+		var legacy: Dictionary = saved.duplicate(true)
+		legacy.stats.ingredients.resize(count)
+		for slot in count:
+			legacy.stats.ingredients[slot] = slot % 2 == 0
+		check(saves.valid(legacy), "Legacy %d-slot snapshot accepted" % count)
+		await main._start_level(1, "collect", false, legacy)
+		paused = true
+		check(gm.ingredients.size() == root.get_node("Cfg").ING_TOTAL, "Legacy %d-slot snapshot expanded" % count)
+		for slot in root.get_node("Cfg").ING_TOTAL:
+			check(gm.ingredients[slot] == (slot < count and slot % 2 == 0), "Legacy %d-slot ingredient %d preserved or initialized" % [count, slot])
+		check(gm.level_ingredients(4) == 0, "New level compounds start uncollected")
+		check(legacy.stats.ingredients.size() == count, "Restoring does not mutate the legacy snapshot")
+		check(saves.capture(main.level).stats.ingredients.size() == root.get_node("Cfg").ING_TOTAL, "Next snapshot stores all current compounds")
+	await main._start_level(1, "collect", false, saved)
+	paused = true
+	level = main.level
 	# Enter the boss and capture the start of phase one.
 	for child in level.get_children():
 		if child.get_script() in saves.SCRIPTS.values(): child.queue_free()

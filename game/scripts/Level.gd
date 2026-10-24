@@ -908,6 +908,9 @@ func _restore_snapshot(saved: Dictionary) -> void:
 		# Older saves already had encounters running after the introduction.
 		enemies_started = index != 0 or collect_t > 0.0
 	SaveGame.write_fields(GameManager, "stats", saved.stats)
+	# Legacy snapshots have only 9 or 12 slots; new compounds start uncollected.
+	while GameManager.ingredients.size() < Cfg.ING_TOTAL:
+		GameManager.ingredients.append(false)
 	SaveGame.write_fields(player, "player", saved.player)
 	# Previous saves used a boss arena at x=0; retain their phase checkpoint.
 	var old_arena: bool = scrolling and reached_boss and player.position.x < arena_x
