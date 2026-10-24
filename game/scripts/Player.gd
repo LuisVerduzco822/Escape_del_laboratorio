@@ -441,6 +441,7 @@ func hurt(source: String = "") -> void:
 	Telemetry.count("damage_taken")
 	last_hurt_src = source
 	Telemetry.event("hurt", _where({"hp_left": GameManager.hp, "src": source}))
+	Fx.impact(get_parent(), global_position + Vector2(0, -3), "hit", 0.9)
 	AudioManager.sfx("hurt")
 	Fx.shake(3.0, 0.25)
 	Fx.hitstop(0.08)

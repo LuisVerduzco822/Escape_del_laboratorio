@@ -1,0 +1,11 @@
+Battle Effects by pimen — licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+Source: https://pimen.itch.io/pixel-battle-effects
+License: https://creativecommons.org/licenses/by/4.0/
+Legal code: https://creativecommons.org/licenses/by/4.0/legalcode.en
+
+You may share and adapt this material, including commercially, provided you give appropriate credit, link to the license, and indicate changes. Do not imply endorsement or apply restrictions that prevent exercise of the licensed rights. No warranties are given.
+This notice summarizes the linked license; the legal code controls.
+
+hit.png is an unchanged copy of Effects/Effect 2 - Sprite Sheet.png.
+The game selects its four active 64x32 frames, scales them and adjusts playback speed.
+Retain the author, source, license link and modification notice with distributions.

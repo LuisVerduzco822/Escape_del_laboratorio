@@ -9,3 +9,7 @@ export_presets.cfg
 node_modules/
 .env
 npm-debug.log*
+
+# Local asset evaluation packs; ship only selected, credited resources.
+game/assets/tmp/*
+!game/assets/tmp/.gdignore

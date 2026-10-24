@@ -1,0 +1,12 @@
+Explosions - Pixel Art by Aim studios — CC0 1.0 Universal.
+Source: https://aim-studios.itch.io/explosions-pixel-art
+License: https://creativecommons.org/publicdomain/zero/1.0/
+Legal code: https://creativecommons.org/publicdomain/zero/1.0/legalcode.en
+
+The source page expressly allows commercial and non-commercial use, modified or unchanged, without credit. CC0 permits copying, modification and redistribution without permission. No endorsement is implied. No warranties are given. This notice summarizes the linked legal instrument.
+
+Unchanged source PNG copies (renamed):
+explosion_blue.png <- explosion (1) (1).png (Explosion_blue, 32x32, 9 frames)
+explosion_green.png <- realistic explosion (1).png (Realistic Explosion_green, 64x64, 8 frames)
+boss_finale.png <- Foam bubble explosion 64 X 64.png (10 frames)
+Scaling and playback speed are configured by the game.

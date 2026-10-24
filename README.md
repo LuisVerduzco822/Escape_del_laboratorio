@@ -439,7 +439,30 @@ docker-compose.yml
 - Lanzallamas (`game/assets/weapons/Flamethrower.png`): Player 24 (MainMenuMaster), [2D Pixel Art Weapon Pack – Melee & Modern Arsenal](https://mainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb). Recurso proporcionado por el autor del proyecto; la página del pack no especifica una licencia.
 - Fondos, sprite de bola de fuego y fuente Press Start 2P (SIL OFL 1.1): proporcionados por el autor.
 - Pack Modern Interiors Free v2.2 (personaje Adam): uso no comercial.
-- Capas de parallax, jefes, efectos y música: generados para este proyecto.
+- Capas de parallax, jefes, partículas procedurales y música: generados para este proyecto.
+- Efectos animados: **Battle Effects**, de **pimen**, [fuente](https://pimen.itch.io/pixel-battle-effects),
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). `Effect 2 - Sprite Sheet.png` se copia sin modificar
+  como `game/assets/effects/pimen/hit.png`; se seleccionan sus cuatro cuadros activos y se ajustan escala/velocidad.
+  Atribución y enlace de licencia en el menú **CREDITOS VFX** y junto al PNG. Conservar estos avisos al distribuir.
+- Explosiones: **Explosions - Pixel Art**, de **Aim studios**, [fuente](https://aim-studios.itch.io/explosions-pixel-art),
+  [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). Tres PNG originales, renombrados,
+  en `game/assets/effects/aim_studios/`; se ajustan escala/velocidad. Crédito voluntario en el juego y en
+  `game/assets/effects/CREDITS.txt`. Las licencias de recursos no cambian la licencia del código.
+
+### Selección de efectos de combate
+
+- Robots, drones y bolas de fuego: explosión azul compacta. Murciélagos y esporas: explosión verde orgánica.
+- Daño no letal a enemigos y golpes aceptados por el jugador: destello dorado corto; la invulnerabilidad evita repetirlo.
+- Jefes: explosiones escalonadas, cuerpo que se desvanece y una explosión final grande antes de la transición.
+- Animaciones compartidas, filtro nearest y máximo de 32 efectos simultáneos (el remate del jefe siempre se muestra).
+  Los efectos pertenecen al nivel: sobreviven al enemigo y se eliminan al terminar o cambiar de nivel.
+- Se compararon también Sentient Dream Studio, Arcade VFX Lite y Free Effects for Platformer. Los dos primeros
+  prohíben redistribuir sus recursos por separado; no se copiaron al contenido utilizado por este repositorio público.
+  Free Effects for Platformer remite a [CraftPix](https://craftpix.net/file-licenses/), cuya licencia permite juegos
+  personales/comerciales pero limita la redistribución de archivos de arte. No se incorporó material de esos tres packs.
+  `game/assets/tmp/.gdignore` mantiene el material de evaluación fuera de la importación/exportación de Godot
+  y `.gitignore` excluye sus archivos del control de versiones;
+  no incluir esa carpeta en entregas de código o paquetes de recursos.
 
 
 ## Nivel 4 y modo FINALTOP

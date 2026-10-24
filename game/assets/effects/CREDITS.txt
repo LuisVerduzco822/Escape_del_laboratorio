@@ -1,0 +1,19 @@
+EFECTOS VISUALES
+
+Battle Effects — pimen
+https://pimen.itch.io/pixel-battle-effects
+CC BY 4.0
+https://creativecommons.org/licenses/by/4.0/
+Hit: Effect 2, PNG original sin modificar.
+Se usan 4 cuadros; escala y velocidad en el juego.
+
+Explosions - Pixel Art — Aim studios
+https://aim-studios.itch.io/explosions-pixel-art
+CC0 1.0 Universal
+https://creativecommons.org/publicdomain/zero/1.0/
+Explosiones azules, verdes y de burbujas.
+PNG originales; escala y velocidad en el juego.
+
+Los autores no patrocinan este proyecto.
+Las licencias de estos recursos son independientes
+de la licencia del código del juego.

@@ -175,6 +175,11 @@ func _build_menu() -> void:
 	out.custom_minimum_size = Vector2(100, 0)
 	var quit := _btn(row, "SALIR", _quit)
 	quit.custom_minimum_size = Vector2(44, 0)
+	var credits_button := UI.button("CREDITOS VFX")
+	credits_button.position = Vector2(4, 250)
+	credits_button.add_theme_font_size_override("font_size", 8)
+	menu_layer.add_child(credits_button)
+	credits_button.pressed.connect(_show_effect_credits)
 	var tw := create_tween().set_loops()
 	tw.tween_property(t2, "modulate", Color(1.4, 1.3, 0.8), 0.9).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(t2, "modulate", Color(1, 1, 1), 0.9).set_trans(Tween.TRANS_SINE)
@@ -890,3 +895,19 @@ func _sync_mouse_capture() -> void:
 
 func _exit_tree() -> void:
 	GameManager.set_mouse_gameplay(false)
+
+
+func _show_effect_credits() -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = "Creditos y licencias de efectos"
+	dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+	dialog.min_size = Vector2i(440, 220)
+	var text := RichTextLabel.new()
+	text.text = "EFECTOS VISUALES\n\nBattle Effects — pimen\nhttps://pimen.itch.io/pixel-battle-effects\nCC BY 4.0\nhttps://creativecommons.org/licenses/by/4.0/\nHit: Effect 2, PNG original sin modificar.\nSe usan 4 cuadros; escala y velocidad en el juego.\n\nExplosions - Pixel Art — Aim studios\nhttps://aim-studios.itch.io/explosions-pixel-art\nCC0 1.0 Universal\nhttps://creativecommons.org/publicdomain/zero/1.0/\nExplosiones azules, verdes y de burbujas.\nPNG originales; escala y velocidad en el juego.\n\nLos autores no patrocinan este proyecto.\nLas licencias de estos recursos son independientes\nde la licencia del código del juego.\n"
+	text.add_theme_font_size_override("normal_font_size", 8)
+	text.custom_minimum_size = Vector2(420, 175)
+	dialog.add_child(text)
+	add_child(dialog)
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
