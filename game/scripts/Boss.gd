@@ -316,6 +316,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _enter_fight() -> void:
+	# Un solo acento al completar la presentación, no al volver de cada fase.
+	if st == St.ENTER:
+		Fx.shake(3.5, 0.3)
 	st = St.FIGHT
 	st_t = 0.0
 	busy = false

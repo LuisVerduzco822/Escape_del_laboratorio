@@ -47,6 +47,14 @@ const REGIONS := {
 	"Joystick8": Rect2(112, 0, 16, 16),
 	"Joystick38": Rect2(256, 16, 16, 16),
 	"Joystick39": Rect2(272, 16, 16, 16),
+	"Joystick49": Rect2(96, 32, 16, 16),
+	"Joystick50": Rect2(112, 32, 16, 16),
+	"Joystick70": Rect2(96, 48, 16, 16),
+	"Joystick71": Rect2(112, 48, 16, 16),
+	"Joystick91": Rect2(96, 64, 16, 16),
+	"Joystick92": Rect2(112, 64, 16, 16),
+	"Joystick112": Rect2(96, 80, 16, 16),
+	"Joystick113": Rect2(112, 80, 16, 16),
 	"DirectionalInputs3": Rect2(32, 0, 16, 16),
 	"DirectionalInputs4": Rect2(48, 0, 16, 16),
 	"DirectionalInputs5": Rect2(64, 0, 16, 16),
@@ -150,7 +158,9 @@ static func texture(event: InputEvent, family: String) -> Texture2D:
 			number = (5 if left else 7) if family == "playstation" else ((47 if left else 49) if family == "nintendo" else (31 if left else 33))
 		else:
 			group = "Joystick"
-			number = 7 if event.axis in [JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y] else 8
+			var left: bool = event.axis in [JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y]
+			var base: int = {"ARR": 49, "DER": 70, "ABA": 91, "IZQ": 112}[direction(event)]
+			number = base if left else base + 1
 	if group.is_empty():
 		return null
 	var key := group + str(number)

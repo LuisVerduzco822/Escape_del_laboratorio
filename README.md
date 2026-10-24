@@ -78,7 +78,7 @@ con una cuenta atrás de tres segundos durante la cual el juego está detenido.
 - Los estados detallados se guardan **en este equipo**, tanto para invitados como para cuentas, separados por
   servidor y usuario (`user://resume_*.save`). El progreso entre niveles de las cuentas sigue en PostgreSQL.
   Si no hay un estado detallado válido, CONTINUAR usa el guardado entre niveles anterior.
-- Empezar con **JUGAR** reemplaza el guardado anterior. Se crea un punto de continuación al entrar a cada nivel;
+- Empezar con **NUEVA PARTIDA** reemplaza el guardado anterior. Se crea un punto de continuación al entrar a cada nivel;
   al derrotar al jefe se descarta su checkpoint y al terminar el juego se limpia el guardado.
 
 Prueba del sistema de guardado en PowerShell, desde la raíz del repositorio (ajusta la ruta de Godot):
@@ -285,13 +285,14 @@ partidas completadas, porque un tiempo corto en una partida perdida no es un ré
 | Exportar | administrador | CSV de jugadores, partidas, eventos y coleccionables. |
 
 ## Cómo se juega
-**JUGAR** inicia la partida directamente en el nivel 1 después de la introducción. El botón **TUTORIAL**,
-junto a JUGAR en el menú, abre el **nivel 0: Protocolo de evacuación**, un recorrido de práctica
+**NUEVA PARTIDA** inicia la partida directamente en el nivel 1 después de la introducción. El botón **TUTORIAL**,
+debajo de Continuar / Nueva partida en el menú, abre el **nivel 0: Protocolo de evacuación**, un recorrido de práctica
 integrado en el laboratorio. Enseña movimiento, salto, disparo, apuntado fijo, dash, parry, súper, ultra
 y recogida de compuestos, seguido de una prueba que combina las acciones. Cada instrucción permanece
 hasta completar su ejercicio. No recibes daño y la práctica no suma tiempo, puntos ni ingredientes a la
-partida. Puedes omitirla con **T** o con el botón **OMITIR**, y guardar y continuar desde la lección actual.
-Al terminar u omitir el tutorial comienza el nivel 1 con los recursos iniciales.
+partida. Puedes omitirla con **T** o con el botón **OMITIR**, sin registrar una partida ni sobrescribir el guardado de la historia.
+Al terminar, omitir o salir del tutorial, vuelves al menú si ya hay una partida guardada;
+si no la hay, comienza el nivel 1 con los recursos iniciales. El tutorial no permite guardar.
 
 Cada nivel tiene dos fases continuas, sin volver al menú:
 
@@ -391,6 +392,9 @@ completas siguen en CONTROLES.
 
 **Parry:** salta y pulsa Saltar otra vez en el aire sobre un objeto **rosa** (son inofensivos al contacto).
 **Súper:** con 50 de barra, rayo perforante; con 100, un Ultra que borra proyectiles y enemigos.
+Durante la recolección, el Ultra cancela la horda pendiente y da cinco segundos sin nuevas
+amenazas, incluidas emboscadas. El tiempo restante se conserva al pausar o guardar.
+Durante la entrada del jefe, se bloquean las acciones del jugador pero la gravedad lo hace aterrizar.
 
 ## Pruebas realizadas
 - **Entrada a los jefes:** `game/tests/boss_entrance_test.gd` cruza las tres arenas caminando y en el aire,
@@ -403,7 +407,7 @@ completas siguen en CONTROLES.
   `godot --headless --path game --script res://tests/boss_distance_test.gd`.
 - **Tutorial y arranque del nivel 1:** `game/tests/tutorial_test.gd` comprueba el umbral de movimiento,
   las lecciones con entradas y colisiones reales, la recarga tras fallar el súper, el guardado compatible
-  con versiones anteriores, la continuación del tutorial y la transición al nivel 1 al omitirlo.
+  con versiones anteriores, la conservación de la campaña, el foco y ancho del menú y las salidas del tutorial.
   Se ejecuta con `APPDATA` aislado como en la prueba de guardado:
   `godot --headless --fixed-fps 60 --path game --script res://tests/tutorial_test.gd`.
 - **Recorridos horizontales:** `game/tests/scrolling_level_test.gd` recorre los tres niveles con entradas reales
@@ -443,7 +447,7 @@ docker-compose.yml
 - Efectos animados: **Battle Effects**, de **pimen**, [fuente](https://pimen.itch.io/pixel-battle-effects),
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). `Effect 2 - Sprite Sheet.png` se copia sin modificar
   como `game/assets/effects/pimen/hit.png`; se seleccionan sus cuatro cuadros activos y se ajustan escala/velocidad.
-  Atribución y enlace de licencia en el menú **CREDITOS VFX** y junto al PNG. Conservar estos avisos al distribuir.
+  Atribución y enlace de licencia en el menú **CRÉDITOS** y junto al PNG. Conservar estos avisos al distribuir.
 - Explosiones: **Explosions - Pixel Art**, de **Aim studios**, [fuente](https://aim-studios.itch.io/explosions-pixel-art),
   [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). Tres PNG originales, renombrados,
   en `game/assets/effects/aim_studios/`; se ajustan escala/velocidad. Crédito voluntario en el juego y en
@@ -549,20 +553,21 @@ Si el jugador pulsa salto hasta 0.10 s *antes* de poder saltar (por ejemplo just
 Tras salir del borde de una plataforma se puede saltar como si aún se estuviera en el suelo (no gasta el salto doble). Pasados 0.09 s, la pulsación se convierte en salto doble.
 
 ### 3. Screenshake (vibración de cámara)
+La cámara se sacude al recibir daño, al terminar la presentación del jefe (3.5 px, 0.3 s), en sus impactos contra el suelo, cambios de fase y derrota, y con especiales o bombas. Saltar, caer, el tajo automático, romper cajas y la activación de zonas de peligro conservan sus efectos locales sin sacudir toda la pantalla.
+
+Prueba de regresión: `XDG_DATA_HOME=/tmp/escape-shake.save-check godot --headless --fixed-fps 60 --path game --script res://tests/screen_shake_test.gd`.
+
 `Fx.shake(amplitud_px, duración_s)` desplaza la cámara con un desplazamiento aleatorio de hasta *amplitud* píxeles (en la resolución 480x270 del juego) que se apaga al cumplirse la duración. Si llegan varios temblores a la vez se conserva el más fuerte.
 
 | Momento | Amplitud | Duración |
 |---|---|---|
 | Recibir daño | 3.0 px | 0.25 s |
-| Aterrizaje fuerte (caída a más de 300 px/s) | 1.5–2.9 px según la velocidad | 0.14 s |
-| Tajo de espada al aterrizar tras el salto doble | 2.0 px | 0.15 s |
+| Presentación del jefe completada | 3.5 px | 0.30 s |
 | Super | 2.5 px | 0.20 s |
 | Ultra | 4.0 px | 0.60 s |
-| Zona de ataque del jefe al impactar | 2.5 px | 0.25 s |
 | Impacto/embestida del jefe | 5.0 px | 0.40 s |
 | Cambio de fase del jefe | 4.0 px | 0.60 s |
 | Bomba al jefe | 3.0 px | 0.30 s |
-| Romper una caja azul | 1.5 px | 0.12 s |
 | Derrotar al jefe | 5.0 px | 0.80 s |
 
 ### 4. Feedback visual, sonoro y de interfaz
@@ -575,7 +580,7 @@ Tras salir del borde de una plataforma se puede saltar como si aún se estuviera
 | Compuestos / vidas / power-ups | Estallido de partículas del color del objeto, texto flotante («+1 VIDA», «DISPARO X3», nombre del compuesto), sonido propio |
 | Salto doble | Vueltereta con estela, anillo de aire bajo los pies, sonido más agudo |
 | Espada del salto doble | Corte con arco luminoso, *hit-stop* corto (0.04 s) y chispas por cada enemigo cortado |
-| Aterrizaje fuerte | Polvo, golpe sordo (volumen según la velocidad) y temblor |
+| Aterrizaje fuerte | Polvo y golpe sordo (volumen según la velocidad) |
 | Ultra / jefe vencido | Destello blanco, *hit-stop* (0.18 s y 0.35 s) y temblor |
 | Ambiente | Pasada de acabado (bloom, viñeta y color), balas con estela de neón y halo que late al compás, destello de pantalla a 120 bpm, zonas de ataque con aviso pulsante |
 | Interfaz | Mensajes grandes («¡ADVERTENCIA!», «ELIMINA A LOS ENEMIGOS: N»), barras de vida/super, contador del jefe y del reloj |

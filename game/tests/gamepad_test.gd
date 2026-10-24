@@ -44,6 +44,13 @@ func _run() -> void:
 		return
 	gm = root.get_node("GameManager")
 	gm.restore_bindings()
+	var stick_regions := []
+	for stick_axis in [JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y, JOY_AXIS_RIGHT_X, JOY_AXIS_RIGHT_Y]:
+		for sign_value in [-1.0, 1.0]:
+			var glyph: AtlasTexture = gm.binding_icon(axis(stick_axis, sign_value))
+			check(glyph != null and not glyph.region in stick_regions, "Stick axis %d sign %d has a distinct directional graphic" % [stick_axis, sign_value])
+			stick_regions.append(glyph.region)
+
 	check(InputMap.event_is_action(button(JOY_BUTTON_A), "jump"), "A/Cross jumps on any device")
 	check(InputMap.event_is_action(button(JOY_BUTTON_X), "jump"), "X/Square is also jump")
 	check(not InputMap.event_is_action(button(JOY_BUTTON_X), "shoot"), "X/Square does not fire")

@@ -28,10 +28,8 @@ const DASH_CD := 0.45
 const FIRE_RATE := 0.11
 const COYOTE := 0.09
 const BUFFER := 0.1
-# Aterrizaje fuerte: al tocar el suelo cayendo más rápido que HARD_LAND_V hay vibración, polvo y un golpe sordo.
+# Aterrizaje fuerte: solo polvo y sonido; el movimiento normal no sacude la cámara.
 const HARD_LAND_V := 300.0
-const HARD_LAND_SHAKE := 2.2
-const HARD_LAND_TIME := 0.14
 
 var sprite: AnimatedSprite2D
 var parry_area: Area2D
@@ -103,8 +101,14 @@ func _ready() -> void:
 
 func freeze_in_place() -> void:
 	# Cancel pending movement instead of replaying a dash or buffered jump on release.
-	velocity = Vector2.ZERO
+	velocity.x = 0.0
+	velocity.y = maxf(0.0, velocity.y)
 	dash_t = 0.0
+	air_flipped = false
+	flip_t = 0.0
+	abduct_t = 0.0
+	drop_t = 0.0
+	set_collision_mask_value(2, true)
 	buffer = 0.0
 	coyote = 0.0
 	modulate.a = 1.0
@@ -123,6 +127,8 @@ func _physics_process(delta: float) -> void:
 
 	if get_parent().is_player_frozen():
 		freeze_in_place()
+		velocity.y += GRAVITY * delta
+		move_and_slide()
 		return
 
 	invuln = maxf(0.0, invuln - delta)
@@ -203,7 +209,6 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if not was_floor and is_on_floor() and fall_v > HARD_LAND_V and not dead:
 		var power := clampf((fall_v - HARD_LAND_V) / 200.0, 0.0, 1.0)
-		Fx.shake(HARD_LAND_SHAKE * (0.7 + 0.6 * power), HARD_LAND_TIME)
 		Fx.burst(get_parent(), global_position + Vector2(0, 12), Color(0.85, 0.85, 0.9, 0.8), 8, 70.0, 0.3, 2.0)
 		AudioManager.sfx("boom", -16.0 - 4.0 * (1.0 - power), 1.5)
 	on_platform = false
@@ -321,6 +326,7 @@ func _ultra() -> void:
 	Telemetry.event("ultra")
 	AudioManager.sfx("ultra")
 	invuln = 1.8
+	get_parent().ultra_breather()
 	Fx.flash(Color(1, 1, 1), 0.85, 0.7)
 	Fx.shake(4.0, 0.6)
 	Fx.hitstop(0.18)
@@ -413,7 +419,6 @@ func _landing_slash() -> void:
 		if b.has_method("take_damage") and absf(b.global_position.x - feet.x) <= SLAM_RANGE * 0.8 and absf(b.global_position.y - feet.y) < 26.0:
 			b.take_damage(2.0)
 	Fx.burst(get_parent(), feet, Color(1.0, 0.92, 0.7, 0.9), 12, 110.0, 0.35, 2.0)
-	Fx.shake(2.0, 0.15)
 	Fx.hitstop(0.04)
 	AudioManager.sfx("boom", -10.0, 1.3)
 	Telemetry.event("landing_slash", _where({}))

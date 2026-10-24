@@ -273,7 +273,7 @@ func _apply_binding(button: Button, event: InputEvent) -> void:
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		button.add_theme_constant_override("icon_max_width", 16)
 		if button.icon != null:
-			button.text = GameManager.PadGlyphs.direction(event) if event is InputEventJoypadMotion and event.axis < JOY_AXIS_TRIGGER_LEFT else ""
+			button.text = ""
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER if button.text.is_empty() else HORIZONTAL_ALIGNMENT_LEFT
 
 

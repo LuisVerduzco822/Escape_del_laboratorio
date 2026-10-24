@@ -48,11 +48,7 @@ static func draw_binding(canvas: CanvasItem, event: InputEvent, center: Vector2)
 		return
 	var icon := GameManager.binding_icon(event)
 	if icon != null:
-		if event is InputEventJoypadMotion and event.axis < JOY_AXIS_TRIGGER_LEFT:
-			canvas.draw_texture_rect(icon, Rect2(center - Vector2(18, 8), Vector2(16, 16)), false)
-			UI.text(canvas, GameManager.PadGlyphs.direction(event), center.x + 1, center.y + 3, 6, Color.WHITE, 0, 0)
-		else:
-			canvas.draw_texture_rect(icon, Rect2(center - Vector2(8, 8), Vector2(16, 16)), false)
+		canvas.draw_texture_rect(icon, Rect2(center - Vector2(8, 8), Vector2(16, 16)), false)
 		return
 	if event is InputEventMouseButton:
 		_draw_mouse(canvas, event.button_index, center)

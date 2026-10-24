@@ -30,7 +30,7 @@ func _run() -> void:
 	var gm = root.get_node("GameManager")
 	var cfg = root.get_node("Cfg")
 	var saves = root.get_node("SaveGame")
-	for index in 3:
+	for index in cfg.LEVELS.size():
 		for airborne in [false, true]:
 			gm.reset_run()
 			gm.god = true
@@ -66,11 +66,11 @@ func _run() -> void:
 			var smooth_camera := true
 			for i in 180:
 				await frames(1)
-				stationary = stationary and player.position == anchor and player.velocity == Vector2.ZERO
+				stationary = stationary and is_equal_approx(player.position.x, anchor.x) and player.position.y >= anchor.y and player.velocity.x == 0.0
 				var next_x: float = level.cam.position.x
 				smooth_camera = smooth_camera and next_x >= camera_x and next_x - camera_x <= 9.0
 				camera_x = next_x
-			check(stationary, "Warning holds the exact position, including in midair")
+			check(stationary and player.is_on_floor(), "Warning blocks horizontal control while gravity lands the player")
 			check(smooth_camera and camera_x == level.arena_x, "Camera moves smoothly and settles before combat")
 			check(gm.super_meter == 100.0 and level.get_children().all(func(n): return n.get_script() != saves.SCRIPTS.shot), "Frozen inputs cannot fire or spend super energy")
 			check(player.dash_t == 0.0 and player.buffer == 0.0, "Entry clears the active dash and buffered jump")
@@ -79,7 +79,7 @@ func _run() -> void:
 			# Even if the level warning expires first, wait for the boss to be ready.
 			level.boss.set_physics_process(false)
 			await frames(20)
-			check(level.st == level.S.BOSS and player.position == anchor, "Control stays frozen while the boss is still entering")
+			check(level.st == level.S.BOSS and is_equal_approx(player.position.x, anchor.x) and player.is_on_floor(), "Control stays frozen while the boss is still entering")
 			level.boss.set_physics_process(true)
 			await frames(8)
 			check(not level.is_player_frozen() and player.position.x > anchor.x, "Movement resumes automatically once the boss is ready")

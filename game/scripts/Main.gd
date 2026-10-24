@@ -48,6 +48,10 @@ var save_btn: Button
 var finaltop_btn: Button
 var end_title: Label
 var end_sub: Label
+var credits_layer: CanvasLayer
+var credits_btn: Button
+var credits_back: Button
+var tutorial_had_progress := false
 
 var window_focused := true
 var busy := false
@@ -70,6 +74,7 @@ func _ready() -> void:
 	holder.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(holder)
 	_build_menu()
+	_build_credits()
 	_build_how()
 	_build_rank()
 	_build_story()
@@ -136,9 +141,9 @@ func _build_menu() -> void:
 	menu_bg.drift = 18.0
 	menu_layer.add_child(menu_bg)
 	_dim(menu_layer, 0.35)
-	var box := _center_box(menu_layer, 5)
-	var t1 := _label("ESCAPE DEL", 24, Color(0.45, 0.95, 1.0), 6)
-	var t2 := _label("LABORATORIO", 32, Color(1.0, 0.85, 0.3), 8)
+	var box := _center_box(menu_layer, 4)
+	var t1 := _label("ESCAPE DEL", 16, Color(0.45, 0.95, 1.0), 6)
+	var t2 := _label("LABORATORIO", 24, Color(1.0, 0.85, 0.3), 8)
 	box.add_child(t1)
 	box.add_child(t2)
 	var sub := _label("RUN & GUN  -  EN BUSCA DEL ANTIDOTO", 8, Color(0.85, 0.9, 1.0), 3)
@@ -150,36 +155,27 @@ func _build_menu() -> void:
 	var sp := Control.new()
 	sp.custom_minimum_size = Vector2(0, 2)
 	box.add_child(sp)
-	var top_row := HBoxContainer.new()
-	top_row.add_theme_constant_override("separation", 6)
-	top_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(top_row)
-	var tutorial_btn := _btn(top_row, "TUTORIAL", _start_game.bind(true))
-	tutorial_btn.custom_minimum_size = Vector2(112, 0)
-	finaltop_btn = _btn(top_row, "FINALTOP", _start_finaltop)
-	finaltop_btn.custom_minimum_size = Vector2(112, 0)
-	finaltop_btn.tooltip_text = "Solo jefes, contra el reloj"
+	box.custom_minimum_size.x = 344
+	var primary := _menu_row(box)
+	continue_btn = _btn(primary, "CONTINUAR", _continue_game)
+	play_btn = _btn(primary, "NUEVA PARTIDA", _start_game)
+	var modes := _menu_row(box)
+	_btn(modes, "TUTORIAL", _start_game.bind(true))
+	finaltop_btn = _btn(modes, "FINALTOP", _start_finaltop)
 	finaltop_btn.disabled = true
-	play_btn = _btn(box, "JUGAR", _start_game)
-	continue_btn = _btn(box, "CONTINUAR", _continue_game)
-	var rank_btn := _btn(box, "RANKING", _show_rank)
+	var extras := _menu_row(box)
+	var rank_btn := _btn(extras, "RANKING", _show_rank)
 	rank_btn.disabled = Database.offline_mode
 	if Database.offline_mode:
 		rank_btn.tooltip_text = "Conéctate e inicia sesión para ver el ranking"
-	var controls_btn := _btn(box, "CONTROLES", _show_how)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(row)
-	var out := _btn(row, "CONECTARSE" if Database.offline_mode else "CERRAR SESION", _logout)
-	out.custom_minimum_size = Vector2(100, 0)
-	var quit := _btn(row, "SALIR", _quit)
-	quit.custom_minimum_size = Vector2(44, 0)
-	var credits_button := UI.button("CREDITOS VFX")
-	credits_button.position = Vector2(4, 250)
-	credits_button.add_theme_font_size_override("font_size", 8)
-	menu_layer.add_child(credits_button)
-	credits_button.pressed.connect(_show_effect_credits)
+	_btn(extras, "CONTROLES", _show_how)
+	credits_btn = _btn(box, "CRÉDITOS", _show_credits)
+	var footer := _menu_row(box)
+	_btn(footer, "CONECTARSE" if Database.offline_mode else "CERRAR SESIÓN", _logout)
+	_btn(footer, "SALIR", _quit)
+	for row in [primary, modes, extras, footer]:
+		for button in row.get_children():
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var tw := create_tween().set_loops()
 	tw.tween_property(t2, "modulate", Color(1.4, 1.3, 0.8), 0.9).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(t2, "modulate", Color(1, 1, 1), 0.9).set_trans(Tween.TRANS_SINE)
@@ -344,8 +340,7 @@ func _show_menu() -> void:
 	user_label.text = "JUGADOR: " + Database.username.to_upper()
 	_update_finaltop_lock()
 	net_label.text = "CONECTANDO CON EL SERVIDOR..."
-	continue_btn.visible = false
-	play_btn.grab_focus()
+	_refresh_continue()
 	await Database.refresh_progress()
 	await Database.sync_unlocks()
 	if not is_instance_valid(net_label):
@@ -353,17 +348,32 @@ func _show_menu() -> void:
 	_update_finaltop_lock()
 	net_label.text = "MODO OFFLINE - GUARDADO LOCAL" if Database.offline_mode else ("SERVIDOR EN LINEA" if Database.online else "SIN CONEXION AL SERVIDOR")
 	net_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55) if Database.online else Color(1.0, 0.45, 0.4))
+	if not menu_layer.visible:
+		return
+	_refresh_continue()
+
+
+func _refresh_continue() -> void:
 	var prog := Database.load_progress()
 	var snapshot := SaveGame.load_saved()
+	if snapshot.get("level", {}).get("is_tutorial", false):
+		snapshot = {}
 	if not snapshot.is_empty():
-		continue_btn.visible = true
-		continue_btn.text = "CONTINUAR (NIVEL %d)" % (snapshot.level.index + 1)
+		continue_btn.disabled = false
+		continue_btn.text = "CONTINUAR"
+		continue_btn.tooltip_text = "Retomar nivel %d" % (snapshot.level.index + 1)
 		if snapshot.level.get("is_tutorial", false):
-			continue_btn.text = "CONTINUAR (NIVEL 0)"
+			continue_btn.tooltip_text = "Retomar tutorial anterior"
+		continue_btn.grab_focus()
 		return
-	continue_btn.visible = not prog.is_empty()
+	continue_btn.disabled = prog.is_empty()
+	continue_btn.text = "CONTINUAR"
+	continue_btn.tooltip_text = "Todavía no hay una partida guardada"
 	if not prog.is_empty():
-		continue_btn.text = "CONTINUAR (NIVEL %d)" % (mini(prog["level_done"], Cfg.LEVELS.size() - 1) + 1)
+		continue_btn.tooltip_text = "Retomar nivel %d" % (mini(prog["level_done"], Cfg.LEVELS.size() - 1) + 1)
+		continue_btn.grab_focus()
+	else:
+		play_btn.grab_focus()
 
 
 func _show_rank(kind: String = "score") -> void:
@@ -456,6 +466,8 @@ func _hide_how() -> void:
 	if is_instance_valid(how_return_focus) and how_return_focus.is_visible_in_tree():
 		how_return_focus.grab_focus()
 	elif pause_layer.visible:
+		if is_instance_valid(level) and level.is_tutorial:
+			save_notice.text = "Práctica: tu partida guardada se conserva."
 		resume_btn.grab_focus()
 	elif menu_layer.visible:
 		play_btn.grab_focus()
@@ -478,6 +490,9 @@ func _clear_level() -> void:
 func _to_menu() -> void:
 	if busy:
 		return
+	if is_instance_valid(level) and level.is_tutorial and not tutorial_had_progress:
+		await _on_level_finished()
+		return
 	busy = true
 	await _fade(1.0, 0.4)
 	_clear_level()
@@ -492,8 +507,12 @@ func _start_game(tutorial: bool = false) -> void:
 		return
 	busy = true
 	mode = "story"
-	SaveGame.clear()
-	await Database.clear_progress()
+	if tutorial:
+		var saved := SaveGame.load_saved()
+		tutorial_had_progress = (not saved.is_empty() and not saved.level.get("is_tutorial", false)) or not Database.load_progress().is_empty()
+	else:
+		SaveGame.clear()
+		await Database.clear_progress()
 	GameManager.reset_run()
 	await _fade(1.0, 0.5)
 	menu_layer.visible = false
@@ -501,7 +520,6 @@ func _start_game(tutorial: bool = false) -> void:
 	_clear_level()
 	AudioManager.stop_music(0.3)
 	if tutorial:
-		Telemetry.start_run(false)
 		await _start_level(0, "tutorial", true)
 		return
 	story_layer.visible = true
@@ -580,6 +598,8 @@ func _continue_game() -> void:
 		return
 	mode = "story"
 	var snapshot := SaveGame.load_saved()
+	if snapshot.get("level", {}).get("is_tutorial", false):
+		snapshot = {}
 	if not snapshot.is_empty():
 		busy = true
 		await Telemetry.start_run(true)
@@ -639,7 +659,7 @@ func _start_level(index: int, phase: String, card: bool, snapshot: Dictionary = 
 	level.finished.connect(_on_level_finished)
 	level.failed.connect(_on_level_failed)
 	holder.add_child(level)
-	if snapshot.is_empty() and phase in ["collect", "tutorial"]:
+	if snapshot.is_empty() and phase == "collect" and mode == "story":
 		SaveGame.store(SaveGame.capture(level))
 	in_game = true
 	await _fade(0.0, 0.6)
@@ -680,8 +700,13 @@ func _on_level_finished() -> void:
 		in_game = false
 		await _fade(1.0, 0.5)
 		_clear_level()
+		if tutorial_had_progress:
+			_show_menu()
+			await _fade(0.0, 0.4)
+			busy = false
+			return
 		GameManager.reset_run()
-		Telemetry.counters = {}
+		await Telemetry.start_run(false)
 		await _start_level(0, "collect", true)
 		return
 	busy = true
@@ -783,7 +808,7 @@ func _set_pause(on: bool) -> void:
 	AudioManager.duck(on)
 	AudioManager.sfx("pause")
 	if on:
-		save_btn.disabled = not is_instance_valid(level) or level.player.dead or level.st > Level.S.BOSS or mode == "finaltop"
+		save_btn.disabled = not is_instance_valid(level) or level.player.dead or level.st > Level.S.BOSS or mode == "finaltop" or level.is_tutorial
 		save_notice.text = "Al cargar: inicio de esta fase del jefe." if is_instance_valid(level) and level.reached_boss else "Se guardara el estado actual del nivel."
 		if mode == "finaltop":
 			save_notice.text = "FinalTop no se guarda: el reloj sigue corriendo."
@@ -793,7 +818,7 @@ func _set_pause(on: bool) -> void:
 
 
 func _save_and_exit() -> void:
-	if busy or not is_instance_valid(level):
+	if busy or not is_instance_valid(level) or level.is_tutorial:
 		return
 	busy = true
 	# Flush deferred deaths/coin drops before taking the paused snapshot.
@@ -816,7 +841,7 @@ func _input(e: InputEvent) -> void:
 	if waiting_story:
 		_refresh_story_prompt()
 	# Rebuild from visible/enabled controls before GUI navigation handles this event.
-	for layer in [how_layer, rank_layer, pause_layer, fail_layer, end_layer, menu_layer]:
+	for layer in [credits_layer, how_layer, rank_layer, pause_layer, fail_layer, end_layer, menu_layer]:
 		if layer.visible:
 			UI.wire_focus_rows(layer)
 			break
@@ -836,6 +861,10 @@ func _input(e: InputEvent) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if credits_layer.visible and (e.is_action_pressed("pause") or (e is InputEventJoypadButton and e.pressed and e.button_index == JOY_BUTTON_B)):
+		_hide_credits()
+		get_viewport().set_input_as_handled()
+		return
 	if e is InputEventJoypadButton and e.pressed and e.button_index == JOY_BUTTON_B:
 		if rank_layer.visible:
 			rank_layer.visible = false
@@ -897,17 +926,41 @@ func _exit_tree() -> void:
 	GameManager.set_mouse_gameplay(false)
 
 
-func _show_effect_credits() -> void:
-	var dialog := AcceptDialog.new()
-	dialog.title = "Creditos y licencias de efectos"
-	dialog.process_mode = Node.PROCESS_MODE_ALWAYS
-	dialog.min_size = Vector2i(440, 220)
+func _menu_row(box: VBoxContainer) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	return row
+
+
+func _build_credits() -> void:
+	credits_layer = _layer(47)
+	_dim(credits_layer, 0.97)
+	var box := _center_box(credits_layer, 8)
+	box.custom_minimum_size.x = 408
+	box.add_child(_label("CRÉDITOS", 16, Color(1.0, 0.85, 0.3)))
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(408, 172)
+	scroll.focus_mode = Control.FOCUS_ALL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
 	var text := RichTextLabel.new()
-	text.text = "EFECTOS VISUALES\n\nBattle Effects — pimen\nhttps://pimen.itch.io/pixel-battle-effects\nCC BY 4.0\nhttps://creativecommons.org/licenses/by/4.0/\nHit: Effect 2, PNG original sin modificar.\nSe usan 4 cuadros; escala y velocidad en el juego.\n\nExplosions - Pixel Art — Aim studios\nhttps://aim-studios.itch.io/explosions-pixel-art\nCC0 1.0 Universal\nhttps://creativecommons.org/publicdomain/zero/1.0/\nExplosiones azules, verdes y de burbujas.\nPNG originales; escala y velocidad en el juego.\n\nLos autores no patrocinan este proyecto.\nLas licencias de estos recursos son independientes\nde la licencia del código del juego.\n"
+	text.custom_minimum_size.x = 392
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.fit_content = true
+	text.scroll_active = false
 	text.add_theme_font_size_override("normal_font_size", 8)
-	text.custom_minimum_size = Vector2(420, 175)
-	dialog.add_child(text)
-	add_child(dialog)
-	dialog.confirmed.connect(dialog.queue_free)
-	dialog.canceled.connect(dialog.queue_free)
-	dialog.popup_centered()
+	text.text = "ESCAPE DEL LABORATORIO\nUna aventura en busca del antídoto.\n\nEQUIPO DEL JUEGO\nDiseño, programación y dirección creativa:\nEquipo Escape del Laboratorio\nArte procedural, jefes, música y parallax:\ncreados para este proyecto.\nGracias a quienes juegan y prueban el laboratorio.\n\nMOTOR\nGodot Engine · godotengine.org\n\nARTE, INTERFAZ Y TIPOGRAFÍA\nGamepad Inputs UI — Gimicko / GoncaloMCOliveira\ngoncalomcoliveira.itch.io/gamepad-inputs-ui\nCC0 1.0 Universal\nLanzallamas — Player 24 / MainMenuMaster\nmainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb\nModern Interiors Free v2.2 — personaje Adam\nUso no comercial\nPress Start 2P — SIL OFL 1.1\nFondos y bola de fuego: recursos proporcionados al proyecto.\n\nEFECTOS VISUALES\nBattle Effects — pimen\nhttps://pimen.itch.io/pixel-battle-effects\nCC BY 4.0\nhttps://creativecommons.org/licenses/by/4.0/\nEffect 2: PNG original sin modificar.\nCuatro cuadros; escala y velocidad en el juego.\n\nExplosions - Pixel Art — Aim studios\nhttps://aim-studios.itch.io/explosions-pixel-art\nCC0 1.0 Universal\nhttps://creativecommons.org/publicdomain/zero/1.0/\nExplosiones azules, verdes y de burbujas.\nPNG originales; escala y velocidad en el juego.\n\nLos autores no patrocinan este proyecto.\nLas licencias de recursos son independientes\nde la licencia del código del juego."
+	scroll.add_child(text)
+	credits_back = _btn(box, "VOLVER", _hide_credits)
+	credits_layer.visible = false
+
+
+func _show_credits() -> void:
+	credits_layer.visible = true
+	credits_back.grab_focus()
+
+
+func _hide_credits() -> void:
+	credits_layer.visible = false
+	credits_btn.grab_focus()

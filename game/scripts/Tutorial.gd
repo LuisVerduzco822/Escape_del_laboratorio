@@ -4,7 +4,7 @@ const TutorialHUD := preload("res://scripts/TutorialHUD.gd")
 const GATES := [240.0, 500.0, 760.0, 1020.0, 1260.0, 1500.0, 1740.0, 1980.0, 2240.0, 2500.0]
 const LESSONS := [
 	["MOVIMIENTO", "A / D para moverte", "Avanza hasta la luz verde."],
-	["SALTO", "ESPACIO para saltar; otra vez en el aire = vuelta", "Sube y aterriza en la plataforma iluminada."],
+	["SALTO", "{jump} Saltar", "Sube y aterriza en la plataforma iluminada."],
 	["DISPARO", "Manten J para disparar", "Destruye el blanco de contencion."],
 	["APUNTAR", "CTRL fija tu posicion; W apunta arriba", "Colocate bajo el blanco y dispara con J."],
 	["DASH", "SHIFT o CLIC DER. para un dash invulnerable", "Cruza la franja roja durante el dash."],
@@ -26,7 +26,7 @@ func level_data() -> Dictionary:
 	d.name = "PROTOCOLO DE EVACUACION"
 	d.world_width = 2700.0
 	d.arena_x = 2600.0
-	d.platforms = [[340, 150, 110], [2070, 150, 110], [2300, 150, 90]]
+	d.platforms = [[340, 150, 110], [410, 60, 80], [2070, 150, 110], [2300, 150, 90]]
 	return d
 
 
@@ -69,8 +69,10 @@ func _draw_gate() -> void:
 		draw_rect(Rect2(x - 3, y, 6, 6), col)
 	UI.text(self, "SALIDA" if step == 9 else "CONTROL", x, 62, 8, col, 1)
 	if step == 1 or step == 8:
-		var px := 340.0 if step == 1 else 2070.0
-		draw_line(Vector2(px, 148), Vector2(px + 110, 148), col, 3)
+		var trick: bool = step == 1 and tutorial_state.get("jump_landed", false)
+		var px := (410.0 if trick else 340.0) if step == 1 else 2070.0
+		var py := 58.0 if trick else 148.0
+		draw_line(Vector2(px, py), Vector2(px + (80 if trick else 110), py), col, 3)
 	if step == 4:
 		draw_rect(Rect2(1168, 112, 5, 80), Color(1, 0.3, 0.25, 0.65))
 		UI.text(self, "DASH", 1170, 100, 8, Color(1, 0.6, 0.3), 1)
@@ -88,7 +90,12 @@ func _physics_process(delta: float) -> void:
 			if player.position.x >= 220.0:
 				_advance()
 		1:
-			if player.on_platform and player.position.x >= 340.0 and player.position.x <= 450.0:
+			if not tutorial_state.get("jump_landed", false):
+				if player.on_platform and player.position.x >= 340.0 and player.position.x <= 450.0 and absf(player.position.y + 12.0 - 150.0) < 4.0:
+					tutorial_state.jump_landed = true
+					tutorial_state.used = false
+					AudioManager.sfx("confirm", -6.0)
+			elif tutorial_state.used and player.on_platform and player.position.x >= 410.0 and player.position.x <= 490.0 and absf(player.position.y + 12.0 - 60.0) < 4.0:
 				_advance()
 		2, 3:
 			if tutorial_state.kills >= 1:
@@ -184,7 +191,7 @@ func enemy_killed(_kind: String) -> void:
 
 func _action_performed(action: String) -> void:
 	var step := int(tutorial_state.step)
-	if (step == 5 and action == "parry") or (step == 6 and action == "super") or (step == 7 and action == "ultra"):
+	if (step == 1 and tutorial_state.get("jump_landed", false) and action == "double_jump") or (step == 5 and action == "parry") or (step == 6 and action == "super") or (step == 7 and action == "ultra"):
 		tutorial_state.used = true
 
 
@@ -219,28 +226,27 @@ func _exit_tree() -> void:
 func current_lesson() -> Array:
 	var step := int(tutorial_state.step)
 	var lesson: Array = LESSONS[step].duplicate()
-	var hint := ""
-	match step:
-		0:
-			hint = "%s / %s para moverte" % [GameManager.primary_hint("move_left"), GameManager.primary_hint("move_right")]
-		1:
-			hint = "%s: salto; otra vez en el aire: vuelta" % GameManager.primary_hint("jump")
-		2:
-			hint = "Manten %s para disparar" % GameManager.primary_hint("shoot")
-		3:
-			hint = "%s fija; %s apunta arriba" % [GameManager.primary_hint("lock"), GameManager.primary_hint("aim_up")]
-			lesson[2] = "Bajo el blanco, dispara con %s." % GameManager.primary_hint("shoot")
-			if GameManager.pointing_mode == "mouse" and not GameManager.last_input_pad:
-				hint = "%s fija; mueve el raton arriba" % GameManager.primary_hint("lock")
-		4:
-			hint = "%s: dash invulnerable" % GameManager.primary_hint("dash")
-		5:
-			hint = "En el aire, pulsa %s junto al rosa" % GameManager.primary_hint("jump")
-		6:
-			hint = "%s con media barra: rayo perforante" % GameManager.primary_hint("super")
-		7:
-			hint = "%s con la barra llena: ULTRA" % GameManager.primary_hint("super")
-			lesson[2] = "Tienes 100 de energia. Activa ULTRA."
-	if not hint.is_empty():
-		lesson[1] = hint
+	var hints := [
+		"{move_left} / {move_right} para moverte",
+		"{jump} Saltar",
+		"Manten {shoot} para disparar",
+		"{lock} fija; {aim_up} apunta arriba",
+		"{dash}: dash invulnerable",
+		"En el aire, pulsa {jump} junto al rosa",
+		"{super} con media barra: rayo perforante",
+		"{super} con la barra llena: ULTRA",
+		"Salta {jump} y toca el frasco de practica",
+		"Combina {move_left} / {move_right}, {jump} y {shoot}",
+	]
+	lesson[1] = hints[step]
+	if step == 1 and tutorial_state.get("jump_landed", false):
+		lesson[0] = "DOBLE SALTO"
+		lesson[1] = "{jump}+{jump} Truco"
+		lesson[2] = "Salta otra vez en el aire hasta la plataforma superior."
+	if step == 3:
+		lesson[2] = "Bajo el blanco, dispara con {shoot}."
+		if GameManager.pointing_mode == "mouse" and not GameManager.last_input_pad:
+			lesson[1] = "{lock} fija; mueve el raton arriba"
+	if step == 7:
+		lesson[2] = "Tienes 100 de energia. Activa ULTRA."
 	return lesson

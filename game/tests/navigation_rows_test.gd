@@ -100,7 +100,7 @@ func _run() -> void:
 	var tutorial: Button = main.finaltop_btn.get_parent().get_child(0)
 	tutorial.grab_focus()
 	await pad(JOY_BUTTON_DPAD_DOWN)
-	check(main.play_btn.has_focus(), "Menu down leaves horizontal row for Play")
+	check(root.gui_get_focus_owner().text == "CONTROLES", "Menu down skips disabled Ranking")
 	tutorial.grab_focus()
 	await key(KEY_RIGHT)
 	check(main.finaltop_btn.has_focus(), "Menu right selects FinalTop")
@@ -113,7 +113,7 @@ func _run() -> void:
 	main.continue_btn.visible = false
 	main.play_btn.grab_focus()
 	await key(KEY_DOWN)
-	check(root.gui_get_focus_owner().text == "CONTROLES", "Menu skips hidden Continue and disabled Ranking")
+	check(tutorial.has_focus(), "Menu down reaches Tutorial and skips disabled FinalTop")
 	main._set_pause(true)
 	main.save_btn.disabled = true
 	main.resume_btn.grab_focus()
