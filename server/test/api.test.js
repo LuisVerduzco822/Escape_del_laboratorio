@@ -418,6 +418,52 @@ test('tiempo de juego: totales, días, horas, jugadores y duración', { skip }, 
   assert.strictEqual((await get('?days=abc;DROP')).data.days, 30);
 });
 
+test('repeticiones: intentos por nivel, posición del jefe y eventos', { skip }, async () => {
+  const token = await newUser('replay_user');
+  const run = (await api('POST', '/api/runs', { token, body: {} })).data.run_id;
+  const pos = (t, x, y, hp, extra = {}) => ({ t, type: 'pos', level: 2, data: { x, y, hp, vx: 50, vy: 0, air: false, ph: 0, dt: 0.2, s: 1, j: 0, d: 0, pa: 0, k: 0, ...extra } });
+  const ev = await api('POST', `/api/runs/${run}/events`, {
+    token,
+    body: {
+      events: [
+        { t: 10, type: 'level_start', level: 2, data: {} },
+        pos(10.2, 100, 180, 4), pos(10.4, 120, 180, 4), pos(10.6, 140, 150, 3, { air: true }),
+        { t: 10.6, type: 'hurt', level: 2, data: { x: 140, y: 150, hp_left: 3, src: 'robot_shot' } },
+        { t: 11, type: 'death', level: 2, data: { x: 150, y: 180, src: 'saw' } },
+        { t: 20, type: 'level_start', level: 2, data: {} },
+        pos(20.2, 100, 180, 4), pos(20.4, 300, 180, 4, { ph: 1, bx: 380.4, by: 90, bh: 80 }),
+        { t: 21, type: 'level_complete', level: 2, data: {} },
+      ],
+    },
+  });
+  assert.strictEqual(ev.status, 200);
+  const get = (path) => api('GET', '/api/admin/behavior' + path, { headers: ADMIN });
+  const list = (await get(`/replays?level=2`)).data.attempts.filter((a) => a.run_id === run);
+  assert.strictEqual(list.length, 2);
+  const [second, first] = list; // el más reciente primero
+  assert.strictEqual(first.outcome, 'died');
+  assert.strictEqual(first.deaths, 1);
+  assert.strictEqual(first.hits, 1);
+  assert.strictEqual(second.outcome, 'won');
+  assert.strictEqual(second.from, 20);
+  assert.strictEqual(first.to, 20);
+
+  const r1 = (await get(`/replay?run_id=${run}&level=2&from=${first.from}&to=${first.to}`)).data;
+  assert.strictEqual(r1.points.length, 3);
+  assert.strictEqual(r1.points[2][6], 1); // en el aire
+  assert.strictEqual(r1.points[0][13], null); // sin jefe
+  assert.deepStrictEqual(r1.events.map((e) => e.type), ['level_start', 'hurt', 'death']);
+  assert.strictEqual(r1.events[1].d.src, 'robot_shot');
+  assert.strictEqual(r1.events[1].x, 140);
+
+  const r2 = (await get(`/replay?run_id=${run}&level=2&from=${second.from}`)).data;
+  assert.strictEqual(r2.points.length, 2);
+  assert.deepStrictEqual(r2.points[1].slice(13), [380.4, 90, 80]); // posición y vida del jefe
+  assert.strictEqual((await get('/replay?level=2')).status, 400);
+  assert.strictEqual((await get('/replay?run_id=999999&level=2')).status, 404);
+  assert.strictEqual((await api('GET', '/api/admin/behavior/replays')).status, 401);
+});
+
 test('el panel web se sirve en la raíz', { skip }, async () => {
   const r = await fetch(base + '/');
   assert.strictEqual(r.status, 200);

@@ -201,6 +201,7 @@ function cleanPosition(e) {
     vx: num(d.vx, -5000, 5000, 0), vy: num(d.vy, -5000, 5000, 0),
     airborne: d.air === true, dt: num(d.dt, 0, 5, 0.5),
     shots: count(d.s), jumps: count(d.j), dashes: count(d.d), parries: count(d.pa), kills: count(d.k),
+    bx: num(d.bx, -1000, 10000, null), by: num(d.by, -1000, 2000, null), bhp: num(d.bh, 0, 100, null),
   };
 }
 
@@ -216,17 +217,17 @@ router.post('/runs/:id/events', auth.requireUser, wrap(async (req, res) => {
   try {
     await client.query('BEGIN');
     if (positions.length > 0) {
-      const cols = 17;
+      const cols = 20;
       const values = [];
       const params = [];
       positions.forEach((p, i) => {
         const o = i * cols;
         values.push(`(${Array.from({ length: cols }, (_, k) => `$${o + k + 1}`).join(', ')})`);
         params.push(run.id, req.user.id, p.t, p.level, p.phase, p.x, p.y, p.vx, p.vy, p.hp,
-          p.airborne, p.dt, p.shots, p.jumps, p.dashes, p.parries, p.kills);
+          p.airborne, p.dt, p.shots, p.jumps, p.dashes, p.parries, p.kills, p.bx, p.by, p.bhp);
       });
       await client.query(
-        `INSERT INTO run_positions (run_id, user_id, game_time, level, phase, x, y, vx, vy, hp, airborne, dt, shots, jumps, dashes, parries, kills)
+        `INSERT INTO run_positions (run_id, user_id, game_time, level, phase, x, y, vx, vy, hp, airborne, dt, shots, jumps, dashes, parries, kills, bx, "by", bhp)
          VALUES ${values.join(', ')}`,
         params
       );

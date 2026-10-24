@@ -56,7 +56,7 @@ var horde_p := 0.0
 var enemies_started := false
 var is_tutorial := false
 var is_finaltop := false
-const TRACE_EVERY := 0.5
+const TRACE_EVERY := 0.2   # 5 muestras por segundo: suficiente para reproducir la partida con fluidez en el panel
 var trace_t := 0.0
 var tutorial_state := {}
 var exit_access: Node2D
@@ -467,7 +467,10 @@ func _trace(delta: float) -> void:
 		return
 	trace_t += delta
 	if trace_t >= TRACE_EVERY:
-		Telemetry.trace(player, 1 if reached_boss else 0, trace_t)
+		var extra := {}
+		if is_instance_valid(boss) and boss.st != Boss.St.DEAD:
+			extra = {"bx": snappedf(boss.global_position.x, 1.0), "by": snappedf(boss.global_position.y, 1.0), "bh": snappedf(100.0 * boss.hp / boss.max_hp, 1.0)}
+		Telemetry.trace(player, 1 if reached_boss else 0, trace_t, extra)
 		trace_t = 0.0
 
 

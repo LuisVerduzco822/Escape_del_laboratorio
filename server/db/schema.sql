@@ -126,6 +126,11 @@ ALTER TABLE runs ADD COLUMN IF NOT EXISTS zones_cleared INT NOT NULL DEFAULT 0;
 ALTER TABLE progress ADD COLUMN IF NOT EXISTS score INT NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS runs_status_score ON runs (status, score DESC);
 
+-- Repetición animada: posición y vida del jefe en cada muestra (nulo si no había jefe)
+ALTER TABLE run_positions ADD COLUMN IF NOT EXISTS bx REAL;
+ALTER TABLE run_positions ADD COLUMN IF NOT EXISTS "by" REAL;
+ALTER TABLE run_positions ADD COLUMN IF NOT EXISTS bhp REAL;
+
 -- Modo de juego de cada partida: 'story' (historia) o 'finaltop' (solo jefes, gana el menor tiempo)
 ALTER TABLE runs ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'story' CHECK (mode IN ('story', 'finaltop'));
 CREATE INDEX IF NOT EXISTS runs_mode_status_time ON runs (mode, status, play_time);

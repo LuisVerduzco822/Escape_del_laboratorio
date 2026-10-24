@@ -65,7 +65,7 @@ func event(type: String, data: Dictionary = {}) -> void:
 # Muestra de la trayectoria del jugador (la llama Level cada ~0.5 s de juego).
 # Guarda posición, vidas y las acciones hechas desde la muestra anterior; el servidor
 # las usa para los mapas de calor y el análisis de comportamiento con pocas vidas.
-func trace(p: CharacterBody2D, phase: int, dt: float) -> void:
+func trace(p: CharacterBody2D, phase: int, dt: float, extra: Dictionary = {}) -> void:
 	if not active or GameManager.training or queue.size() > TRACE_MAX_QUEUE:
 		return
 	var lv := GameManager.current_level + 1
@@ -87,6 +87,8 @@ func trace(p: CharacterBody2D, phase: int, dt: float) -> void:
 		"ph": phase,
 		"dt": snappedf(dt, 0.01),
 	}
+	for k in extra:
+		d[k] = extra[k]   # posición y vida del jefe, para la repetición del panel
 	for k in cur:
 		var before := int(trace_last.get(k, 0))
 		# Si el contador se reinició (nuevo nivel o partida cargada), cuenta desde cero.

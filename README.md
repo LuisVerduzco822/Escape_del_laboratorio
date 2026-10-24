@@ -10,7 +10,7 @@ Un juego de acción y plataformas 2D en pixel art. Recorre cinco zonas contamina
 
 ![Combate contra la Gárgola Viral en la azotea: proyectiles, parry rosa y disparo potenciado](docs/media/capturas/05-jefe-azotea.png)
 
-**Godot 4.7 · Un jugador · Teclado, ratón y mando · Historia y FINALTOP**
+**Godot 4.7 · Un jugador · Teclado, ratón, mando y táctil · Historia y FINALTOP**
 
 [Empezar a jugar](#jugar) · [Galería](#galería) · [Controles](docs/CONTROLES.md) · [Documentación](#documentación) · [Créditos](docs/CREDITOS.md)
 
@@ -74,6 +74,8 @@ godot --path game
 | Pausa | Esc o P | Start / Options |
 
 Las asignaciones se pueden cambiar en **CONTROLES**. Los menús y las ayudas muestran el dispositivo activo y las entradas reasignadas. [Guía de teclado, ratón y mando](docs/CONTROLES.md).
+
+**Táctil / Android:** stick izquierdo para moverse, zona derecha para apuntar y activar fuego continuo, TIRO para apagarlo y botones de salto, dash y súper/ultra. Visibilidad, tamaño y opacidad se ajustan en **CONTROLES → TÁCTIL**. [Generar el APK, instalarlo y probarlo manualmente](docs/ANDROID.md).
 
 ## Cuentas, ranking y panel local
 
@@ -140,3 +142,13 @@ El ejecutor usa guardados temporales y considera fallos los errores de ejecució
 El juego combina arte proporcionado para el proyecto, recursos de terceros y elementos generados para esta versión. Las atribuciones también están disponibles en **CRÉDITOS** dentro del juego.
 
 Las licencias de cada recurso se conservan junto a sus archivos. Hay recursos con condiciones de uso no comercial; no se declara una licencia global de código en este repositorio. Consulta [Créditos y licencias](docs/CREDITOS.md) antes de reutilizar o distribuir materiales.
+
+## Repeticiones animadas en el panel
+
+La pestaña **Repeticiones** (grupo Jugadores, requiere clave de administrador) reproduce cómo jugó cada jugador cada nivel:
+
+- A la izquierda se elige jugador, nivel y modo; cada tarjeta es un **intento** (de un `level_start` al siguiente) con su resultado: TERMINADO, MURIÓ o SALIÓ, además de golpes, derrotas y tiempo.
+- A la derecha se ve la partida animada sobre la geometría real del nivel: el jugador, su recorrido, el jefe con su barra de vida, cada golpe (con lo que lo causó) y la muerte (cartel "DERROTADO" y una X en el punto exacto).
+- Controles: pausar, barra de tiempo con marcas de golpes, muertes e inicio del jefe, velocidad 0.5×, 1×, 2× y 4×, **Ver cómo murió** (salta 4 s antes de la muerte), cámara que sigue al jugador, mapa completo y lista de eventos donde se puede hacer clic para saltar a ese momento.
+- Para que sea fluida, el juego guarda ahora 5 muestras por segundo (antes 2) e incluye la posición y la vida del jefe (`bx`, `by`, `bh`; columnas nuevas `bx`, `by`, `bhp` en `run_positions`, que se agregan solas con `schema.sql`). Las partidas anteriores se reproducen igual, sin jefe y con menos suavidad.
+- API: `GET /api/admin/behavior/replays` (intentos) y `GET /api/admin/behavior/replay?run_id=&level=&from=&to=` (muestras y eventos). Prueba: `server/test/api.test.js`.

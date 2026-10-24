@@ -508,4 +508,116 @@ router.get('/playtime', wrap(async (req, res) => {
   });
 }));
 
+// ---------- repeticiones animadas ----------
+// Cada intento de un nivel (de level_start al siguiente level_start) se puede reproducir con las
+// muestras de posición (run_positions) y los eventos de la bitácora (run_events).
+
+const REPLAY_EVENTS_MAX = 900;
+const REPLAY_POINTS_MAX = 6000;
+const ATTEMPT_EVENT_TYPES = ['level_start', 'level_complete', 'level_failed', 'death', 'hurt', 'boss_start', 'boss_defeated'];
+
+// Parte los eventos de una partida/nivel en intentos. `t0`/`t1`: primera y última muestra de posición.
+function buildAttempts(runLevel, events) {
+  const starts = events.filter((e) => e.type === 'level_start').map((e) => e.t).sort((a, b) => a - b);
+  const bounds = starts.length ? starts.slice() : [runLevel.t0];
+  if (bounds[0] > runLevel.t0 + 0.5) bounds.unshift(runLevel.t0); // muestras anteriores al primer level_start
+  return bounds.map((from, i) => {
+    const to = i + 1 < bounds.length ? bounds[i + 1] : null;
+    const inside = (e) => e.t >= from && (to === null || e.t < to);
+    const evs = events.filter(inside);
+    const count = (type) => evs.filter((e) => e.type === type).length;
+    const end = to === null ? runLevel.t1 : to;
+    let outcome = 'left';
+    if (count('level_complete') > 0 || count('boss_defeated') > 0) outcome = 'won';
+    else if (count('death') > 0 || count('level_failed') > 0) outcome = 'died';
+    return {
+      run_id: runLevel.run_id, level: runLevel.level, user_id: runLevel.user_id, username: runLevel.username,
+      mode: runLevel.mode, started_at: runLevel.started_at, run_status: runLevel.status,
+      from: Math.round(from * 100) / 100, to: to === null ? null : Math.round(to * 100) / 100,
+      seconds: Math.max(0, Math.round((end - from) * 10) / 10),
+      outcome, deaths: count('death'), hits: count('hurt'), boss: count('boss_start') > 0,
+    };
+  });
+}
+
+router.get('/replays', wrap(async (req, res) => {
+  const level = optionalId(req.query.level);
+  const userId = optionalId(req.query.user_id);
+  const mode = req.query.mode === 'story' || req.query.mode === 'finaltop' ? req.query.mode : null;
+  const limit = intParam(req.query.limit, { min: 1, max: 80, fallback: 40 });
+  const params = [];
+  const conds = [];
+  if (level) { params.push(level); conds.push(`p.level = $${params.length}`); }
+  if (userId) { params.push(userId); conds.push(`p.user_id = $${params.length}`); }
+  if (mode) { params.push(mode); conds.push(`r.mode = $${params.length}`); }
+  params.push(limit);
+  const { rows: pairs } = await pool.query(
+    `SELECT p.run_id, p.level, p.user_id, u.username, r.mode, r.started_at, r.status,
+            min(p.game_time)::float AS t0, max(p.game_time)::float AS t1
+       FROM run_positions p JOIN runs r ON r.id = p.run_id JOIN users u ON u.id = p.user_id
+      ${conds.length ? 'WHERE ' + conds.join(' AND ') : ''}
+      GROUP BY p.run_id, p.level, p.user_id, u.username, r.mode, r.started_at, r.status
+      ORDER BY p.run_id DESC, p.level DESC LIMIT $${params.length}`, params);
+  if (pairs.length === 0) return res.json({ attempts: [] });
+  const { rows: evs } = await pool.query(
+    `SELECT e.run_id, e.level, e.event_type AS type, e.game_time::float AS t
+       FROM run_events e
+      WHERE e.run_id = ANY($1) AND e.event_type = ANY($2)
+      ORDER BY e.run_id, e.level, e.game_time, e.id`, [[...new Set(pairs.map((x) => x.run_id))], ATTEMPT_EVENT_TYPES]);
+  const byKey = new Map();
+  evs.forEach((e) => {
+    const k = `${e.run_id}:${e.level}`;
+    if (!byKey.has(k)) byKey.set(k, []);
+    byKey.get(k).push(e);
+  });
+  const attempts = [];
+  pairs.forEach((pr) => {
+    const list = buildAttempts(pr, byKey.get(`${pr.run_id}:${pr.level}`) || []);
+    // Los más recientes primero dentro de la misma partida y nivel.
+    attempts.push(...list.reverse());
+  });
+  res.json({ attempts: attempts.slice(0, limit * 3) });
+}));
+
+const EVENT_KEYS = ['src', 'hp_left', 'kind', 'how', 'boss', 'reason', 'phase', 'value', 'name', 'deaths', 'points', 'bonus', 'time', 'level_time', 'collect_time'];
+
+router.get('/replay', wrap(async (req, res) => {
+  const runId = optionalId(req.query.run_id);
+  const level = optionalId(req.query.level);
+  if (!runId || !level) return res.status(400).json({ error: 'Falta run_id o level' });
+  const from = Number.isFinite(Number(req.query.from)) ? Number(req.query.from) : 0;
+  const to = req.query.to !== undefined && req.query.to !== '' && Number.isFinite(Number(req.query.to)) ? Number(req.query.to) : 1e9;
+  const meta = await pool.query(
+    `SELECT r.id, u.username, r.mode, r.status, r.started_at, r.deaths FROM runs r JOIN users u ON u.id = r.user_id WHERE r.id = $1`, [runId]);
+  if (meta.rows.length === 0) return res.status(404).json({ error: 'Partida no encontrada' });
+  const [pos, ev] = await Promise.all([
+    pool.query(
+      `SELECT game_time::float AS t, x, y, vx, vy, hp, airborne, phase, shots, jumps, dashes, parries, kills, bx, "by" AS by, bhp
+         FROM run_positions WHERE run_id = $1 AND level = $2 AND game_time >= $3 AND game_time < $4
+        ORDER BY game_time, id LIMIT ${REPLAY_POINTS_MAX}`, [runId, level, from, to]),
+    pool.query(
+      `SELECT e.event_type AS type, e.game_time::float AS t, e.data
+         FROM run_events e
+        WHERE e.run_id = $1 AND e.level = $2 AND e.game_time >= $3 AND e.game_time < $4
+        ORDER BY e.game_time, e.id LIMIT ${REPLAY_EVENTS_MAX}`, [runId, level, from, to]),
+  ]);
+  const r1 = (v) => (v === null || v === undefined ? null : Math.round(Number(v) * 10) / 10);
+  const points = pos.rows.map((p) => [
+    Math.round(p.t * 100) / 100, Math.round(p.x), Math.round(p.y), Math.round(p.vx), Math.round(p.vy), p.hp,
+    p.airborne ? 1 : 0, p.phase, p.shots, p.jumps, p.dashes, p.parries, p.kills, r1(p.bx), r1(p.by), r1(p.bhp),
+  ]);
+  const events = ev.rows.map((e) => {
+    const d = e.data && typeof e.data === 'object' ? e.data : {};
+    const small = {};
+    EVENT_KEYS.forEach((k) => { if (d[k] !== undefined && typeof d[k] !== 'object') small[k] = d[k]; });
+    const x = Number(d.x), y = Number(d.y);
+    return { type: e.type, t: Math.round(e.t * 100) / 100, x: Number.isFinite(x) ? Math.round(x) : null, y: Number.isFinite(y) ? Math.round(y) : null, d: small };
+  }).filter((e) => e.type !== 'pos');
+  res.json({
+    run_id: runId, level, from, to: to === 1e9 ? null : to, ...meta.rows[0],
+    columns: ['t', 'x', 'y', 'vx', 'vy', 'hp', 'air', 'phase', 'shots', 'jumps', 'dashes', 'parries', 'kills', 'bx', 'by', 'bhp'],
+    points, events,
+  });
+}));
+
 module.exports = router;
