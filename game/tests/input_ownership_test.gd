@@ -38,6 +38,23 @@ func frames(count: int) -> void:
 
 func _run() -> void:
 	var ownership := Ownership.new()
+	var stale := Ownership.new()
+	stale.observe(key(KEY_D))
+	stale.observe(axis(0.9))
+	stale.reconcile_desktop(func(_code): return true, func(_button): return false)
+	check(stale.owner == "desktop", "Polling preserves a physically held keyboard key")
+	stale.reconcile_desktop(func(_code): return false, func(_button): return false)
+	check(stale.owner == "pad:3", "Missing keyboard release yields to waiting controller")
+	stale.observe(axis(0.0))
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	stale.observe(click)
+	stale.observe(axis(0.9))
+	stale.reconcile_desktop(func(_code): return false, func(_button): return true)
+	check(stale.owner == "desktop", "Polling preserves a physically held mouse button")
+	stale.reconcile_desktop(func(_code): return false, func(_button): return false)
+	check(stale.owner == "pad:3", "Missing mouse release yields to waiting controller")
 	var resting_trigger := axis(-1.0)
 	resting_trigger.axis = JOY_AXIS_TRIGGER_LEFT
 	ownership.observe(resting_trigger)

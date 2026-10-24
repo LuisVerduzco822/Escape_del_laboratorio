@@ -457,7 +457,8 @@ docker-compose.yml
 
 - Robots, drones y bolas de fuego: explosión azul compacta. Murciélagos y esporas: explosión verde orgánica.
 - Daño no letal a enemigos y golpes aceptados por el jugador: destello dorado corto; la invulnerabilidad evita repetirlo.
-- Jefes: explosiones escalonadas, cuerpo que se desvanece y una explosión final grande antes de la transición.
+- Jefes: explosiones escalonadas y una explosión final grande; el cuerpo permanece opaco y desaparece
+  de golpe a mitad de esa explosión.
 - Animaciones compartidas, filtro nearest y máximo de 32 efectos simultáneos (el remate del jefe siempre se muestra).
   Los efectos pertenecen al nivel: sobreviven al enemigo y se eliminan al terminar o cambiar de nivel.
 - Se compararon también Sentient Dream Studio, Arcade VFX Lite y Free Effects for Platformer. Los dos primeros
@@ -594,3 +595,20 @@ Capturas en `docs/capturas/` (daño con flash y screenshake, monedas y compuesto
 - **Presión continua:** mientras pelea, cada jefe suma entre sus ataques rayos del cielo, rayos de piso y lluvia de balas (`Boss._ambient`). La frecuencia y la cantidad suben con el número de jefe (1 a 5) y con la fase; en FinalTop es 1.3 veces más intensa. No aparecen si ya hay demasiadas balas. El descanso entre ataques también se acorta con el jefe.
 - **Volumen:** los sonidos de ataques y alertas (`shoot`, `warn`, `phase`, `boom`, `select`) se atenúan en `AudioManager.ATTACK_DB`, y el mismo sonido no se repite más de una vez cada 40 ms. El disparo del jugador conserva su volumen (`pshoot`).
 - Prueba: `game/tests/boss_ambient_test.gd`.
+
+### Salidas de nivel
+
+La compuerta permanece oculta durante el combate. Tras derrotar al jefe aparece sobre
+una plataforma baja de la arena, apoyada en su superficie y detrás del personaje
+hasta que se activa la entrada.
+Acércate y pulsa tu botón de **salto** cuando aparezca **ENTRAR**: esa pulsación
+se consume para abrir la compuerta, entrar y cerrar antes del fundido al siguiente nivel.
+El acceso final lleva a la fabricación del antídoto. El reloj se detiene tras el K.O.
+FinalTop conserva el avance automático entre combates.
+
+Compuertas: **Pixel Platformer Industrial Expansion**, de **Kenney**,
+[fuente](https://kenney.nl/assets/pixel-platformer-industrial-expansion), CC0 1.0.
+Cuatro PNG originales renombrados, ensamblados y animados en el juego; avisos en
+`game/assets/exits/kenney/`.
+
+Pruebas: `game/tests/level_exit_test.gd` y `game/tests/combat_effects_test.gd`.

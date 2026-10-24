@@ -1,0 +1,6 @@
+Pixel Platformer Industrial Expansion — Kenney
+https://kenney.nl/assets/pixel-platformer-industrial-expansion
+License: CC0 1.0 Universal
+https://creativecommons.org/publicdomain/zero/1.0/
+Original tiles 0076, 0077, 0092, 0093, renamed without modifying PNGs.
+Assembled, scaled with nearest filtering and animated as level exits.

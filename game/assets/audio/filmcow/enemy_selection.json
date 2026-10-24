@@ -1,0 +1,258 @@
+[
+  {
+    "event": "drone_move_6",
+    "source": "FilmCow Recorded SFX/vape sound 6.wav",
+    "trim_start_seconds": 0.0578,
+    "duration_seconds": 4.9057,
+    "rms_dbfs": -36.31,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "drone_move_3",
+    "source": "FilmCow Recorded SFX/vape sound 3.wav",
+    "trim_start_seconds": 0.1429,
+    "duration_seconds": 3.5845,
+    "rms_dbfs": -37.22,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "drone_move_1",
+    "source": "FilmCow Recorded SFX/vape sound 1.wav",
+    "trim_start_seconds": 0.0593,
+    "duration_seconds": 3.7166,
+    "rms_dbfs": -33.9,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "robot_step_9",
+    "source": "FilmCow Recorded SFX/metal hit with hammer 9.wav",
+    "trim_start_seconds": 0.0159,
+    "duration_seconds": 0.2034,
+    "rms_dbfs": -22.85,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "robot_step_8",
+    "source": "FilmCow Recorded SFX/metal hit with hammer 8.wav",
+    "trim_start_seconds": 0.0148,
+    "duration_seconds": 0.2016,
+    "rms_dbfs": -22.94,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "robot_step_3",
+    "source": "FilmCow Recorded SFX/metal hit with hammer 3.wav",
+    "trim_start_seconds": 0.0177,
+    "duration_seconds": 0.1868,
+    "rms_dbfs": -21.57,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "robot_step_2",
+    "source": "FilmCow Recorded SFX/metal hit with hammer 2.wav",
+    "trim_start_seconds": 0.0094,
+    "duration_seconds": 0.2053,
+    "rms_dbfs": -21.96,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "player_death_14",
+    "source": "FilmCow Recorded SFX/oof 14.wav",
+    "trim_start_seconds": 0.0678,
+    "duration_seconds": 0.4235,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -5.12
+  },
+  {
+    "event": "player_death_9",
+    "source": "FilmCow Recorded SFX/oof 9.wav",
+    "trim_start_seconds": 0.0337,
+    "duration_seconds": 0.2467,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -4.43
+  },
+  {
+    "event": "player_death_8",
+    "source": "FilmCow Recorded SFX/oof 8.wav",
+    "trim_start_seconds": 0.0711,
+    "duration_seconds": 0.3842,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -6.25
+  },
+  {
+    "event": "player_death_6",
+    "source": "FilmCow Recorded SFX/oof 6.wav",
+    "trim_start_seconds": 0.028,
+    "duration_seconds": 0.3938,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -5.0
+  },
+  {
+    "event": "player_death_5",
+    "source": "FilmCow Recorded SFX/oof 5.wav",
+    "trim_start_seconds": 0.0518,
+    "duration_seconds": 0.3049,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -4.42
+  },
+  {
+    "event": "player_hurt_3",
+    "source": "FilmCow Recorded SFX/body hit with grunt 3.wav",
+    "trim_start_seconds": 0.0305,
+    "duration_seconds": 0.2145,
+    "rms_dbfs": -21.62,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "player_hurt_2",
+    "source": "FilmCow Recorded SFX/body hit with grunt 2.wav",
+    "trim_start_seconds": 0.0516,
+    "duration_seconds": 0.2127,
+    "rms_dbfs": -25.09,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "player_hurt_1",
+    "source": "FilmCow Recorded SFX/body hit with grunt 1.wav",
+    "trim_start_seconds": 0.0702,
+    "duration_seconds": 0.2213,
+    "rms_dbfs": -23.93,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "elevator_open",
+    "source": "FilmCow Recorded SFX/screen door open 1.wav",
+    "trim_start_seconds": 0.0312,
+    "duration_seconds": 0.4573,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -3.47
+  },
+  {
+    "event": "ultra",
+    "source": "FilmCow Designed SFX/deep sci fi stinger 8.wav",
+    "trim_start_seconds": 0.1431,
+    "duration_seconds": 1.3334,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -5.85
+  },
+  {
+    "event": "parry",
+    "source": "FilmCow Recorded SFX/metal hit floor small 4.wav",
+    "trim_start_seconds": 0.0124,
+    "duration_seconds": 0.3538,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -7.2
+  },
+  {
+    "event": "dash",
+    "source": "FilmCow Recorded SFX/swoosh 3.wav",
+    "trim_start_seconds": 0.0,
+    "duration_seconds": 0.4773,
+    "rms_dbfs": -21.84,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "super",
+    "source": "FilmCow Designed SFX/laser gun 1.wav",
+    "trim_start_seconds": 0.1195,
+    "duration_seconds": 0.938,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -4.15
+  },
+  {
+    "event": "death_robot",
+    "source": "FilmCow Recorded SFX/metal sliding 5.wav",
+    "trim_start_seconds": 0.0843,
+    "duration_seconds": 0.6563,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -3.09
+  },
+  {
+    "event": "death_drone",
+    "source": "FilmCow Designed SFX/robot sick 2.wav",
+    "trim_start_seconds": 0.0665,
+    "duration_seconds": 1.8984,
+    "rms_dbfs": -20.0,
+    "peak_dbfs": -4.4
+  },
+  {
+    "event": "death_bat",
+    "source": "FilmCow Recorded SFX/sipping through empty straw 2.wav",
+    "trim_start_seconds": 0.074,
+    "duration_seconds": 0.45,
+    "rms_dbfs": -20.21,
+    "peak_dbfs": -5.69
+  },
+  {
+    "event": "death_spore",
+    "source": "FilmCow Recorded SFX/bubbles 1.wav",
+    "trim_start_seconds": 0.0827,
+    "duration_seconds": 0.48,
+    "rms_dbfs": -20.62,
+    "peak_dbfs": -4.96
+  },
+  {
+    "event": "death_fireball",
+    "source": "FilmCow Recorded SFX/spray bottle 3.wav",
+    "trim_start_seconds": 0.016,
+    "duration_seconds": 0.3316,
+    "rms_dbfs": -30.06,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "robot_shoot",
+    "source": "FilmCow Designed SFX/laser gun 11.wav",
+    "trim_start_seconds": 0.0948,
+    "duration_seconds": 0.4,
+    "rms_dbfs": -20.03,
+    "peak_dbfs": -7.52
+  },
+  {
+    "event": "drone_shoot",
+    "source": "FilmCow Designed SFX/laser gun 14.wav",
+    "trim_start_seconds": 0.0281,
+    "duration_seconds": 0.35,
+    "rms_dbfs": -20.27,
+    "peak_dbfs": -3.28
+  },
+  {
+    "event": "robot_charge",
+    "source": "FilmCow Designed SFX/sci fi click 5.wav",
+    "trim_start_seconds": 0.2785,
+    "duration_seconds": 0.3,
+    "rms_dbfs": -30.83,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "drone_charge",
+    "source": "FilmCow Designed SFX/sci fi click 9.wav",
+    "trim_start_seconds": 0.3822,
+    "duration_seconds": 0.2204,
+    "rms_dbfs": -28.66,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "bat_flap",
+    "source": "FilmCow Recorded SFX/swoosh 1.wav",
+    "trim_start_seconds": 0.0169,
+    "duration_seconds": 0.16,
+    "rms_dbfs": -21.67,
+    "peak_dbfs": -6.94
+  },
+  {
+    "event": "spore_land",
+    "source": "FilmCow Recorded SFX/squishy and wet 3.wav",
+    "trim_start_seconds": 0.0679,
+    "duration_seconds": 1.142,
+    "rms_dbfs": -23.47,
+    "peak_dbfs": -3.0
+  },
+  {
+    "event": "spore_roll",
+    "source": "FilmCow Recorded SFX/paper crunchy 3.wav",
+    "trim_start_seconds": 0.067,
+    "duration_seconds": 0.8205,
+    "rms_dbfs": -29.79,
+    "peak_dbfs": -3.0
+  }
+]

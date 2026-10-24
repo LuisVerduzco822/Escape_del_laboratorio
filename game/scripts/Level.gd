@@ -55,6 +55,7 @@ var is_finaltop := false
 const TRACE_EVERY := 0.5
 var trace_t := 0.0
 var tutorial_state := {}
+var exit_access: Node2D
 
 
 func level_data() -> Dictionary:
@@ -82,6 +83,11 @@ func _ready() -> void:
 	player = Player.new()
 	player.position = Vector2(60, Cfg.FLOOR_Y - 12.0)
 	add_child(player)
+	if not is_tutorial and not is_finaltop:
+		exit_access = preload("res://scripts/ExitAccess.gd").new()
+		exit_access.level = self
+		exit_access.position = _exit_position()
+		add_child(exit_access)
 	cam = Camera2D.new()
 	cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT
 	add_child(cam)
@@ -157,6 +163,19 @@ func _settle_boxes() -> void:
 			if absf(bx.position.y - target_y) > 0.5:
 				var tw := bx.create_tween()
 				tw.tween_property(bx, "position:y", target_y, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
+# Prefer a low arena platform with enough room for the entire hatch.
+# The hatch's bottom edge shares its support's surface, never cuts through it.
+func _exit_position() -> Vector2:
+	var result := Vector2(arena_x + Cfg.W - 65.0, Cfg.FLOOR_Y)
+	var rightmost := -INF
+	for platform in data["platforms"]:
+		var center: float = platform[0] + platform[2] / 2.0
+		if platform[0] >= arena_x and platform[1] >= 140 and platform[2] >= 60 and center > rightmost:
+			rightmost = center
+			result = Vector2(center, platform[1])
+	return result
 
 
 func _build_world() -> void:
@@ -391,14 +410,17 @@ func _physics_process(delta: float) -> void:
 			_boss_phase(delta)
 		S.KO:
 			if st_t >= 4.2:
-				st = S.DONE
-				finished.emit()
+				if is_finaltop:
+					st = S.DONE
+					finished.emit()
+				elif is_instance_valid(exit_access):
+					exit_access.available = true
 
 
-# El reloj de la partida corre salvo en la derrota y en la pantalla final.
+# El reloj se detiene en la derrota y tras el K.O., incluida la salida.
 # FinalTop lo reduce a "solo mientras se pelea" para que el ranking mida combate.
 func counts_play_time() -> bool:
-	return st != S.FAIL and st != S.DONE
+	return st != S.FAIL and st != S.DONE and st != S.KO
 
 
 # Toma una muestra de la trayectoria cada TRACE_EVERY segundos de juego activo.
@@ -685,7 +707,18 @@ func _begin_warn() -> void:
 	capture_boss_checkpoint.call_deferred()
 
 
+func try_use_exit() -> bool:
+	if not is_instance_valid(exit_access) or not exit_access.available or exit_access.using or player.dead:
+		return false
+	if not exit_access.contains_player():
+		return false
+	exit_access.enter()
+	return true
+
+
 func is_player_frozen() -> bool:
+	if is_instance_valid(exit_access) and exit_access.using:
+		return true
 	return st == S.WARN or (st == S.BOSS and is_instance_valid(boss) and boss.st == Boss.St.ENTER)
 
 

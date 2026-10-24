@@ -26,6 +26,7 @@ var phase := 0
 var phase_t := 0.0
 var shots_left := 0
 var shot_gap := 0.0
+var motion_audio_t := 0.0
 
 
 func _ready() -> void:
@@ -89,6 +90,7 @@ func _update_appearance() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	var previous_position := position
 	age += delta
 	flash = maxf(0.0, flash - delta)
 	var entrance_speed := lerpf(0.15, 1.0, smoothstep(0.0, SPAWN_TIME, age))
@@ -105,8 +107,36 @@ func _physics_process(delta: float) -> void:
 		"robot", "drone":
 			if age >= SPAWN_TIME:
 				_shooter(delta)
+	_motion_audio(delta, previous_position)
 	_update_appearance()
 	queue_redraw()
+
+
+func _motion_audio(delta: float, previous_position: Vector2) -> void:
+	if dead or age < SPAWN_TIME:
+		return
+	motion_audio_t -= delta
+	if kind == "spore" and not grounded:
+		return
+	if motion_audio_t > 0.0:
+		return
+	var moved := position.distance_to(previous_position) > 0.01
+	match kind:
+		"robot":
+			if moved and phase == 0:
+				AudioManager.entity_sfx("robot_step", global_position)
+				motion_audio_t = PI / 9.0
+		"bat":
+			AudioManager.entity_sfx("bat_flap", global_position)
+			motion_audio_t = TAU / 18.0
+		"spore":
+			if moved:
+				AudioManager.entity_sfx("spore_roll", global_position)
+				motion_audio_t = 0.45
+		"drone":
+			if moved:
+				AudioManager.entity_sfx("drone_move", global_position)
+				motion_audio_t = 0.8
 
 
 # Robot: camina hacia el jugador, se planta, carga (ojo rojo) y dispara una ráfaga que se esquiva saltando.
@@ -129,7 +159,7 @@ func _shooter(delta: float) -> void:
 	if phase == 0 and phase_t <= 0.0:
 		phase = 1
 		phase_t = 0.85
-		AudioManager.sfx("tick", -10.0, 1.6)
+		AudioManager.entity_sfx(kind + "_charge", global_position)
 	elif phase == 1 and phase_t <= 0.0:
 		phase = 2
 		shots_left = 2 if kind == "robot" else 1
@@ -160,7 +190,7 @@ func _fire(target: Vector2) -> void:
 	else:
 		h.vel = Vector2(dir * bullet_speed, 0.0)   # a ras de suelo: se salta
 	get_parent().add_child(h)
-	AudioManager.sfx("shoot", -16.0)
+	AudioManager.entity_sfx(kind + "_shoot", global_position)
 	Fx.burst(get_parent(), muzzle, Color(1.0, 0.5, 0.3), 3, 50.0, 0.2, 1.5)
 
 
@@ -189,6 +219,7 @@ func _move_spore(delta: float) -> void:
 		if position.y >= Cfg.FLOOR_Y - 8.0:
 			position.y = Cfg.FLOOR_Y - 8.0
 			grounded = true
+			AudioManager.entity_sfx("spore_land", global_position)
 	var left: Variant = get_parent().get("view_left")
 	var view_left := float(left) if left != null else 0.0
 	if position.x < view_left - 24.0 or position.x > view_left + Cfg.W + 24.0:
@@ -228,7 +259,7 @@ func _die(scored: bool, super_gain: float = 0.0, how: String = "shot") -> void:
 	dead = true
 	Fx.impact(get_parent(), global_position, "mechanical" if kind in ["robot", "drone", "fireball"] else "organic", 1.25 if kind == "robot" else 0.8)
 	Fx.burst(get_parent(), global_position, _color(), 10, 100.0, 0.5, 2.5)
-	AudioManager.sfx("boom", -8.0)
+	AudioManager.entity_sfx("death_" + (kind if kind in POINTS else "robot"), global_position)
 	if scored:
 		if GameManager.training:
 			get_parent().enemy_killed(kind)
