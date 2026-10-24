@@ -25,7 +25,6 @@ func _physics_process(delta: float) -> void:
 	t += delta
 	if t >= warn and not struck:
 		struck = true
-		Fx.shake(2.5, 0.25)
 		AudioManager.sfx("boom", -8.0, 0.8)
 	if t >= warn and t <= warn + active:
 		for b in get_overlapping_bodies():

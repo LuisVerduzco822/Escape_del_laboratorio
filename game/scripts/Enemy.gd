@@ -217,6 +217,8 @@ func take_damage(d: float) -> bool:
 	flash = 0.06
 	if hp <= 0.0:
 		_die(true, 2.0, "shot")
+	else:
+		Fx.impact(get_parent(), global_position, "hit", 0.7)
 	return true
 
 
@@ -224,6 +226,7 @@ func _die(scored: bool, super_gain: float = 0.0, how: String = "shot") -> void:
 	if dead:
 		return
 	dead = true
+	Fx.impact(get_parent(), global_position, "mechanical" if kind in ["robot", "drone", "fireball"] else "organic", 1.25 if kind == "robot" else 0.8)
 	Fx.burst(get_parent(), global_position, _color(), 10, 100.0, 0.5, 2.5)
 	AudioManager.sfx("boom", -8.0)
 	if scored:

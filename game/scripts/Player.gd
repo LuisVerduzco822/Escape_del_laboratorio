@@ -14,6 +14,7 @@ const WEAPON_REGION := Rect2(0, 0, 44, 19)
 const WEAPON_RECT := Rect2(-5, -6, 22, 9.5)
 const WEAPON_MUZZLE := Vector2(16.5, -3)
 
+const KEYBOARD_AIM_SPEED := deg_to_rad(120.0)
 const SPEED := 130.0
 const GRAVITY := 1000.0
 const JUMP_V := -390.0
@@ -27,10 +28,8 @@ const DASH_CD := 0.45
 const FIRE_RATE := 0.11
 const COYOTE := 0.09
 const BUFFER := 0.1
-# Aterrizaje fuerte: al tocar el suelo cayendo más rápido que HARD_LAND_V hay vibración, polvo y un golpe sordo.
+# Aterrizaje fuerte: solo polvo y sonido; el movimiento normal no sacude la cámara.
 const HARD_LAND_V := 300.0
-const HARD_LAND_SHAKE := 2.2
-const HARD_LAND_TIME := 0.14
 
 var sprite: AnimatedSprite2D
 var parry_area: Area2D
@@ -105,8 +104,14 @@ func _ready() -> void:
 
 func freeze_in_place() -> void:
 	# Cancel pending movement instead of replaying a dash or buffered jump on release.
-	velocity = Vector2.ZERO
+	velocity.x = 0.0
+	velocity.y = maxf(0.0, velocity.y)
 	dash_t = 0.0
+	air_flipped = false
+	flip_t = 0.0
+	abduct_t = 0.0
+	drop_t = 0.0
+	set_collision_mask_value(2, true)
 	buffer = 0.0
 	coyote = 0.0
 	modulate.a = 1.0
@@ -125,6 +130,8 @@ func _physics_process(delta: float) -> void:
 
 	if get_parent().is_player_frozen():
 		freeze_in_place()
+		velocity.y += GRAVITY * delta
+		move_and_slide()
 		return
 
 	invuln = maxf(0.0, invuln - delta)
@@ -141,16 +148,10 @@ func _physics_process(delta: float) -> void:
 		if drop_t <= 0.0:
 			set_collision_mask_value(2, true)
 
-	var ax := Input.get_axis("move_left", "move_right")
-	var ay := Input.get_axis("aim_up", "aim_down")
-	locked = Input.is_action_pressed("lock")
-	if ax != 0.0:
-		facing = 1 if ax > 0.0 else -1
-	var raw := Vector2(ax, ay)
-	if raw == Vector2.ZERO:
-		aim = Vector2(facing, 0)
-	else:
-		aim = raw.normalized()
+	var ax := GameManager.gameplay_axis("move_left", "move_right")
+	var ay := GameManager.gameplay_axis("aim_up", "aim_down")
+	locked = GameManager.gameplay_pressed("lock")
+	_update_aim(ax, ay, delta)
 
 	if is_on_floor():
 		coyote = COYOTE
@@ -162,7 +163,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		coyote = maxf(0.0, coyote - delta)
 
-	if Input.is_action_just_pressed("jump"):
+	if GameManager.gameplay_just_pressed("jump"):
 		buffer = BUFFER
 
 	if dash_t > 0.0:
@@ -171,7 +172,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y += GRAVITY * delta
 		velocity.x = 0.0 if locked else ax * SPEED
-		if Input.is_action_just_pressed("dash") and dash_cd <= 0.0 and (is_on_floor() or air_dash):
+		if GameManager.gameplay_just_pressed("dash") and dash_cd <= 0.0 and (is_on_floor() or air_dash):
 			_start_dash(ax)
 
 		if buffer > 0.0:
@@ -191,7 +192,7 @@ func _physics_process(delta: float) -> void:
 			elif air_jumps > 0:
 				_double_jump()
 				buffer = 0.0
-		if Input.is_action_just_released("jump") and velocity.y < -120.0:
+		if GameManager.gameplay_just_released("jump") and velocity.y < -120.0:
 			velocity.y *= 0.45
 
 	if wind_t > 0.0:
@@ -209,9 +210,9 @@ func _physics_process(delta: float) -> void:
 		else:
 			velocity.x = (abduct_x - global_position.x) * 5.0
 			velocity.y = -64.0
-	if Input.is_action_pressed("shoot") and fire_cd <= 0.0 and dash_t <= 0.0:
+	if GameManager.gameplay_pressed("shoot") and fire_cd <= 0.0 and dash_t <= 0.0:
 		_shoot()
-	if Input.is_action_just_pressed("super") and dash_t <= 0.0:
+	if GameManager.gameplay_just_pressed("super") and dash_t <= 0.0:
 		_super()
 
 	var was_floor := is_on_floor()
@@ -219,7 +220,6 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if not was_floor and is_on_floor() and fall_v > HARD_LAND_V and not dead:
 		var power := clampf((fall_v - HARD_LAND_V) / 200.0, 0.0, 1.0)
-		Fx.shake(HARD_LAND_SHAKE * (0.7 + 0.6 * power), HARD_LAND_TIME)
 		Fx.burst(get_parent(), global_position + Vector2(0, 12), Color(0.85, 0.85, 0.9, 0.8), 8, 70.0, 0.3, 2.0)
 		AudioManager.sfx("boom", -16.0 - 4.0 * (1.0 - power), 1.5)
 	on_platform = false
@@ -337,6 +337,7 @@ func _ultra() -> void:
 	Telemetry.event("ultra")
 	AudioManager.sfx("ultra")
 	invuln = 1.8
+	get_parent().ultra_breather()
 	Fx.flash(Color(1, 1, 1), 0.85, 0.7)
 	Fx.shake(4.0, 0.6)
 	Fx.hitstop(0.18)
@@ -429,7 +430,6 @@ func _landing_slash() -> void:
 		if b.has_method("take_damage") and absf(b.global_position.x - feet.x) <= SLAM_RANGE * 0.8 and absf(b.global_position.y - feet.y) < 26.0:
 			b.take_damage(2.0)
 	Fx.burst(get_parent(), feet, Color(1.0, 0.92, 0.7, 0.9), 12, 110.0, 0.35, 2.0)
-	Fx.shake(2.0, 0.15)
 	Fx.hitstop(0.04)
 	AudioManager.sfx("boom", -10.0, 1.3)
 	Telemetry.event("landing_slash", _where({}))
@@ -457,6 +457,7 @@ func hurt(source: String = "") -> void:
 	Telemetry.count("damage_taken")
 	last_hurt_src = source
 	Telemetry.event("hurt", _where({"hp_left": GameManager.hp, "src": source}))
+	Fx.impact(get_parent(), global_position + Vector2(0, -3), "hit", 0.9)
 	AudioManager.sfx("hurt")
 	Fx.shake(3.0, 0.25)
 	Fx.hitstop(0.08)
@@ -601,3 +602,41 @@ func _draw() -> void:
 		draw_arc(Vector2(0, 3), 14.0, -0.6, PI + 0.6, 20, Color(0.3, 0.9, 1.0, 0.7), 1.5)
 	if parry_flash > 0.0:
 		draw_arc(Vector2.ZERO, 10.0 + (0.3 - parry_flash) * 60.0, 0.0, TAU, 24, Color(1, 0.5, 0.85, parry_flash * 3.0), 2.0)
+
+
+func _update_aim(horizontal: float, vertical: float, delta: float) -> void:
+	if GameManager.is_mouse_aiming():
+		# Canvas inverse accounts for camera scrolling and shake, while the cursor stays on screen.
+		var target: Vector2 = get_global_transform_with_canvas().affine_inverse() * GameManager.mouse_cursor_position
+		var side := target.x - sprite.position.x
+		if absf(side) > 0.001:
+			facing = 1 if side > 0.0 else -1
+		var direction := target - _weapon_hand()
+		if direction.length_squared() > 1.0:
+			aim = direction.normalized()
+		GameManager.mouse_aim_direction = aim
+		return
+	var raw := GameManager.aim_direction(horizontal, vertical)
+	if locked and GameManager.use_keyboard_aim_smoothing():
+		# Release the direction to hold a precise intermediate angle while locked.
+		if raw != Vector2.ZERO:
+			var turn := aim.angle_to(raw.normalized())
+			aim = aim.rotated(clampf(turn, -KEYBOARD_AIM_SPEED * delta, KEYBOARD_AIM_SPEED * delta)).normalized()
+		if absf(aim.x) > 0.001:
+			facing = 1 if aim.x > 0.0 else -1
+		return
+	if horizontal != 0.0:
+		facing = 1 if horizontal > 0.0 else -1
+	if raw.x != 0.0:
+		facing = 1 if raw.x > 0.0 else -1
+	aim = Vector2(facing, 0) if raw == Vector2.ZERO else raw.normalized()
+
+
+func _process(_delta: float) -> void:
+	if not dead and GameManager.is_mouse_aiming() and not get_parent().is_player_frozen():
+		# Level updates the camera before child processing. Aim using the final screen
+		# transform and animated hand position, after this frame's movement.
+		var camera := get_viewport().get_camera_2d()
+		if camera:
+			camera.force_update_scroll()
+		_update_aim(0.0, 0.0, 0.0)

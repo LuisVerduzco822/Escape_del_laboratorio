@@ -58,7 +58,6 @@ func _break() -> void:
 	Fx.burst(parent, global_position, Color(0.45, 0.7, 1.0), 14, 110.0, 0.6, 3.0)
 	Fx.burst(parent, global_position, Color(0.9, 0.95, 1.0), 6, 70.0, 0.4, 2.0)
 	AudioManager.sfx("boom", -10.0, 1.6)
-	Fx.shake(1.5, 0.12)
 	for i in 2:
 		var c := Pickup.new()
 		c.kind = "coin"

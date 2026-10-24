@@ -22,10 +22,12 @@ var server_available := false
 var checking_server := false
 var server_revision := 0
 var server_debounce: Timer
+var navigation_content: Control
 var offline_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
+	GameManager.set_mouse_gameplay(false)
 	get_tree().set_auto_accept_quit(true)
 	UI.apply_theme()
 	AudioManager.play_music("menu")
@@ -48,6 +50,7 @@ func _ready() -> void:
 	add_child(dim)
 
 	var scroll := ScrollContainer.new()
+	navigation_content = scroll
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.offset_top = 30
 	scroll.offset_bottom = -4
@@ -364,3 +367,9 @@ func _submit() -> void:
 	AudioManager.sfx("confirm")
 	await get_tree().create_timer(0.7).timeout
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+
+
+func _input(_event: InputEvent) -> void:
+	GameManager.observe_input(_event)
+	if not offline_dialog.visible:
+		UI.wire_focus_rows(navigation_content, [[server_edit]])

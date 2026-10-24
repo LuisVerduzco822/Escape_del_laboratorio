@@ -354,6 +354,18 @@ func _can_spawn() -> bool:
 	return get_tree().get_nodes_in_group("enemy").size() < 9 + index
 
 
+# Keep this timer in cd so pause/save/continue preserve the remaining respite.
+func ultra_breather() -> void:
+	if is_tutorial or is_finaltop or st != S.COLLECT:
+		return
+	cd["ultra_grace"] = 5.0
+	horde_remaining = 0
+	horde_wait = 0.0
+	for key in ["fire", "bat", "robot", "drone", "spore", "bolt", "horde"]:
+		cd[key] = maxf(float(cd.get(key, 0.0)), 1.0)
+	next_ambush = maxf(next_ambush, player.position.x + Cfg.W / 2.0)
+
+
 func clear_threats() -> void:
 	get_tree().call_group("hazard", "vanish")
 	get_tree().call_group("enemy", "vanish")
@@ -478,6 +490,10 @@ func _collect(delta: float) -> void:
 		if player.position.x < 60.0 + Cfg.W / 3.0:
 			return
 		enemies_started = true
+	if float(cd.get("ultra_grace", 0.0)) > 0.0:
+		cd["ultra_grace"] = maxf(0.0, float(cd["ultra_grace"]) - delta)
+		next_ambush = maxf(next_ambush, player.position.x + Cfg.W / 2.0)
+		return
 	_tick_horde(delta)
 	if scrolling and player.position.x >= next_ambush and next_ambush < arena_x - 300.0:
 		next_ambush += 520.0
@@ -836,6 +852,9 @@ func capture_boss_checkpoint() -> void:
 
 
 func save_current() -> bool:
+	if is_tutorial:
+		SaveGame.error = "El tutorial es práctica y no sobrescribe tu partida."
+		return false
 	if is_finaltop:
 		SaveGame.error = "FinalTop no se puede guardar."
 		return false

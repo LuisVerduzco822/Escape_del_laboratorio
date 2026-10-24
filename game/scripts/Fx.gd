@@ -115,3 +115,42 @@ func popup(parent: Node, text: String, pos: Vector2, color: Color = Color.WHITE)
 	tw.tween_property(l, "position:y", pos.y - 26, 0.9)
 	tw.tween_property(l, "modulate:a", 0.0, 0.9).set_delay(0.35)
 	tw.chain().tween_callback(l.queue_free)
+
+
+# Shared immutable sheets; effects live under the level, never the dying actor.
+const EFFECTS := {
+	"hit": [preload("res://assets/effects/pimen/hit.png"), 1, 5, 4, 20.0],
+	"mechanical": [preload("res://assets/effects/aim_studios/explosion_blue.png"), 3, 3, 9, 18.0],
+	"organic": [preload("res://assets/effects/aim_studios/explosion_green.png"), 4, 2, 8, 16.0],
+	"finale": [preload("res://assets/effects/aim_studios/boss_finale.png"), 10, 1, 10, 16.0],
+}
+var effect_frames: Dictionary = {}
+
+
+func impact(parent: Node2D, world_pos: Vector2, effect: String = "hit", effect_scale: float = 1.0) -> AnimatedSprite2D:
+	# Bound dense combat without suppressing the boss's finishing effect.
+	if parent.get_tree().get_nodes_in_group("sprite_effect").size() >= 32 and effect != "finale":
+		return null
+	if not effect_frames.has(effect):
+		var spec: Array = EFFECTS[effect]
+		var frames := SpriteFrames.new()
+		frames.set_animation_loop("default", false)
+		frames.set_animation_speed("default", spec[4])
+		var cell: Vector2 = spec[0].get_size() / Vector2(spec[1], spec[2])
+		for i in int(spec[3]):
+			var atlas := AtlasTexture.new()
+			atlas.atlas = spec[0]
+			atlas.region = Rect2(Vector2(i % int(spec[1]), i / int(spec[1])) * cell, cell)
+			frames.add_frame("default", atlas)
+		effect_frames[effect] = frames
+	var sprite := AnimatedSprite2D.new()
+	sprite.sprite_frames = effect_frames[effect]
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.scale = Vector2.ONE * effect_scale
+	sprite.z_index = 18
+	parent.add_child(sprite)
+	sprite.global_position = world_pos
+	sprite.add_to_group("sprite_effect")
+	sprite.animation_finished.connect(sprite.queue_free)
+	sprite.play()
+	return sprite

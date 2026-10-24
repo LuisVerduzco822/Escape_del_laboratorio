@@ -1,0 +1,15 @@
+Gamepad Inputs UI — 16x16 Minimal Gamepad Input Sprites
+Creator: Gimicko / GoncaloMCOliveira
+URL supplied with the assets: https://gimicko.itch.io/gamepad-inputs-ui
+Published pack page: https://goncalomcoliveira.itch.io/gamepad-inputs-ui
+License: CC0 1.0 Universal
+License reference: https://creativecommons.org/publicdomain/zero/1.0/
+
+The creator states that attribution is not required, but appreciated.
+Thank you for sharing these resources.
+
+This folder contains only the five original no-anti-aliasing PNG tilesets
+used by the game. Their image content is unchanged; unused pack files
+(individual tiles, alternative versions, previews and editor sources)
+are omitted. The game uses AtlasTexture regions from these tilesets. The atlas-region mapping lives
+in game/scripts/PadGlyphs.gd.

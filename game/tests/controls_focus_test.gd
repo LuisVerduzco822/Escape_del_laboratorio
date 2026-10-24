@@ -66,7 +66,7 @@ func _run() -> void:
 			controls.grab_focus()
 			controls.pressed.emit()
 			check(main.how_back.has_focus(), "Controls takes focus, cycle %d" % cycle)
-			check(main.how_back.find_next_valid_focus() == main.how_back, "Tab stays inside Controls")
+			check(main.how_panel.is_ancestor_of(main.how_back.find_next_valid_focus()), "Tab stays inside Controls")
 			main.how_back.pressed.emit()
 			check(not main.how_layer.visible and controls.has_focus(), "Back restores keyboard focus")
 		controls.pressed.emit()

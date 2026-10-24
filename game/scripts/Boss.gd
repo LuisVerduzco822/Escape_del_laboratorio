@@ -309,17 +309,26 @@ func _physics_process(delta: float) -> void:
 			position += Vector2(randf_range(-1.5, 1.5), randf_range(-1.5, 1.5))
 			boom_t -= delta
 			if boom_t <= 0.0:
-				boom_t = 0.14
+				boom_t = 0.22
 				var off := Vector2(randf_range(-radius, radius), randf_range(-radius, radius))
+				Fx.impact(get_parent(), global_position + off, "mechanical" if kind in [2, 3, 4] else "organic", 1.2)
 				Fx.burst(get_parent(), global_position + off, Color(1.0, randf_range(0.5, 1.0), 0.2), 12, 120.0, 0.6, 3.0)
 				AudioManager.sfx("boom", -6.0, randf_range(0.7, 1.2))
 			if st_t > 2.6:
+				Fx.impact(get_parent(), global_position, "finale", maxf(1.5, radius / 20.0))
+				Fx.shake(6.0, 0.35)
+				AudioManager.sfx("boom", -3.0, 0.65)
 				queue_free()
+	if st == St.DEAD:
+		blink_alpha = 1.0 - smoothstep(1.7, 2.6, st_t)
 	modulate = Color(1.8, 1.8, 1.8, blink_alpha) if flash > 0.0 else Color(1, 1, 1, blink_alpha)
 	queue_redraw()
 
 
 func _enter_fight() -> void:
+	# Un solo acento al completar la presentación, no al volver de cada fase.
+	if st == St.ENTER:
+		Fx.shake(3.5, 0.3)
 	st = St.FIGHT
 	st_t = 0.0
 	busy = false
@@ -399,6 +408,9 @@ func _phase_change(n: int) -> void:
 
 
 func _die() -> void:
+	if st == St.DEAD:
+		return
+	Fx.impact(get_parent(), global_position, "finale", 1.5)
 	abducting = false
 	_set_darkness(0.5)
 	hp = 0.0

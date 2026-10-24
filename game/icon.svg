@@ -1,6 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="20" fill="#2b2d42"/>
-  <circle cx="64" cy="52" r="26" fill="#f2b880"/>
-  <rect x="34" y="78" width="60" height="34" rx="10" fill="#6a7ba2"/>
-  <circle cx="64" cy="52" r="26" fill="none" stroke="#8d99ae" stroke-width="4"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <title>Escape del Laboratorio</title>
+  <desc>Vial de antídoto verde y destello amarillo sobre una placa azul oscuro en pixel art.</desc>
+  <path fill="#080f20" d="M8 2h48v4h4v4h2v44h-2v6h-6v2H10v-2H4v-6H2V10h2V6h4z"/>
+  <path fill="#18324b" d="M10 6h44v4h4v42h-4v6H10v-4H6V12h4z"/>
+  <path fill="#102238" d="M10 10h44v42h-4v2H10z"/>
+  <path fill="#24516a" d="M12 12h12v2H14v10h-2zm38 28h2v10H40v-2h10z"/>
+  <path fill="#050c18" d="M24 10h16v12h-2v4l8 8v18h-4v4H20v-4h-4V34l10-10v-2h-2z"/>
+  <path fill="#ffcf55" d="M26 12h12v6H26z"/>
+  <path fill="#e58c36" d="M26 16h12v4H26z"/>
+  <path fill="#a9f3ec" d="M28 22h8v6l8 8v14h-4v4H22v-4h-4V36l10-10z"/>
+  <path fill="#468eab" d="M34 24h2v4l8 8v14h-4v4H24v-2h14v-4h2V36l-6-6z"/>
+  <path fill="#37ce79" d="M22 36h18v12h-4v2H24v-2h-2z"/>
+  <path fill="#a3f76b" d="M22 36h18v4H22z"/>
+  <path fill="#159c77" d="M36 40h4v8h-4v2H24v-2h12z"/>
+  <path fill="#effff1" d="M22 32h4v4h-4zm0 8h2v6h-2z"/>
+  <path fill="#d7ff9a" d="M28 42h4v4h-4zm6-10h2v2h-2z"/>
+  <path fill="#080f20" d="M48 12h4v6h6v4h-6v6h-4v-6h-6v-4h6z"/>
+  <path fill="#ffdc70" d="M48 14h2v6h6v2h-6v6h-2v-6h-6v-2h6z"/>
 </svg>

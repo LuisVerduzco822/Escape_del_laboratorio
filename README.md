@@ -1,5 +1,9 @@
 # Escape del Laboratorio
 
+<img src="game/icon.svg" alt="Ícono de Escape del Laboratorio: vial de antídoto en pixel art" width="96" height="96">
+
+**El virus se propaga. La cura depende de ti.**
+
 Juego de acción 2D hecho en Godot 4. Un virus escapó del laboratorio: sobrevive a las oleadas de enemigos,
 recolecta los ingredientes del antídoto, derrota a un jefe en cada uno de los 5 niveles y fabrica la cura.
 
@@ -7,6 +11,18 @@ Práctica 4: conexión a una base de datos. Todo lo que hace el jugador se guard
 **leaderboard** y un **panel web local** para consultar la información.
 
 **Repositorio público:** https://github.com/LuisVerduzco822/Escape_del_laboratorio
+
+## Identidad del proyecto
+
+- **Nombre:** Escape del Laboratorio.
+- **Descripción corta:** Ábrete paso por cinco zonas, reúne los ingredientes y derrota a cinco jefes para fabricar el antídoto antes de que se agote el tiempo.
+- **Género:** acción y plataformas 2D, para un jugador, con estética pixel art.
+- **Etiquetas en Godot:** `2d`, `action`, `pixel-art`, `platformer`, `single-player`.
+- **Ícono:** vial de antídoto verde, cristal cian y destello amarillo sobre azul oscuro. El original editable está en [game/icon.svg](game/icon.svg); [game/icon.png](game/icon.png) es la versión de 256 × 256 y [game/icon.ico](game/icon.ico) contiene tamaños de 16 a 256 píxeles para Windows.
+
+El nombre, la descripción, las etiquetas y las rutas de los íconos se configuran en
+`game/project.godot`, dentro de `[application]`. El ICO está asignado como ícono nativo de Windows;
+al preparar una exportación, usa también estos recursos en las opciones de ícono de su preset.
 
 ## Arquitectura
 ```
@@ -62,7 +78,7 @@ con una cuenta atrás de tres segundos durante la cual el juego está detenido.
 - Los estados detallados se guardan **en este equipo**, tanto para invitados como para cuentas, separados por
   servidor y usuario (`user://resume_*.save`). El progreso entre niveles de las cuentas sigue en PostgreSQL.
   Si no hay un estado detallado válido, CONTINUAR usa el guardado entre niveles anterior.
-- Empezar con **JUGAR** reemplaza el guardado anterior. Se crea un punto de continuación al entrar a cada nivel;
+- Empezar con **NUEVA PARTIDA** reemplaza el guardado anterior. Se crea un punto de continuación al entrar a cada nivel;
   al derrotar al jefe se descarta su checkpoint y al terminar el juego se limpia el guardado.
 
 Prueba del sistema de guardado en PowerShell, desde la raíz del repositorio (ajusta la ruta de Godot):
@@ -82,6 +98,164 @@ La prueba exige esa carpeta de datos aislada y no usa partidas reales ni requier
 
 Si ya usaste una versión anterior del juego y quieres empezar limpio:
 **[docs/LIMPIAR_JUEGO_ANTERIOR.md](docs/LIMPIAR_JUEGO_ANTERIOR.md)**.
+
+## Controles personalizables
+
+Abre **CONTROLES** desde el menú principal o la pausa. En **TECLADO**, selecciona una
+casilla y pulsa la nueva tecla o botón del mouse. Cada acción admite hasta tres entradas por dispositivo
+(teclado/mouse y mando se guardan por separado).
+**Esc** cancela la captura; **Retroceso** borra la entrada seleccionada. Siempre debes conservar
+al menos una entrada por acción, salvo el apuntado horizontal independiente, que es opcional. Las entradas ocupadas muestran el conflicto sin sobrescribir otra acción.
+
+Movimiento y apuntado usan teclas; salto/parry, disparo, súper/ultra, dash, fijar posición y pausa
+admiten teclas o botones izquierdo, derecho, central y laterales del mouse. No se admiten la rueda
+ni combinaciones de teclas. **Esc** permanece fijo para pausar, volver o cancelar; **F11** y
+**Alt+Enter** conservan pantalla completa. **T**, **F8** y **F9** se reservan para los atajos existentes.
+Retroceso se reserva para borrar durante la captura. La navegación de menús conserva sus teclas habituales.
+
+**MECANICAS** explica apuntado, doble salto, descenso de plataformas, parry, dash, súper y ultra.
+Parry comparte la acción de salto; súper y ultra comparten una acción según la energía disponible
+(50 y 100). El tutorial y el indicador de súper muestran la primera entrada del dispositivo que estés usando.
+Usa Tab para recorrer la pantalla y la rueda o Re Pág / Av Pág para desplazar las explicaciones;
+al enfocar el área de mecánicas también puedes usar arriba y abajo. Al llegar a los límites del
+texto, arriba/abajo permite salir hacia las pestañas o los botones inferiores. Las flechas y el D-Pad
+navegan por filas y columnas, conservando la columna más cercana al subir/bajar; izquierda/derecha
+se mantiene en la misma fila. Tab y Mayús+Tab recorren los controles en orden dentro de la pantalla.
+
+Los cambios se guardan automáticamente en `user://controls.cfg`, por equipo y compartidos entre
+cuentas e invitados. **RESTAURAR** pide una segunda pulsación y recupera las asignaciones originales.
+Si el archivo de configuración es inválido, el juego usa los controles originales.
+
+Prueba aislada en Linux, sin tocar los controles del usuario:
+
+```bash
+XDG_DATA_HOME=/tmp/escape-controls-tests godot --headless --path game --script res://tests/controls_rebind_test.gd
+```
+
+### Prioridad de entradas e íconos
+
+Las ayudas e íconos siguen al origen que tiene el control: **teclado y ratón como un grupo**, o
+**cada mando por separado**. Se mantienen incluso al dejar de pulsar botones; cambian cuando otro
+origen toma el control. Mientras el actual mantenga una tecla/botón, un stick o gatillo activo,
+las otras entradas no interrumpen el movimiento, apuntado, salto ni los ataques del personaje.
+Las entradas que siguen activas esperan por orden de llegada y se transfieren al ceder el anterior.
+Una pulsación que ya terminó se descarta, de modo que un teclazo accidental no se reproduce después.
+
+El movimiento del ratón mantiene la prioridad durante 180 ms desde su último desplazamiento,
+para evitar cambios entre eventos. Se ignora ruido de menos de un píxel. Los sticks reclaman
+el control a partir de 35% del recorrido y se consideran liberados al bajar a 25%, evitando
+cambios por pequeñas fluctuaciones. Esc/Start conserva su función de pausa desde cualquier origen;
+la navegación de menús sigue disponible. Perder el foco limpia las entradas retenidas.
+
+Prueba de prioridad, cola de mandos y entradas simultáneas sobre el personaje real:
+
+```bash
+XDG_DATA_HOME=/tmp/escape-controls-ownership-tests godot --headless --fixed-fps 60 --path game --script res://tests/input_ownership_test.gd
+```
+
+### Teclado y ratón con captura
+
+En **CONTROLES → TECLADO → MODO**, elige **SOLO TECLADO** (comportamiento anterior) o
+**TECLADO + RATÓN**. La elección se guarda automáticamente. El modo de ratón captura y oculta el
+cursor únicamente durante el juego activo. La mira en cruz es un cursor virtual que recorre toda
+la pantalla y se detiene en sus bordes. El personaje mira y apunta hacia su posición. Al detener el
+ratón, la mira se queda en ese punto de la pantalla; caminar o desplazar la cámara actualiza el
+ángulo del arma hacia ella. Pausar conserva su posición para continuar. Se usa movimiento relativo de pantalla
+para mantener la respuesta independiente del escalado de ventana, siguiendo la
+[recomendación de Godot](https://docs.godotengine.org/en/stable/classes/class_inputeventmousemotion.html#class-inputeventmousemotion-property-screen-relative).
+
+Asignaciones iniciales de **TECLADO + RATÓN**:
+
+| Entrada | Acción |
+|---|---|
+| Ratón | Apuntar en cualquier ángulo |
+| Clic izquierdo | Disparar |
+| Clic derecho | Súper / ultra |
+| A / D o flechas izquierda/derecha | Movimiento horizontal |
+| Espacio / Z | Salto y parry |
+| Mayús / L | Dash |
+| Ctrl / I | Fijar posición |
+| S / abajo + salto | Bajar de plataformas |
+| Esc / P | Pausar y liberar el cursor |
+
+El cursor queda libre en menús, controles, pausa, derrota y transiciones. Continuar recaptura el
+ratón sin disparar por el clic usado en el menú. Cambiar de ventana pausa y libera el cursor;
+al regresar debes continuar la partida. Los sticks del mando siguen disponibles y mover el ratón
+recupera su apuntado. El tutorial adapta su lección de apuntado al modo seleccionado.
+
+Los perfiles de botones del ratón se guardan por separado: cambiar de modo conserva las teclas,
+el mando y las asignaciones del otro perfil. Puedes reasignar los botones del perfil activo.
+Si una acción ya ocupa sus tres casillas con teclas, libera una casilla para añadir el botón del
+perfil de ratón. **RESTAURAR** devuelve las asignaciones originales de ambos perfiles y mantiene
+el modo seleccionado.
+
+Prueba aislada:
+
+```bash
+XDG_DATA_HOME=/tmp/escape-controls-mouse-tests godot --headless --fixed-fps 60 --path game --script res://tests/mouse_aim_test.gd
+```
+
+### Apuntado gradual con teclado
+
+Mantén **FIJAR POSICIÓN** con su tecla asignada y pulsa una dirección: el arma gira a 120°/s
+hasta alcanzar esa dirección (por ejemplo, derecha + arriba apunta a 45°). Las pulsaciones cortas
+permiten elegir ángulos intermedios. Al soltar las direcciones, conserva el ángulo mientras sigas
+fijando posición; al soltar FIJAR POSICIÓN recupera el apuntado directo habitual.
+Los disparos y el súper siguen la dirección visible del arma. El mando conserva la respuesta
+inmediata, incluso si mantienes la tecla de fijar posición a la vez que usas el stick.
+
+### Mando / gamepad
+
+**CONTROLES → MANDO → ICONOS** permite elegir **Auto, Xbox, PlayStation, Nintendo o Genérico**.
+Auto usa el nombre del mando activo (o el primero conectado); si no lo reconoce, muestra botones
+por posición. La selección manual se guarda en `user://controls.cfg` y solo cambia la presentación.
+Es útil cuando un adaptador o controlador virtual reporta un mando como XInput de otra marca.
+Los botones de asignación, el indicador de súper, la confirmación de la introducción y las ayudas
+del tutorial (incluido Omitir) usan los sprites 16 × 16
+sin suavizado del pack Gamepad Inputs UI. Las direcciones de sticks conservan texto junto al ícono;
+los tooltips identifican las entradas. Cambiar los íconos conserva las teclas y asignaciones del mando.
+
+
+En **CONTROLES → MANDO** puedes reasignar botones, clics de sticks, gatillos y cada dirección de
+los sticks o del D-Pad. Estas asignaciones se aplican a cualquier mando reconocido por Godot;
+los íconos corresponden al tipo de mando seleccionado.
+
+| Acción | Asignación inicial |
+|---|---|
+| Mover izquierda/derecha | Stick izquierdo horizontal o D-Pad izquierda/derecha |
+| Apuntar independientemente | Stick derecho |
+| Apuntar arriba/abajo | También stick izquierdo vertical y D-Pad arriba/abajo |
+| Saltar / parry | A / ✕ o X / □ |
+| Disparar | RT / R2 |
+| Dash | B / ○ o RB / R1 |
+| Súper / ultra | LT / L2 o Y / △ |
+| Fijar posición | LB / L1 |
+| Pausa | Start / Options (fijo) |
+
+El apuntado horizontal independiente también aparece como dos acciones opcionales en **TECLADO**.
+El stick izquierdo permite apuntar arriba/abajo y en diagonal al moverte, igual que el D-Pad.
+El stick derecho tiene prioridad para apuntar independientemente del movimiento.
+El stick tiene una zona muerta de 25%; durante la reasignación hay que superar 65% del recorrido.
+Los ejes que ya estaban inclinados al abrir una captura deben volver al centro antes de asignarse.
+Esto usa las acciones y zonas muertas nativas de [Godot 4.7](https://docs.godotengine.org/en/4.7/tutorials/inputs/controllers_gamepads_joysticks.html).
+
+En menús, **A/✕** acepta, **B/○** vuelve y el D-Pad o el stick izquierdo navegan.
+En el texto introductorio, **A/✕** revela el texto y una segunda pulsación continúa.
+Durante una captura, **Start/Options** cancela y **View/Select** borra la entrada;
+B/○ queda disponible para asignarse. View/Select también omite el tutorial.
+Start/Options, View/Select y el botón Guía conservan sus funciones y no se reasignan.
+Al desconectar el mando activo durante una partida se pausa el juego.
+
+Las configuraciones anteriores de teclado conservan sus teclas y reciben automáticamente las
+asignaciones iniciales del mando. Los valores originales de la primera versión del mando
+se actualizan para incluir apuntado vertical con el stick izquierdo y X/□ como salto; las
+asignaciones personalizadas se conservan. **RESTAURAR** restablece ambos apartados.
+
+Pruebas de mando con eventos simulados y acciones reales del jugador:
+
+```bash
+XDG_DATA_HOME=/tmp/escape-controls-gamepad-tests godot --headless --fixed-fps 60 --path game --script res://tests/gamepad_test.gd
+```
 
 ## Qué se guarda en la base de datos
 | Dato | Dónde |
@@ -111,13 +285,14 @@ partidas completadas, porque un tiempo corto en una partida perdida no es un ré
 | Exportar | administrador | CSV de jugadores, partidas, eventos y coleccionables. |
 
 ## Cómo se juega
-**JUGAR** inicia la partida directamente en el nivel 1 después de la introducción. El botón **TUTORIAL**,
-junto a JUGAR en el menú, abre el **nivel 0: Protocolo de evacuación**, un recorrido de práctica
+**NUEVA PARTIDA** inicia la partida directamente en el nivel 1 después de la introducción. El botón **TUTORIAL**,
+debajo de Continuar / Nueva partida en el menú, abre el **nivel 0: Protocolo de evacuación**, un recorrido de práctica
 integrado en el laboratorio. Enseña movimiento, salto, disparo, apuntado fijo, dash, parry, súper, ultra
 y recogida de compuestos, seguido de una prueba que combina las acciones. Cada instrucción permanece
 hasta completar su ejercicio. No recibes daño y la práctica no suma tiempo, puntos ni ingredientes a la
-partida. Puedes omitirla con **T** o con el botón **OMITIR**, y guardar y continuar desde la lección actual.
-Al terminar u omitir el tutorial comienza el nivel 1 con los recursos iniciales.
+partida. Puedes omitirla con **T** o con el botón **OMITIR**, sin registrar una partida ni sobrescribir el guardado de la historia.
+Al terminar, omitir o salir del tutorial, vuelves al menú si ya hay una partida guardada;
+si no la hay, comienza el nivel 1 con los recursos iniciales. El tutorial no permite guardar.
 
 Cada nivel tiene dos fases continuas, sin volver al menú:
 
@@ -194,8 +369,12 @@ También se registra la **mejor racha** (mayor tiempo seguido sin recibir daño)
 
 Al morir, el personaje se tiñe de verde, tiembla y se desploma hacia atrás, resaltado por un aura y partículas
 de veneno. Si estaba en el aire, cae sobre
-el suelo o una plataforma y permanece acostado hasta la pantalla de derrota. Los controles se consultan
-desde el menú; durante la partida se evitan los mensajes repetidos de instrucciones y recogida de ayudas.
+el suelo o una plataforma y permanece acostado hasta la pantalla de derrota. Durante la partida, una franja compacta en la esquina inferior derecha recuerda salto, disparo,
+dash, fijar posición y pausa. Muestra las teclas reasignadas, botones de ratón con el lado resaltado
+o íconos del mando activo, respetando la prioridad de entrada. El botón de súper aparece siempre
+junto a su barra; al estar disponible se marca LISTO o ULTRA. La guía se oculta en el tutorial,
+las entradas de jefe y al morir, donde ya hay instrucciones o transiciones. Las explicaciones
+completas siguen en CONTROLES.
 
 ### Controles
 | Acción | Teclas |
@@ -213,6 +392,9 @@ desde el menú; durante la partida se evitan los mensajes repetidos de instrucci
 
 **Parry:** salta y pulsa Saltar otra vez en el aire sobre un objeto **rosa** (son inofensivos al contacto).
 **Súper:** con 50 de barra, rayo perforante; con 100, un Ultra que borra proyectiles y enemigos.
+Durante la recolección, el Ultra cancela la horda pendiente y da cinco segundos sin nuevas
+amenazas, incluidas emboscadas. El tiempo restante se conserva al pausar o guardar.
+Durante la entrada del jefe, se bloquean las acciones del jugador pero la gravedad lo hace aterrizar.
 
 ## Pruebas realizadas
 - **Entrada a los jefes:** `game/tests/boss_entrance_test.gd` cruza las tres arenas caminando y en el aire,
@@ -225,7 +407,7 @@ desde el menú; durante la partida se evitan los mensajes repetidos de instrucci
   `godot --headless --path game --script res://tests/boss_distance_test.gd`.
 - **Tutorial y arranque del nivel 1:** `game/tests/tutorial_test.gd` comprueba el umbral de movimiento,
   las lecciones con entradas y colisiones reales, la recarga tras fallar el súper, el guardado compatible
-  con versiones anteriores, la continuación del tutorial y la transición al nivel 1 al omitirlo.
+  con versiones anteriores, la conservación de la campaña, el foco y ancho del menú y las salidas del tutorial.
   Se ejecuta con `APPDATA` aislado como en la prueba de guardado:
   `godot --headless --fixed-fps 60 --path game --script res://tests/tutorial_test.gd`.
 - **Recorridos horizontales:** `game/tests/scrolling_level_test.gd` recorre los tres niveles con entradas reales
@@ -252,10 +434,39 @@ docker-compose.yml
 ```
 
 ## Créditos y licencias
+
+- Íconos de mando: **Gamepad Inputs UI**, de **Gimicko / GoncaloMCOliveira**, CC0 1.0 Universal.
+  [Página proporcionada por el autor del proyecto](https://gimicko.itch.io/gamepad-inputs-ui) ·
+  [Página publicada del pack](https://goncalomcoliveira.itch.io/gamepad-inputs-ui).
+  Los cinco tilesets utilizados están en `game/assets/ui/gamepad/`, junto con `CREDITS.txt`;
+  el juego usa sus regiones sin anti-aliasing. Se omitió el material del pack que no se utiliza. La atribución también aparece en Controles → Mecánicas.
 - Lanzallamas (`game/assets/weapons/Flamethrower.png`): Player 24 (MainMenuMaster), [2D Pixel Art Weapon Pack – Melee & Modern Arsenal](https://mainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb). Recurso proporcionado por el autor del proyecto; la página del pack no especifica una licencia.
 - Fondos, sprite de bola de fuego y fuente Press Start 2P (SIL OFL 1.1): proporcionados por el autor.
 - Pack Modern Interiors Free v2.2 (personaje Adam): uso no comercial.
-- Capas de parallax, jefes, efectos y música: generados para este proyecto.
+- Capas de parallax, jefes, partículas procedurales y música: generados para este proyecto.
+- Efectos animados: **Battle Effects**, de **pimen**, [fuente](https://pimen.itch.io/pixel-battle-effects),
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). `Effect 2 - Sprite Sheet.png` se copia sin modificar
+  como `game/assets/effects/pimen/hit.png`; se seleccionan sus cuatro cuadros activos y se ajustan escala/velocidad.
+  Atribución y enlace de licencia en el menú **CRÉDITOS** y junto al PNG. Conservar estos avisos al distribuir.
+- Explosiones: **Explosions - Pixel Art**, de **Aim studios**, [fuente](https://aim-studios.itch.io/explosions-pixel-art),
+  [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). Tres PNG originales, renombrados,
+  en `game/assets/effects/aim_studios/`; se ajustan escala/velocidad. Crédito voluntario en el juego y en
+  `game/assets/effects/CREDITS.txt`. Las licencias de recursos no cambian la licencia del código.
+
+### Selección de efectos de combate
+
+- Robots, drones y bolas de fuego: explosión azul compacta. Murciélagos y esporas: explosión verde orgánica.
+- Daño no letal a enemigos y golpes aceptados por el jugador: destello dorado corto; la invulnerabilidad evita repetirlo.
+- Jefes: explosiones escalonadas, cuerpo que se desvanece y una explosión final grande antes de la transición.
+- Animaciones compartidas, filtro nearest y máximo de 32 efectos simultáneos (el remate del jefe siempre se muestra).
+  Los efectos pertenecen al nivel: sobreviven al enemigo y se eliminan al terminar o cambiar de nivel.
+- Se compararon también Sentient Dream Studio, Arcade VFX Lite y Free Effects for Platformer. Los dos primeros
+  prohíben redistribuir sus recursos por separado; no se copiaron al contenido utilizado por este repositorio público.
+  Free Effects for Platformer remite a [CraftPix](https://craftpix.net/file-licenses/), cuya licencia permite juegos
+  personales/comerciales pero limita la redistribución de archivos de arte. No se incorporó material de esos tres packs.
+  `game/assets/tmp/.gdignore` mantiene el material de evaluación fuera de la importación/exportación de Godot
+  y `.gitignore` excluye sus archivos del control de versiones;
+  no incluir esa carpeta en entregas de código o paquetes de recursos.
 
 
 ## Nivel 4 y modo FINALTOP
@@ -342,20 +553,21 @@ Si el jugador pulsa salto hasta 0.10 s *antes* de poder saltar (por ejemplo just
 Tras salir del borde de una plataforma se puede saltar como si aún se estuviera en el suelo (no gasta el salto doble). Pasados 0.09 s, la pulsación se convierte en salto doble.
 
 ### 3. Screenshake (vibración de cámara)
+La cámara se sacude al recibir daño, al terminar la presentación del jefe (3.5 px, 0.3 s), en sus impactos contra el suelo, cambios de fase y derrota, y con especiales o bombas. Saltar, caer, el tajo automático, romper cajas y la activación de zonas de peligro conservan sus efectos locales sin sacudir toda la pantalla.
+
+Prueba de regresión: `XDG_DATA_HOME=/tmp/escape-shake.save-check godot --headless --fixed-fps 60 --path game --script res://tests/screen_shake_test.gd`.
+
 `Fx.shake(amplitud_px, duración_s)` desplaza la cámara con un desplazamiento aleatorio de hasta *amplitud* píxeles (en la resolución 480x270 del juego) que se apaga al cumplirse la duración. Si llegan varios temblores a la vez se conserva el más fuerte.
 
 | Momento | Amplitud | Duración |
 |---|---|---|
 | Recibir daño | 3.0 px | 0.25 s |
-| Aterrizaje fuerte (caída a más de 300 px/s) | 1.5–2.9 px según la velocidad | 0.14 s |
-| Tajo de espada al aterrizar tras el salto doble | 2.0 px | 0.15 s |
+| Presentación del jefe completada | 3.5 px | 0.30 s |
 | Super | 2.5 px | 0.20 s |
 | Ultra | 4.0 px | 0.60 s |
-| Zona de ataque del jefe al impactar | 2.5 px | 0.25 s |
 | Impacto/embestida del jefe | 5.0 px | 0.40 s |
 | Cambio de fase del jefe | 4.0 px | 0.60 s |
 | Bomba al jefe | 3.0 px | 0.30 s |
-| Romper una caja azul | 1.5 px | 0.12 s |
 | Derrotar al jefe | 5.0 px | 0.80 s |
 
 ### 4. Feedback visual, sonoro y de interfaz
@@ -368,7 +580,7 @@ Tras salir del borde de una plataforma se puede saltar como si aún se estuviera
 | Compuestos / vidas / power-ups | Estallido de partículas del color del objeto, texto flotante («+1 VIDA», «DISPARO X3», nombre del compuesto), sonido propio |
 | Salto doble | Vueltereta con estela, anillo de aire bajo los pies, sonido más agudo |
 | Espada del salto doble | Corte con arco luminoso, *hit-stop* corto (0.04 s) y chispas por cada enemigo cortado |
-| Aterrizaje fuerte | Polvo, golpe sordo (volumen según la velocidad) y temblor |
+| Aterrizaje fuerte | Polvo y golpe sordo (volumen según la velocidad) |
 | Ultra / jefe vencido | Destello blanco, *hit-stop* (0.18 s y 0.35 s) y temblor |
 | Ambiente | Pasada de acabado (bloom, viñeta y color), balas con estela de neón y halo que late al compás, destello de pantalla a 120 bpm, zonas de ataque con aviso pulsante |
 | Interfaz | Mensajes grandes («¡ADVERTENCIA!», «ELIMINA A LOS ENEMIGOS: N»), barras de vida/super, contador del jefe y del reloj |
