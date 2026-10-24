@@ -9,6 +9,8 @@ const DEBUG_KEYS := false
 const ING_TOTAL := 15
 # Las pruebas automáticas de recorrido lo apagan para no tener que saltar cada caja.
 var boxes_enabled := true
+# Guía de botones en pantalla (barra inferior derecha y tecla junto a SUPER). Apagada por defecto.
+var show_key_hints := false
 const ENEMY_INTERVAL := 0.72   # menor = más enemigos (los intervalos de aparición se multiplican por esto)
 
 # Opening cadence after the introduction; level 1 also waits for W/3 forward travel.
