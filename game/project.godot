@@ -15,10 +15,12 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Escape del Laboratorio"
-config/description="Run and gun: recolecta ingredientes, derrota a 5 jefes y fabrica el antidoto."
+config/description="El virus se propaga. La cura depende de ti. Ábrete paso por cinco zonas, reúne 15 ingredientes y derrota a cinco jefes para fabricar el antídoto antes de que se agote el tiempo. Una aventura de acción y plataformas 2D con estética pixel art, mejoras y clasificación en línea."
+config/tags=PackedStringArray("2d", "action", "pixel-art", "platformer", "single-player")
 run/main_scene="res://scenes/LoginScreen.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
+config/windows_native_icon="res://icon.ico"
 
 [autoload]
 

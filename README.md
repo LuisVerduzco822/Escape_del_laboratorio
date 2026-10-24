@@ -1,5 +1,9 @@
 # Escape del Laboratorio
 
+<img src="game/icon.svg" alt="Ícono de Escape del Laboratorio: vial de antídoto en pixel art" width="96" height="96">
+
+**El virus se propaga. La cura depende de ti.**
+
 Juego de acción 2D hecho en Godot 4. Un virus escapó del laboratorio: sobrevive a las oleadas de enemigos,
 recolecta los ingredientes del antídoto, derrota a un jefe en cada uno de los 5 niveles y fabrica la cura.
 
@@ -7,6 +11,18 @@ Práctica 4: conexión a una base de datos. Todo lo que hace el jugador se guard
 **leaderboard** y un **panel web local** para consultar la información.
 
 **Repositorio público:** https://github.com/LuisVerduzco822/Escape_del_laboratorio
+
+## Identidad del proyecto
+
+- **Nombre:** Escape del Laboratorio.
+- **Descripción corta:** Ábrete paso por cinco zonas, reúne los ingredientes y derrota a cinco jefes para fabricar el antídoto antes de que se agote el tiempo.
+- **Género:** acción y plataformas 2D, para un jugador, con estética pixel art.
+- **Etiquetas en Godot:** `2d`, `action`, `pixel-art`, `platformer`, `single-player`.
+- **Ícono:** vial de antídoto verde, cristal cian y destello amarillo sobre azul oscuro. El original editable está en [game/icon.svg](game/icon.svg); [game/icon.png](game/icon.png) es la versión de 256 × 256 y [game/icon.ico](game/icon.ico) contiene tamaños de 16 a 256 píxeles para Windows.
+
+El nombre, la descripción, las etiquetas y las rutas de los íconos se configuran en
+`game/project.godot`, dentro de `[application]`. El ICO está asignado como ícono nativo de Windows;
+al preparar una exportación, usa también estos recursos en las opciones de ícono de su preset.
 
 ## Arquitectura
 ```
