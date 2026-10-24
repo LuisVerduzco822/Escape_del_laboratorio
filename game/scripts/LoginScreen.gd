@@ -24,6 +24,7 @@ var server_revision := 0
 var server_debounce: Timer
 var navigation_content: Control
 var offline_dialog: ConfirmationDialog
+var keyboard_height := -1.0
 
 
 func _ready() -> void:
@@ -152,6 +153,13 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD) and DisplayServer.virtual_keyboard_get_height() > 0:
+			DisplayServer.virtual_keyboard_hide()
+		elif is_instance_valid(offline_dialog) and offline_dialog.visible:
+			offline_dialog.hide()
+		elif not choosing:
+			_show_choices()
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		AudioManager.quit_game()
 
@@ -222,6 +230,8 @@ func _field(placeholder: String, secret: bool) -> LineEdit:
 	var e := LineEdit.new()
 	e.placeholder_text = placeholder
 	e.secret = secret
+	e.virtual_keyboard_enabled = true
+	e.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_PASSWORD if secret else LineEdit.KEYBOARD_TYPE_DEFAULT
 	e.secret_character = "*"
 	e.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	e.max_length = 32
@@ -378,3 +388,17 @@ func _input(_event: InputEvent) -> void:
 	GameManager.observe_input(_event)
 	if not offline_dialog.visible:
 		UI.wire_focus_rows(navigation_content, [[server_edit]])
+
+
+func _process(_delta: float) -> void:
+	if not is_instance_valid(navigation_content) or not DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+		return
+	var physical_height := DisplayServer.virtual_keyboard_get_height()
+	var height := float(physical_height) / maxf(1.0, get_viewport().get_screen_transform().get_scale().y)
+	if height == keyboard_height:
+		return
+	keyboard_height = height
+	navigation_content.offset_bottom = -maxf(4, height)
+	var field := get_viewport().gui_get_focus_owner()
+	if field != null and navigation_content.is_ancestor_of(field):
+		(navigation_content as ScrollContainer).ensure_control_visible.call_deferred(field)

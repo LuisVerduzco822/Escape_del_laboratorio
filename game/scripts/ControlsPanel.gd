@@ -19,6 +19,7 @@ var glyph_picker: OptionButton
 var displayed_family := ""
 var mechanics_source := ""
 var body: VBoxContainer
+var touch_page := false
 
 
 func _ready() -> void:
@@ -43,6 +44,7 @@ func _ready() -> void:
 	body.add_child(tabs)
 	_button(tabs, "TECLADO", func(): _select_device(false))
 	_button(tabs, "MANDO", func(): _select_device(true))
+	_button(tabs, "TACTIL", _show_touch)
 	_button(tabs, "MECANICAS", func(): _show_page(true))
 	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -85,6 +87,7 @@ func _text(text: String) -> void:
 
 
 func _show_page(show_mechanics: bool) -> void:
+	touch_page = false
 	cancel_capture()
 	confirm_restore = false
 	mechanics = show_mechanics
@@ -220,6 +223,15 @@ func handle_input(event: InputEvent) -> bool:
 
 
 func _restore() -> void:
+	if touch_page:
+		if not confirm_restore:
+			confirm_restore = true
+			status.text = "Pulsa RESTAURAR otra vez para restablecer solo el tactil."
+			return
+		var result := GameManager.set_touch_settings("auto", 1.0, 0.7)
+		_show_touch()
+		status.text = "Tactil restaurado." if result == OK else "No se pudo guardar."
+		return
 	if not confirm_restore:
 		confirm_restore = true
 		status.text = "Pulsa RESTAURAR otra vez para recuperar los controles originales."
@@ -331,4 +343,49 @@ func _mechanics_text() -> String:
 
 
 func _hint_source() -> String:
-	return str(GameManager.last_input_pad) + GameManager.gamepad_glyph_family()
+	return str(GameManager.last_input_pad) + str(GameManager.is_touch_active()) + GameManager.gamepad_glyph_family()
+
+
+func _show_touch() -> void:
+	pad_page = false
+	_show_page(false)
+	touch_page = true
+	for child in rows.get_children():
+		rows.remove_child(child)
+		child.queue_free()
+	_text("Stick izquierdo: mover. Abajo + SALTO: bajar de plataformas.\nArrastra APUNTAR para orientar el arma y activar fuego continuo. TIRO lo enciende o apaga. SALTO y DASH quedan libres para el otro pulgar. FIJAR alterna la posicion fija.\nSUPER usa media barra; con la barra llena activa ULTRA. Pausar apaga TIRO y libera todos los controles.")
+	var picker := OptionButton.new()
+	picker.add_theme_font_size_override("font_size", 8)
+	for label in ["AUTOMATICO", "ACTIVADO", "DESACTIVADO"]:
+		picker.add_item(label)
+	picker.select(["auto", "on", "off"].find(GameManager.touch_visibility))
+	rows.add_child(picker)
+	picker.item_selected.connect(func(index: int):
+		var result := GameManager.set_touch_settings(["auto", "on", "off"][index], GameManager.touch_size, GameManager.touch_opacity)
+		picker.select(["auto", "on", "off"].find(GameManager.touch_visibility))
+		status.text = "Visibilidad guardada." if result == OK else "No se pudo guardar."
+	)
+	_touch_slider("TAMANO", 0.85, 1.15, GameManager.touch_size, true)
+	_touch_slider("OPACIDAD", 0.35, 1.0, GameManager.touch_opacity, false)
+	status.text = "Automatico: aparece con pantalla tactil; se oculta al usar mando."
+
+
+func _touch_slider(label: String, minimum: float, maximum: float, value: float, is_size: bool) -> void:
+	var row := HBoxContainer.new()
+	rows.add_child(row)
+	var title := Label.new()
+	title.text = label
+	title.custom_minimum_size.x = 110
+	title.add_theme_font_size_override("font_size", 8)
+	row.add_child(title)
+	var slider := HSlider.new()
+	slider.min_value = minimum
+	slider.max_value = maximum
+	slider.step = 0.05
+	slider.value = value
+	slider.custom_minimum_size = Vector2(210, 26)
+	row.add_child(slider)
+	slider.value_changed.connect(func(next: float):
+		var result := GameManager.set_touch_settings(GameManager.touch_visibility, next if is_size else GameManager.touch_size, GameManager.touch_opacity if is_size else next)
+		status.text = "Ajuste guardado." if result == OK else "No se pudo guardar."
+	)

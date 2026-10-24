@@ -85,6 +85,10 @@ func _ready() -> void:
 	GameManager.controller_disconnected.connect(_controller_disconnected)
 	_build_fade()
 	_show_menu()
+	var touch_layer := _layer(15)
+	var touch := preload("res://scripts/TouchControls.gd").new()
+	touch.main = self
+	touch_layer.add_child(touch)
 
 
 func _layer(n: int) -> CanvasLayer:
@@ -427,13 +431,15 @@ func _quit() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_android_back()
+	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		window_focused = false
 		GameManager.clear_input_activity()
 		GameManager.set_mouse_gameplay(false)
 		if in_game and not busy and not get_tree().paused:
 			_set_pause(true)
-	elif what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
+	elif what == NOTIFICATION_WM_WINDOW_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:
 		window_focused = true
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		await Telemetry.finish(false)
@@ -475,6 +481,7 @@ func _hide_how() -> void:
 
 
 func _clear_level() -> void:
+	GameManager.reset_touch()
 	GameManager.set_mouse_gameplay(false)
 	GameManager.reset_mouse_cursor()
 	Fx.reset()
@@ -798,6 +805,7 @@ func _restart_level() -> void:
 
 
 func _set_pause(on: bool) -> void:
+	GameManager.reset_touch()
 	if on:
 		GameManager.set_mouse_gameplay(false)
 	if not on:
@@ -848,7 +856,7 @@ func _input(e: InputEvent) -> void:
 	if how_layer.visible and how_panel.handle_input(e):
 		get_viewport().set_input_as_handled()
 		return
-	if waiting_story and ((e is InputEventKey and e.keycode == KEY_SPACE) or (e is InputEventJoypadButton and e.button_index == JOY_BUTTON_A)) and e.is_pressed() and not e.is_echo():
+	if waiting_story and ((e is InputEventKey and e.keycode == KEY_SPACE) or (e is InputEventJoypadButton and e.button_index == JOY_BUTTON_A) or (e is InputEventScreenTouch and not e.canceled)) and e.is_pressed() and not e.is_echo():
 		get_viewport().set_input_as_handled()
 		if story_label.visible_ratio < 1.0:
 			if story_tween:
@@ -896,6 +904,8 @@ func _controller_disconnected() -> void:
 
 func _refresh_story_prompt() -> void:
 	story_hint.text = "CONTINUAR" if GameManager.last_input_pad else "PULSA ESPACIO"
+	if GameManager.touch_controls_visible():
+		story_hint.text = "TOCA PARA CONTINUAR"
 	story_hint_icon.visible = GameManager.last_input_pad
 	if story_hint_icon.visible:
 		story_hint_icon.texture = GameManager.binding_icon(GameManager._pad_button(JOY_BUTTON_A))
@@ -919,7 +929,24 @@ func _sync_mouse_capture() -> void:
 	var initial_cursor := Vector2(-1, -1)
 	if playing:
 		initial_cursor = level.player.get_global_transform_with_canvas() * level.player._weapon_hand() + level.player.aim * 80.0
-	GameManager.set_mouse_gameplay(playing, level.player.aim if playing else Vector2.RIGHT, initial_cursor)
+	GameManager.set_mouse_gameplay(playing and not GameManager.is_touch_active(), level.player.aim if playing else Vector2.RIGHT, initial_cursor)
+
+
+func touch_gameplay_available() -> bool:
+	return window_focused and in_game and not busy and is_instance_valid(level) and not get_tree().paused and not level.player.dead and level.st <= Level.S.BOSS and not level.is_player_frozen() and not (how_layer.visible or menu_layer.visible or rank_layer.visible or fail_layer.visible or end_layer.visible or card_layer.visible or story_layer.visible)
+
+
+func _android_back() -> void:
+	if busy:
+		return
+	if how_layer != null and how_layer.visible:
+		_hide_how()
+	elif credits_layer != null and credits_layer.visible:
+		_hide_credits()
+	elif rank_layer != null and rank_layer.visible:
+		rank_layer.visible = false
+	elif in_game and is_instance_valid(level) and not level.player.dead:
+		_set_pause(not get_tree().paused)
 
 
 func _exit_tree() -> void:

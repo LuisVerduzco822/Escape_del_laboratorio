@@ -10,7 +10,7 @@ Un juego de acción y plataformas 2D en pixel art. Recorre cinco zonas contamina
 
 ![Combate contra la Gárgola Viral en la azotea: proyectiles, parry rosa y disparo potenciado](docs/media/capturas/05-jefe-azotea.png)
 
-**Godot 4.7 · Un jugador · Teclado, ratón y mando · Historia y FINALTOP**
+**Godot 4.7 · Un jugador · Teclado, ratón, mando y táctil · Historia y FINALTOP**
 
 [Empezar a jugar](#jugar) · [Galería](#galería) · [Controles](docs/CONTROLES.md) · [Documentación](#documentación) · [Créditos](docs/CREDITOS.md)
 
@@ -74,6 +74,8 @@ godot --path game
 | Pausa | Esc o P | Start / Options |
 
 Las asignaciones se pueden cambiar en **CONTROLES**. Los menús y las ayudas muestran el dispositivo activo y las entradas reasignadas. [Guía de teclado, ratón y mando](docs/CONTROLES.md).
+
+**Táctil / Android:** stick izquierdo para moverse, zona derecha para apuntar y activar fuego continuo, TIRO para apagarlo y botones de salto, dash y súper/ultra. Visibilidad, tamaño y opacidad se ajustan en **CONTROLES → TÁCTIL**. [Generar el APK, instalarlo y probarlo manualmente](docs/ANDROID.md).
 
 ## Cuentas, ranking y panel local
 

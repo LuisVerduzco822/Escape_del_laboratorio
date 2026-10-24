@@ -80,9 +80,10 @@ func _draw() -> void:
 
 	if level.player.weapon_power_t > 0.0:
 		var duration := float(level.data.get("boss_powerups", {}).get("boost_duration", 10.0))
-		draw_rect(Rect2(176, 200, 128, 23), Color(0.02, 0.06, 0.1, 0.9))
-		UI.text(self, "DISPARO X3  %ds" % ceili(level.player.weapon_power_t), 240, 214, 8, Color(0.3, 0.9, 1.0), 1)
-		draw_rect(Rect2(180, 218, 120 * clampf(level.player.weapon_power_t / duration, 0.0, 1.0), 3), Color(0.3, 0.9, 1.0))
+		var boost_y := 132.0 if GameManager.touch_controls_visible() else 200.0
+		draw_rect(Rect2(176, boost_y, 128, 23), Color(0.02, 0.06, 0.1, 0.9))
+		UI.text(self, "DISPARO X3  %ds" % ceili(level.player.weapon_power_t), 240, boost_y + 14, 8, Color(0.3, 0.9, 1.0), 1)
+		draw_rect(Rect2(180, boost_y + 18, 120 * clampf(level.player.weapon_power_t / duration, 0.0, 1.0), 3), Color(0.3, 0.9, 1.0))
 
 	if hint_t > 0.0 and hint != "":
 		UI.text(self, hint, 240, 62, 8, Color(1, 0.95, 0.6, clampf(hint_t, 0.0, 1.0)), 1)
@@ -96,8 +97,8 @@ func _draw() -> void:
 
 func _draw_super() -> void:
 	var m := GameManager.super_meter
-	var x0 := 8.0
-	var y0 := 252.0
+	var x0 := 190.0 if GameManager.touch_controls_visible() else 8.0
+	var y0 := 97.0 if GameManager.touch_controls_visible() else 252.0
 	UI.text(self, "SUPER", x0, y0 - 4.0, 8, Color(1, 0.95, 0.7), 0, 3)
 	for s in 2:
 		var x := x0 + s * 50.0
@@ -111,7 +112,8 @@ func _draw_super() -> void:
 				col = col.lightened(0.3)
 		draw_rect(Rect2(x, y0, 46 * fill, 8), col)
 		draw_rect(Rect2(x, y0, 46, 1), Color(1, 1, 1, 0.25))
-	ControlsHint.draw_binding(self, GameManager.primary_binding("super"), Vector2(76, 243))
+	if not GameManager.touch_controls_visible():
+		ControlsHint.draw_binding(self, GameManager.primary_binding("super"), Vector2(76, 243))
 	if m >= 50.0:
 		UI.text(self, "ULTRA" if m >= 100.0 else "LISTO", x0 + 104.0, y0 + 8.0, 8, Color(1.0, 0.5, 0.9) if m >= 100.0 else Color(1.0, 0.9, 0.4), 0, 3)
 

@@ -2,6 +2,7 @@ extends RefCounted
 
 # Keyboard and mouse form one source; each controller is a separate source.
 const DESKTOP := "desktop"
+const TOUCH := "touch"
 const MOUSE_IDLE := 0.18
 const AXIS_ENTER := 0.35
 const AXIS_EXIT := 0.25
@@ -18,12 +19,25 @@ func _state(source: String) -> Dictionary:
 
 
 func observe(event: InputEvent) -> void:
+	# GUI may emulate mouse events from touch. They must never claim desktop input.
+	if (event is InputEventMouseButton or event is InputEventMouseMotion) and event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	var source := DESKTOP
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		source = TOUCH
 	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
 		source = "pad:%d" % event.device
 	var state := _state(source)
 	var meaningful := false
-	if event is InputEventKey:
+	if event is InputEventScreenTouch:
+		if event.pressed and not event.canceled:
+			state.buttons[event.index] = true
+			meaningful = true
+		else:
+			state.buttons.erase(event.index)
+	elif event is InputEventScreenDrag:
+		meaningful = state.buttons.has(event.index)
+	elif event is InputEventKey:
 		var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
 		if event.pressed:
 			state["keys"][code] = true

@@ -102,7 +102,7 @@ func _run() -> void:
 	check(gentle.owner == "pad:3", "Gentle stick motion keeps existing ownership above normal deadzone")
 	gentle.observe(axis(0.0))
 	check(gentle.owner == "desktop", "Centered gentle stick yields to waiting keyboard")
-	if not OS.get_data_dir().begins_with("/tmp/escape-controls-"):
+	if not preload("res://tests/TestIsolation.gd").active():
 		push_error("Use XDG_DATA_HOME=/tmp/escape-controls-ownership-tests")
 		root.get_node("AudioManager").quit_game(2)
 		return

@@ -4,6 +4,8 @@
 
 ## Personalización
 
+En **TÁCTIL** puedes ajustar visibilidad, tamaño y opacidad. El stick izquierdo mueve; abajo + SALTO baja de plataformas. Arrastrar APUNTAR orienta el arma y activa disparo continuo; TIRO lo alterna. SALTO, DASH, FIJAR y SUPER/ULTRA tienen botones propios. Pausar o cambiar de pantalla apaga el disparo. [Guía de Android y pruebas manuales](ANDROID.md).
+
 Abre **CONTROLES** desde el menú principal o la pausa. En **TECLADO**, selecciona una
 casilla y pulsa la nueva tecla o botón del mouse. Cada acción admite hasta tres entradas por dispositivo
 (teclado/mouse y mando se guardan por separado).

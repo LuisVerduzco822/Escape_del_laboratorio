@@ -249,4 +249,9 @@ func current_lesson() -> Array:
 			lesson[1] = "{lock} fija; mueve el raton arriba"
 	if step == 7:
 		lesson[2] = "Tienes 100 de energia. Activa ULTRA."
+	if GameManager.touch_controls_visible():
+		lesson[1] = ["Stick izquierdo: mover", "SALTO: saltar", "Arrastra APUNTAR; TIRO apaga", "FIJAR; arrastra APUNTAR arriba", "DASH: cruza la franja roja", "En el aire: SALTO junto al rosa", "SUPER: rayo con media barra", "ULTRA: pulsa con barra llena", "Salta y toca el frasco", "Combina stick, SALTO y APUNTAR"][step]
+		if step == 1 and tutorial_state.get("jump_landed", false):
+			lesson[1] = "SALTO otra vez en el aire"
+		lesson[2] = str(lesson[2]).replace("{shoot}", "TIRO").replace("{jump}", "SALTO")
 	return lesson
