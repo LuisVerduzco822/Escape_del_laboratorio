@@ -45,6 +45,9 @@ var air_jumps := 1
 var flip_t := 0.0
 var abduct_t := 0.0   # rayo tractor del Marciano: mientras > 0 el jugador es elevado hacia la nave
 var abduct_x := 0.0
+var wind_t := 0.0     # ráfaga del murciélago: empuja de lado mientras > 0
+var wind_v := 0.0
+var slow_t := 0.0     # baba del slime: más lento y salta menos
 var flip_hit := {}   # enemigos ya cortados en esta vueltereta
 const SWORD_REACH := 30.0
 const SLAM_TIME := 0.32
@@ -183,7 +186,7 @@ func _physics_process(delta: float) -> void:
 					set_collision_mask_value(2, false)
 					position.y += 2.0
 				else:
-					velocity.y = JUMP_V
+					velocity.y = JUMP_V * (0.8 if slow_t > 0.0 else 1.0)
 					Telemetry.count("jumps")
 					AudioManager.sfx("jump", -6.0)
 				buffer = 0.0
@@ -194,6 +197,14 @@ func _physics_process(delta: float) -> void:
 		if GameManager.gameplay_just_released("jump") and velocity.y < -120.0:
 			velocity.y *= 0.45
 
+	if wind_t > 0.0:
+		wind_t -= delta
+		if dash_t <= 0.0:
+			velocity.x += wind_v
+	if slow_t > 0.0:
+		slow_t -= delta
+		if dash_t <= 0.0:
+			velocity.x *= 0.45
 	if abduct_t > 0.0:
 		abduct_t -= delta
 		if dash_t > 0.0:

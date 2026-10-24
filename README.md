@@ -612,3 +612,12 @@ Cuatro PNG originales renombrados, ensamblados y animados en el juego; avisos en
 `game/assets/exits/kenney/`.
 
 Pruebas: `game/tests/level_exit_test.gd` y `game/tests/combat_effects_test.gd`.
+
+## Poderes propios de cada jefe
+
+- **Slime — baba:** escupe bolas verdes en arco; al caer dejan un charco pegajoso (`Goo.gd`) que ralentiza al jugador y le quita fuerza de salto unos segundos.
+- **Pulpo — tinta:** lanza bolas de tinta; al estallar manchan la pantalla (`InkOverlay.gd`) unos 5 segundos y se desvanecen.
+- **Murciélago — ráfaga:** aletea y empuja al jugador hacia una pared que se llena de espinas (`Spikes.gd`). La fuerza sube con la fase; el dash rompe el empuje.
+- **Marciano — abducción:** rayo tractor que se escapa con el dash (ya existía).
+- **Calavera — ojos láser:** dos rayos continuos que persiguen al jugador; primero apuntan y luego disparan. En fases altas giran más rápido.
+- Prueba: `game/tests/boss_signatures_test.gd`. Además cada jefe tiene un aura suave que crece con la fase.

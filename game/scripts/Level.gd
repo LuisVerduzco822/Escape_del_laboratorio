@@ -34,6 +34,10 @@ var reached_boss := false
 var ing_spawned := [false, false, false]
 var cd := {}
 var shade_mat: ShaderMaterial
+var ink
+const Goo := preload("res://scripts/Goo.gd")
+const Spikes := preload("res://scripts/Spikes.gd")
+const InkOverlay := preload("res://scripts/InkOverlay.gd")
 var beat_t := 0.0
 var next_ambush := 520.0
 var view_left := 0.0
@@ -312,6 +316,36 @@ func add_zone(center: Vector2, size: Vector2, warn: float, active: float, col: C
 	z.active = active
 	z.col = col
 	add_child(z)
+
+
+func add_goo(x: float) -> void:
+	var g := Goo.new()
+	g.position = Vector2(clampf(x, arena_x + 20.0, arena_x + 460.0), Cfg.FLOOR_Y - 5.0)
+	add_child.call_deferred(g)   # puede llamarse desde un callback de física
+
+
+func add_spikes(side: float, warn: float, life: float) -> void:
+	var s := Spikes.new()
+	s.side = side
+	s.warn = warn
+	s.life = life
+	s.size = Vector2(14.0, Cfg.FLOOR_Y - 30.0)
+	s.position = Vector2(arena_x + (473.0 if side > 0.0 else 7.0), 30.0 + s.size.y * 0.5)
+	add_child.call_deferred(s)
+
+
+func ink_splat(world_pos: Vector2 = Vector2(-1, -1)) -> void:
+	if ink == null:
+		var layer := CanvasLayer.new()
+		layer.layer = 8
+		add_child(layer)
+		ink = InkOverlay.new()
+		layer.add_child(ink)
+	var c := Vector2(240.0, 135.0)
+	if world_pos.x >= 0.0:
+		c = Vector2(clampf(world_pos.x - view_left, 40.0, 440.0), clampf(world_pos.y, 40.0, 230.0))
+	ink.splat(c, 3)
+	AudioManager.sfx("boom", -14.0, 0.6)
 
 
 func add_enemy(kind: String, pos: Vector2, o: Dictionary = {}) -> Node:
