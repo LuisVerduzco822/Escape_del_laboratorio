@@ -228,7 +228,7 @@ func _restore() -> void:
 			confirm_restore = true
 			status.text = "Pulsa RESTAURAR otra vez para restablecer solo el tactil."
 			return
-		var result := GameManager.set_touch_settings("auto", 1.0, 0.7)
+		var result := GameManager.set_touch_settings("auto", 1.0, 0.7, false)
 		_show_touch()
 		status.text = "Tactil restaurado." if result == OK else "No se pudo guardar."
 		return
@@ -353,7 +353,18 @@ func _show_touch() -> void:
 	for child in rows.get_children():
 		rows.remove_child(child)
 		child.queue_free()
-	_text("Stick izquierdo: mover. Abajo + SALTO: bajar de plataformas.\nArrastra APUNTAR para orientar el arma y activar fuego continuo. TIRO lo enciende o apaga. SALTO y DASH quedan libres para el otro pulgar. FIJAR alterna la posicion fija.\nSUPER usa media barra; con la barra llena activa ULTRA. Pausar apaga TIRO y libera todos los controles.")
+	var aim_switch := CheckButton.new()
+	aim_switch.text = "PUNTERIA SEPARADA"
+	aim_switch.add_theme_font_size_override("font_size", 8)
+	aim_switch.custom_minimum_size.y = 28
+	aim_switch.button_pressed = GameManager.touch_separate_aim
+	rows.add_child(aim_switch)
+	aim_switch.toggled.connect(func(active: bool):
+		var result := GameManager.set_touch_settings(GameManager.touch_visibility, GameManager.touch_size, GameManager.touch_opacity, active)
+		aim_switch.set_pressed_no_signal(GameManager.touch_separate_aim)
+		status.text = "Punteria separada guardada." if result == OK else "No se pudo guardar."
+	)
+	_text("STICK L mueve y apunta. CUADRADO dispara mientras lo mantienes; arrastrarlo no cambia la punteria. L1 fija tu posicion: el stick sigue apuntando.\nCRUZ o un toque en una zona libre: salto, doble salto o parry. Abajo + salto: bajar de plataformas. CIRCULO: dash. TRIANGULO: SUPER con media barra o ULTRA con barra llena. Tres rayas: pausa.\nPUNTERIA SEPARADA anade un stick R que apunta y dispara, con prioridad sobre L. Un toque en el cuadrado de su centro bloquea el disparo (naranja). Pausar o cambiar de modo libera los controles.")
 	var picker := OptionButton.new()
 	picker.add_theme_font_size_override("font_size", 8)
 	for label in ["AUTOMATICO", "ACTIVADO", "DESACTIVADO"]:

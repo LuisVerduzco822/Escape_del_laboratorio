@@ -97,8 +97,10 @@ func _draw() -> void:
 
 func _draw_super() -> void:
 	var m := GameManager.super_meter
-	var x0 := 190.0 if GameManager.touch_controls_visible() else 8.0
-	var y0 := 97.0 if GameManager.touch_controls_visible() else 252.0
+	var touch := GameManager.touch_controls_visible()
+	var training: bool = touch and is_instance_valid(level) and level.is_tutorial
+	var x0 := 190.0 if training else 8.0
+	var y0 := 97.0 if training else (82.0 if touch else 252.0)
 	UI.text(self, "SUPER", x0, y0 - 4.0, 8, Color(1, 0.95, 0.7), 0, 3)
 	for s in 2:
 		var x := x0 + s * 50.0

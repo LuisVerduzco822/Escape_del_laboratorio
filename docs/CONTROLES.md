@@ -4,7 +4,9 @@
 
 ## Personalización
 
-En **TÁCTIL** puedes ajustar visibilidad, tamaño y opacidad. El stick izquierdo mueve; abajo + SALTO baja de plataformas. Arrastrar APUNTAR orienta el arma y activa disparo continuo; TIRO lo alterna. SALTO, DASH, FIJAR y SUPER/ULTRA tienen botones propios. Pausar o cambiar de pantalla apaga el disparo. [Guía de Android y pruebas manuales](ANDROID.md).
+Los botones forman un diamante: triángulo arriba (SUPER/ULTRA), cuadrado a la izquierda (disparo), círculo a la derecha (dash) y cruz abajo (salto). L1 está encima del stick L.
+
+En **TÁCTIL** puedes ajustar visibilidad, tamaño y opacidad. Por defecto el stick L mueve y apunta; mantén cuadrado para disparar y suéltalo para detener el tiro. Cruz o un toque en una zona libre permite saltar; abajo + salto baja de plataformas. Círculo activa dash, triángulo SUPER/ULTRA y tres rayas pausa. L1 fija la posición mientras L sigue modificando la puntería. **PUNTERÍA SEPARADA** añade un stick R con prioridad sobre L; mantenerlo dispara y tocar el cuadrado de su centro bloquea el disparo en naranja. Pausar o cambiar de modo apaga el disparo y su bloqueo. [Guía de Android y pruebas manuales](ANDROID.md).
 
 Abre **CONTROLES** desde el menú principal o la pausa. En **TECLADO**, selecciona una
 casilla y pulsa la nueva tecla o botón del mouse. Cada acción admite hasta tres entradas por dispositivo

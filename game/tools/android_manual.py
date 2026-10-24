@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 
-PACKAGE = "org.escapedellaboratorio.game"
+PACKAGE = "mx.udg.alumnos.juegos.escape_del_laboratorio"
 GAME = Path(__file__).resolve().parents[1]
 
 

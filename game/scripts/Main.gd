@@ -51,6 +51,7 @@ var end_sub: Label
 var credits_layer: CanvasLayer
 var credits_btn: Button
 var credits_back: Button
+var credits_scroll: ScrollContainer
 var tutorial_had_progress := false
 
 var window_focused := true
@@ -853,6 +854,9 @@ func _input(e: InputEvent) -> void:
 		if layer.visible:
 			UI.wire_focus_rows(layer)
 			break
+	if credits_layer.visible and credits_scroll.handle_input(e):
+		get_viewport().set_input_as_handled()
+		return
 	if how_layer.visible and how_panel.handle_input(e):
 		get_viewport().set_input_as_handled()
 		return
@@ -966,7 +970,8 @@ func _build_credits() -> void:
 	var box := _center_box(credits_layer, 8)
 	box.custom_minimum_size.x = 408
 	box.add_child(_label("CRÉDITOS", 16, Color(1.0, 0.85, 0.3)))
-	var scroll := ScrollContainer.new()
+	var scroll := preload("res://scripts/CreditsScroll.gd").new()
+	credits_scroll = scroll
 	scroll.custom_minimum_size = Vector2(408, 172)
 	scroll.focus_mode = Control.FOCUS_ALL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -976,10 +981,13 @@ func _build_credits() -> void:
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.fit_content = true
 	text.scroll_active = false
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.add_theme_font_size_override("normal_font_size", 8)
 	text.text = "ESCAPE DEL LABORATORIO\nUna aventura en busca del antídoto.\n\nEQUIPO DEL JUEGO\nDiseño, programación y dirección creativa:\nEquipo Escape del Laboratorio\nArte procedural, jefes, música y parallax:\ncreados para este proyecto.\nGracias a quienes juegan y prueban el laboratorio.\n\nMOTOR\nGodot Engine · godotengine.org\n\nARTE, INTERFAZ Y TIPOGRAFÍA\nCompuertas — Kenney\nPixel Platformer Industrial Expansion\nkenney.nl/assets/pixel-platformer-industrial-expansion\nCC0 1.0 Universal\nGamepad Inputs UI — Gimicko / GoncaloMCOliveira\ngoncalomcoliveira.itch.io/gamepad-inputs-ui\nCC0 1.0 Universal\nLanzallamas — Player 24 / MainMenuMaster\nmainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb\nModern Interiors Free v2.2 — personaje Adam\nUso no comercial\nPress Start 2P — SIL OFL 1.1\nFondos y bola de fuego: recursos proporcionados al proyecto.\n\nEFECTOS VISUALES\nBattle Effects — pimen\nhttps://pimen.itch.io/pixel-battle-effects\nCC BY 4.0\nhttps://creativecommons.org/licenses/by/4.0/\nEffect 2: PNG original sin modificar.\nCuatro cuadros; escala y velocidad en el juego.\n\nExplosions - Pixel Art — Aim studios\nhttps://aim-studios.itch.io/explosions-pixel-art\nCC0 1.0 Universal\nhttps://creativecommons.org/publicdomain/zero/1.0/\nExplosiones azules, verdes y de burbujas.\nPNG originales; escala y velocidad en el juego.\n\nLos autores no patrocinan este proyecto.\nLas licencias de recursos son independientes\nde la licencia del código del juego."
 	scroll.add_child(text)
+	box.add_child(_label("ARRASTRA / ARRIBA-ABAJO: LEER   IZQ-DER: TEXTO / VOLVER", 6, Color(0.6, 0.8, 0.85)))
 	credits_back = _btn(box, "VOLVER", _hide_credits)
+	scroll.back = credits_back
 	credits_layer.visible = false
 
 
@@ -989,5 +997,6 @@ func _show_credits() -> void:
 
 
 func _hide_credits() -> void:
+	credits_scroll.cancel_drag()
 	credits_layer.visible = false
 	credits_btn.grab_focus()

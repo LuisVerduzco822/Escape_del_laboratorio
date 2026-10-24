@@ -56,7 +56,7 @@ def main():
                                         stderr=subprocess.STDOUT, text=True, timeout=args.timeout)
                 output, code = result.stdout, result.returncode
             except subprocess.TimeoutExpired as error:
-                output = (error.stdout or b"").decode(errors="replace")
+                output = error.stdout.decode(errors="replace") if isinstance(error.stdout, bytes) else (error.stdout or "")
                 output += f"\nERROR: Suite exceeded {args.timeout} seconds\n"
                 code = 124
         path = logs / f"{name}-{repetition}.log"

@@ -75,7 +75,7 @@ godot --path game
 
 Las asignaciones se pueden cambiar en **CONTROLES**. Los menús y las ayudas muestran el dispositivo activo y las entradas reasignadas. [Guía de teclado, ratón y mando](docs/CONTROLES.md).
 
-**Táctil / Android:** stick izquierdo para moverse, zona derecha para apuntar y activar fuego continuo, TIRO para apagarlo y botones de salto, dash y súper/ultra. Visibilidad, tamaño y opacidad se ajustan en **CONTROLES → TÁCTIL**. [Generar el APK, instalarlo y probarlo manualmente](docs/ANDROID.md).
+**Táctil / Android:** stick L para moverse y apuntar; mantén cuadrado para disparar. Cruz o un toque en una zona libre salta; círculo activa dash, triángulo SUPER/ULTRA, L1 fija la posición y tres rayas abre pausa. En **CONTROLES → TÁCTIL** puedes activar **PUNTERÍA SEPARADA**, además de ajustar visibilidad, tamaño y opacidad. [Generar el APK, instalarlo y probarlo manualmente](docs/ANDROID.md).
 
 ## Cuentas, ranking y panel local
 

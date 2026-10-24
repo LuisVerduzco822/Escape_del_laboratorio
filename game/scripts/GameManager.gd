@@ -54,6 +54,7 @@ var touch_seen := false
 var touch_visibility := "auto"
 var touch_size := 1.0
 var touch_opacity := 0.7
+var touch_separate_aim := false
 signal touch_reset
 const TOUCH_SETTINGS := "user://touch.cfg"
 const PAD_DEADZONE := 0.25
@@ -963,7 +964,7 @@ func touch_controls_visible() -> bool:
 
 
 func touch_hint(action: String) -> String:
-	return {"move_left": "STICK", "move_right": "STICK", "aim_up": "APUNTAR", "aim_down": "STICK ABAJO", "jump": "SALTO", "shoot": "TIRO", "super": "SUPER/ULTRA", "dash": "DASH", "lock": "FIJAR", "pause": "PAUSA"}.get(action, "APUNTAR")
+	return {"move_left": "STICK L", "move_right": "STICK L", "aim_up": "STICK R" if touch_separate_aim else "STICK L", "aim_down": "STICK L ABAJO", "jump": "CRUZ / TOCAR PANTALLA", "shoot": "STICK R / CUADRADO" if touch_separate_aim else "CUADRADO", "super": "TRIANGULO", "dash": "CIRCULO", "lock": "L1", "pause": "MENU"}.get(action, "STICK L")
 
 
 func reset_touch() -> void:
@@ -973,19 +974,24 @@ func reset_touch() -> void:
 	touch_reset.emit()
 
 
-func set_touch_settings(mode: String, scale_value: float, opacity_value: float) -> Error:
+func set_touch_settings(mode: String, scale_value: float, opacity_value: float, separate_aim: Variant = null) -> Error:
 	if mode not in ["auto", "on", "off"]:
 		return ERR_INVALID_PARAMETER
+	if separate_aim != null and not separate_aim is bool:
+		return ERR_INVALID_PARAMETER
+	var next_aim: bool = touch_separate_aim if separate_aim == null else separate_aim
 	var file := ConfigFile.new()
 	file.set_value("touch", "visibility", mode)
 	file.set_value("touch", "size", clampf(scale_value, 0.85, 1.15))
 	file.set_value("touch", "opacity", clampf(opacity_value, 0.35, 1.0))
+	file.set_value("touch", "separate_aim", next_aim)
 	var error := file.save(TOUCH_SETTINGS)
 	if error != OK:
 		return error
 	touch_visibility = mode
 	touch_size = clampf(scale_value, 0.85, 1.15)
 	touch_opacity = clampf(opacity_value, 0.35, 1.0)
+	touch_separate_aim = next_aim
 	reset_touch()
 	return OK
 
@@ -998,6 +1004,8 @@ func _load_touch_settings() -> void:
 	touch_visibility = mode if mode in ["auto", "on", "off"] else "auto"
 	var scale_value = file.get_value("touch", "size", 1.0)
 	var opacity_value = file.get_value("touch", "opacity", 0.7)
+	var aim_value = file.get_value("touch", "separate_aim", false)
+	touch_separate_aim = aim_value if aim_value is bool else false
 	if (scale_value is float or scale_value is int) and is_finite(float(scale_value)):
 		touch_size = clampf(float(scale_value), 0.85, 1.15)
 	if (opacity_value is float or opacity_value is int) and is_finite(float(opacity_value)):
