@@ -207,10 +207,40 @@ func complete() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.physical_keycode == KEY_T and event.is_pressed() and not event.is_echo():
+	if ((event is InputEventKey and event.physical_keycode == KEY_T) or (event is InputEventJoypadButton and event.button_index == JOY_BUTTON_BACK)) and event.is_pressed() and not event.is_echo():
 		get_viewport().set_input_as_handled()
 		complete()
 
 
 func _exit_tree() -> void:
 	GameManager.training = false
+
+
+func current_lesson() -> Array:
+	var step := int(tutorial_state.step)
+	var lesson: Array = LESSONS[step].duplicate()
+	var hint := ""
+	match step:
+		0:
+			hint = "%s / %s para moverte" % [GameManager.primary_hint("move_left"), GameManager.primary_hint("move_right")]
+		1:
+			hint = "%s: salto; otra vez en el aire: vuelta" % GameManager.primary_hint("jump")
+		2:
+			hint = "Manten %s para disparar" % GameManager.primary_hint("shoot")
+		3:
+			hint = "%s fija; %s apunta arriba" % [GameManager.primary_hint("lock"), GameManager.primary_hint("aim_up")]
+			lesson[2] = "Bajo el blanco, dispara con %s." % GameManager.primary_hint("shoot")
+			if GameManager.pointing_mode == "mouse" and not GameManager.last_input_pad:
+				hint = "%s fija; mueve el raton arriba" % GameManager.primary_hint("lock")
+		4:
+			hint = "%s: dash invulnerable" % GameManager.primary_hint("dash")
+		5:
+			hint = "En el aire, pulsa %s junto al rosa" % GameManager.primary_hint("jump")
+		6:
+			hint = "%s con media barra: rayo perforante" % GameManager.primary_hint("super")
+		7:
+			hint = "%s con la barra llena: ULTRA" % GameManager.primary_hint("super")
+			lesson[2] = "Tienes 100 de energia. Activa ULTRA."
+	if not hint.is_empty():
+		lesson[1] = hint
+	return lesson

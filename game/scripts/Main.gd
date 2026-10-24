@@ -15,9 +15,11 @@ var level: Node
 var holder: Node
 var menu_layer: CanvasLayer
 var menu_bg: Node
+var how_panel: Control
 var how_layer: CanvasLayer
 var story_layer: CanvasLayer
 var story_label: Label
+var story_hint_icon: TextureRect
 var story_hint: Label
 var story_tween: Tween
 var pause_layer: CanvasLayer
@@ -47,6 +49,7 @@ var finaltop_btn: Button
 var end_title: Label
 var end_sub: Label
 
+var window_focused := true
 var busy := false
 var in_game := false
 var waiting_story := false
@@ -74,6 +77,7 @@ func _ready() -> void:
 	_build_fail()
 	_build_end()
 	_build_card()
+	GameManager.controller_disconnected.connect(_controller_disconnected)
 	_build_fade()
 	_show_menu()
 
@@ -171,14 +175,6 @@ func _build_menu() -> void:
 	out.custom_minimum_size = Vector2(100, 0)
 	var quit := _btn(row, "SALIR", _quit)
 	quit.custom_minimum_size = Vector2(44, 0)
-	# Explicit neighbors keep the short bottom buttons in their own row.
-	out.focus_neighbor_right = quit.get_path()
-	quit.focus_neighbor_left = out.get_path()
-	out.focus_neighbor_left = out.get_path()
-	quit.focus_neighbor_right = quit.get_path()
-	out.focus_neighbor_top = controls_btn.get_path()
-	quit.focus_neighbor_top = controls_btn.get_path()
-	controls_btn.focus_neighbor_bottom = out.get_path()
 	var tw := create_tween().set_loops()
 	tw.tween_property(t2, "modulate", Color(1.4, 1.3, 0.8), 0.9).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(t2, "modulate", Color(1, 1, 1), 0.9).set_trans(Tween.TRANS_SINE)
@@ -187,17 +183,10 @@ func _build_menu() -> void:
 func _build_how() -> void:
 	how_layer = _layer(45)
 	_dim(how_layer, 0.88)
-	var box := _center_box(how_layer, 6)
-	box.add_child(_label("CONTROLES", 16, Color(1.0, 0.85, 0.3)))
-	var txt := "MOVER ........ A / D  o  FLECHAS\nAPUNTAR ...... W / S + A / D (8 DIRECC.)\nSALTAR ....... ESPACIO o Z (DOBLE)\nDISPARAR ..... J, X o CLIC IZQ.\nSUPER ........ K o V\nDASH ......... SHIFT, L o CLIC DER.\nFIJAR POS. ... CTRL o I\nPAUSA ........ ESC o P\nPANT. COMPLETA F11\n\nPARRY: salta, y en el aire pulsa\nSALTAR sobre un objeto ROSA.\nCada parry carga la barra de SUPER."
-	var l := _label(txt, 8, Color.WHITE, 3)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	l.add_theme_constant_override("line_spacing", 4)
-	box.add_child(l)
-	how_back = _btn(box, "VOLVER", _hide_how)
-	# Keep keyboard navigation inside the controls overlay.
-	for direction in ["focus_neighbor_top", "focus_neighbor_bottom", "focus_neighbor_left", "focus_neighbor_right", "focus_next", "focus_previous"]:
-		how_back.set(direction, how_back.get_path())
+	how_panel = preload("res://scripts/ControlsPanel.gd").new()
+	how_layer.add_child(how_panel)
+	how_panel.closed.connect(_hide_how)
+	how_back = how_panel.back
 	how_layer.visible = false
 
 
@@ -231,9 +220,15 @@ func _build_story() -> void:
 	story_label = _label(STORY, 8, Color(0.85, 0.95, 1.0), 2)
 	story_label.add_theme_constant_override("line_spacing", 6)
 	box.add_child(story_label)
-	story_hint = _label("PULSA ESPACIO", 8, Color(1, 0.9, 0.4), 2)
+	story_hint = _label("ESPACIO / A (CRUZ)", 8, Color(1, 0.9, 0.4), 2)
 	story_hint.visible = false
 	box.add_child(story_hint)
+	story_hint_icon = TextureRect.new()
+	story_hint_icon.size = Vector2(16, 16)
+	story_hint_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	story_hint_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	story_hint_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	story_hint.add_child(story_hint_icon)
 	var tw := create_tween().set_loops()
 	tw.tween_property(story_hint, "modulate:a", 0.2, 0.6)
 	tw.tween_property(story_hint, "modulate:a", 1.0, 0.6)
@@ -332,6 +327,7 @@ func _wait(sec: float) -> void:
 
 
 func _show_menu() -> void:
+	GameManager.set_mouse_gameplay(false)
 	mode = "story"
 	in_game = false
 	menu_layer.visible = true
@@ -416,6 +412,14 @@ func _quit() -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		window_focused = false
+		GameManager.clear_input_activity()
+		GameManager.set_mouse_gameplay(false)
+		if in_game and not busy and not get_tree().paused:
+			_set_pause(true)
+	elif what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
+		window_focused = true
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		await Telemetry.finish(false)
 		get_tree().quit()
@@ -433,13 +437,16 @@ func _logout() -> void:
 
 
 func _show_how() -> void:
+	GameManager.set_mouse_gameplay(false)
 	if not how_layer.visible:
 		how_return_focus = get_viewport().gui_get_focus_owner()
 	how_layer.visible = true
+	how_panel._wire_focus()
 	how_back.grab_focus()
 
 
 func _hide_how() -> void:
+	how_panel.cancel_capture()
 	how_layer.visible = false
 	if is_instance_valid(how_return_focus) and how_return_focus.is_visible_in_tree():
 		how_return_focus.grab_focus()
@@ -451,6 +458,8 @@ func _hide_how() -> void:
 
 
 func _clear_level() -> void:
+	GameManager.set_mouse_gameplay(false)
+	GameManager.reset_mouse_cursor()
 	Fx.reset()
 	get_tree().paused = false
 	AudioManager.duck(false)
@@ -499,6 +508,7 @@ func _start_game(tutorial: bool = false) -> void:
 	story_tween.tween_property(story_label, "visible_ratio", 1.0, 9.0)
 	story_tween.tween_callback(func(): story_hint.visible = true)
 	waiting_story = true
+	_refresh_story_prompt()
 	await story_done
 	waiting_story = false
 	story_tween.kill()
@@ -758,6 +768,10 @@ func _restart_level() -> void:
 
 
 func _set_pause(on: bool) -> void:
+	if on:
+		GameManager.set_mouse_gameplay(false)
+	if not on:
+		GameManager.release_gameplay_buttons()
 	Telemetry.event("pause" if on else "resume", {})
 	get_tree().paused = on
 	pause_layer.visible = on
@@ -793,7 +807,18 @@ func _save_and_exit() -> void:
 
 
 func _input(e: InputEvent) -> void:
-	if waiting_story and e is InputEventKey and e.keycode == KEY_SPACE and e.is_pressed() and not e.is_echo():
+	GameManager.observe_input(e)
+	if waiting_story:
+		_refresh_story_prompt()
+	# Rebuild from visible/enabled controls before GUI navigation handles this event.
+	for layer in [how_layer, rank_layer, pause_layer, fail_layer, end_layer, menu_layer]:
+		if layer.visible:
+			UI.wire_focus_rows(layer)
+			break
+	if how_layer.visible and how_panel.handle_input(e):
+		get_viewport().set_input_as_handled()
+		return
+	if waiting_story and ((e is InputEventKey and e.keycode == KEY_SPACE) or (e is InputEventJoypadButton and e.button_index == JOY_BUTTON_A)) and e.is_pressed() and not e.is_echo():
 		get_viewport().set_input_as_handled()
 		if story_label.visible_ratio < 1.0:
 			if story_tween:
@@ -806,6 +831,15 @@ func _input(e: InputEvent) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventJoypadButton and e.pressed and e.button_index == JOY_BUTTON_B:
+		if rank_layer.visible:
+			rank_layer.visible = false
+			get_viewport().set_input_as_handled()
+			return
+		if pause_layer.visible and not how_layer.visible:
+			_set_pause(false)
+			get_viewport().set_input_as_handled()
+			return
 	if e.is_action_pressed("pause"):
 		if rank_layer.visible:
 			rank_layer.visible = false
@@ -815,3 +849,44 @@ func _unhandled_input(e: InputEvent) -> void:
 			return
 		if in_game and not busy and not fail_layer.visible:
 			_set_pause(not get_tree().paused)
+
+
+func _controller_disconnected() -> void:
+	if is_instance_valid(how_panel):
+		how_panel.cancel_capture()
+		if how_layer.visible:
+			how_panel.status.text = "Mando desconectado. Puedes usar el teclado o reconectarlo."
+	if in_game and not busy and not fail_layer.visible and not get_tree().paused:
+		_set_pause(true)
+
+
+func _refresh_story_prompt() -> void:
+	story_hint.text = "CONTINUAR" if GameManager.last_input_pad else "PULSA ESPACIO"
+	story_hint_icon.visible = GameManager.last_input_pad
+	if story_hint_icon.visible:
+		story_hint_icon.texture = GameManager.binding_icon(GameManager._pad_button(JOY_BUTTON_A))
+		story_hint_icon.position = Vector2(story_hint.size.x / 2.0 - 56, -4)
+
+
+func _process(_delta: float) -> void:
+	_sync_mouse_capture()
+	if waiting_story:
+		_refresh_story_prompt()
+
+
+func _sync_mouse_capture() -> void:
+	if not is_instance_valid(menu_layer):
+		GameManager.set_mouse_gameplay(false)
+		return
+	var playing := window_focused and in_game and not busy and not get_tree().paused and is_instance_valid(level)
+	playing = playing and not (how_layer.visible or menu_layer.visible or rank_layer.visible or fail_layer.visible or end_layer.visible or card_layer.visible or story_layer.visible)
+	if playing:
+		playing = not level.player.dead and not level.is_player_frozen()
+	var initial_cursor := Vector2(-1, -1)
+	if playing:
+		initial_cursor = level.player.get_global_transform_with_canvas() * level.player._weapon_hand() + level.player.aim * 80.0
+	GameManager.set_mouse_gameplay(playing, level.player.aim if playing else Vector2.RIGHT, initial_cursor)
+
+
+func _exit_tree() -> void:
+	GameManager.set_mouse_gameplay(false)

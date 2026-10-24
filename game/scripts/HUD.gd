@@ -1,6 +1,7 @@
 extends Control
 
 const UI := preload("res://scripts/UI.gd")
+const ControlsHint := preload("res://scripts/ControlsHint.gd")
 const Pickup := preload("res://scripts/Pickup.gd")
 
 const ST_COLLECT := 1
@@ -10,6 +11,7 @@ const ST_KO := 4
 const ST_FAIL := 6
 
 var level
+var controls_hint: Control
 var b_text := ""
 var b_col := Color.WHITE
 var b_t := 0.0
@@ -24,6 +26,10 @@ func _ready() -> void:
 	UI.load_font()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(preload("res://scripts/MouseReticle.gd").new())
+	controls_hint = ControlsHint.new()
+	controls_hint.level = level
+	add_child(controls_hint)
 
 
 func show_banner(text: String, color: Color, dur: float, size: int) -> void:
@@ -105,10 +111,9 @@ func _draw_super() -> void:
 				col = col.lightened(0.3)
 		draw_rect(Rect2(x, y0, 46 * fill, 8), col)
 		draw_rect(Rect2(x, y0, 46, 1), Color(1, 1, 1, 0.25))
-	if m >= 100.0:
-		UI.text(self, "ULTRA [K]", x0 + 104.0, y0 + 8.0, 8, Color(1.0, 0.5, 0.9), 0, 3)
-	elif m >= 50.0:
-		UI.text(self, "LISTO [K]", x0 + 104.0, y0 + 8.0, 8, Color(1.0, 0.9, 0.4), 0, 3)
+	ControlsHint.draw_binding(self, GameManager.primary_binding("super"), Vector2(76, 243))
+	if m >= 50.0:
+		UI.text(self, "ULTRA" if m >= 100.0 else "LISTO", x0 + 104.0, y0 + 8.0, 8, Color(1.0, 0.5, 0.9) if m >= 100.0 else Color(1.0, 0.9, 0.4), 0, 3)
 
 
 func _draw_ingredients() -> void:

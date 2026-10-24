@@ -88,3 +88,60 @@ static func button(label: String) -> Button:
 	b.focus_mode = Control.FOCUS_ALL
 	b.custom_minimum_size = Vector2(150, 0)
 	return b
+
+
+# Container order defines rows even when content is clipped inside a ScrollContainer.
+# Screen coordinates are used only to choose the closest column in an adjacent row.
+static func focus_rows(node: Node) -> Array:
+	var rows: Array = []
+	if node is Window:
+		return rows
+	if node is CanvasLayer and not node.visible:
+		return rows
+	if node is Control:
+		if not node.is_visible_in_tree() or node is ScrollBar or (node is LineEdit and not node.editable):
+			return rows
+		if node.focus_mode == Control.FOCUS_ALL and not (node is BaseButton and node.disabled):
+			return [[node]]
+	if node is HBoxContainer:
+		var row: Array = []
+		for child in node.get_children():
+			for child_row in focus_rows(child):
+				row.append_array(child_row)
+		if not row.is_empty():
+			rows.append(row)
+	else:
+		for child in node.get_children():
+			rows.append_array(focus_rows(child))
+	return rows
+
+
+static func wire_focus_rows(root: Node, leading_rows: Array = []) -> void:
+	var rows := leading_rows + focus_rows(root)
+	var ordered: Array = []
+	for row in rows:
+		ordered.append_array(row)
+	for i in ordered.size():
+		var button: Control = ordered[i]
+		button.focus_next = ordered[(i + 1) % ordered.size()].get_path()
+		button.focus_previous = ordered[(i - 1 + ordered.size()) % ordered.size()].get_path()
+	for y in rows.size():
+		var row: Array = rows[y]
+		for x in row.size():
+			var button: Control = row[x]
+			button.focus_neighbor_left = row[maxi(x - 1, 0)].get_path()
+			button.focus_neighbor_right = row[mini(x + 1, row.size() - 1)].get_path()
+			button.focus_neighbor_top = _closest_column(button, rows[y - 1]).get_path() if y > 0 else button.get_path()
+			button.focus_neighbor_bottom = _closest_column(button, rows[y + 1]).get_path() if y + 1 < rows.size() else button.get_path()
+
+
+static func _closest_column(source: Control, row: Array) -> Control:
+	var closest: Control = row[0]
+	var center := source.get_global_rect().get_center().x
+	var distance := INF
+	for candidate in row:
+		var offset: float = absf(candidate.get_global_rect().get_center().x - center)
+		if offset < distance:
+			distance = offset
+			closest = candidate
+	return closest
