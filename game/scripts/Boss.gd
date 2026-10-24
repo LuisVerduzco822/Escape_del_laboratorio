@@ -75,7 +75,7 @@ const EXTRA_FT := {
 	3: [],
 }
 # Ataque propio de cada jefe (se suma a su repertorio en todas las fases).
-const SIGNATURE := {0: ["puddle"], 1: ["tentacles"], 2: ["dive"], 3: ["abduct"], 4: ["blackout"]}
+const SIGNATURE := {0: ["puddle", "spit"], 1: ["tentacles", "ink"], 2: ["dive", "gust"], 3: ["abduct"], 4: ["blackout", "lasereyes"]}
 const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3), Color(0.35, 0.92, 1.0), Color(0.95, 0.92, 0.78)]
 const RADII := [46.0, 44.0, 42.0, 44.0, 58.0]
 const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100), Vector2(366, 102), Vector2(356, 104)]
@@ -121,6 +121,10 @@ const ATTACK_WEIGHTS := {
 	"dive": [2.0, 5.0, 6.0],
 	"abduct": [3.0, 6.0, 7.0],
 	"blackout": [3.0, 5.0, 5.0],
+	"spit": [3.0, 5.0, 6.0],
+	"ink": [2.0, 5.0, 6.0],
+	"gust": [5.0, 5.0, 4.0],
+	"lasereyes": [3.0, 5.0, 6.0],
 }
 
 var level
@@ -163,6 +167,11 @@ var ox := 0.0
 var attack_rng := RandomNumberGenerator.new()
 var amb_rng := RandomNumberGenerator.new()   # presión ambiental: aparte para no alterar la secuencia de ataques
 var amb_t := 3.0
+var gust_t := 0.0
+var gust_dir := 1.0
+var gust_warn := false
+var laser_mode := 0   # 0 apagado, 1 apuntando, 2 disparando
+var laser_ang := [0.0, 0.0]
 var move_rng := RandomNumberGenerator.new()   # cambios de puesto: aparte, para no alterar la secuencia de ataques guardada
 
 
@@ -282,6 +291,7 @@ func _physics_process(delta: float) -> void:
 			if not moving:
 				position = home + Vector2(sin(t * 1.3) * 14.0, sin(t * 2.1) * 9.0)
 			_ambient(delta)
+			_signature_tick(delta)
 			if not busy:
 				_try_drop_hearts()
 				rest -= delta
@@ -360,6 +370,9 @@ func _stop_attack() -> void:
 	if tw:
 		tw.kill()
 	abducting = false
+	gust_t = 0.0
+	gust_warn = false
+	laser_mode = 0
 	_set_darkness(0.5)
 	busy = false
 	moving = false
@@ -495,6 +508,10 @@ func _pick_attack() -> void:
 		"dive": _atk_dive()
 		"abduct": _atk_abduct()
 		"blackout": _atk_blackout()
+		"spit": _atk_spit()
+		"ink": _atk_ink()
+		"gust": _atk_gust()
+		"lasereyes": _atk_lasereyes()
 	tw.tween_callback(_done)
 
 
@@ -564,6 +581,165 @@ func _ambient(delta: float) -> void:
 		for i in drops:
 			var x3 := clampf(px + amb_rng.randf_range(-110.0, 110.0), ox + 10.0, ox + 470.0)
 			level.add_hazard(Vector2(x3, -10.0 - amb_rng.randf_range(0.0, 50.0)), Vector2(0, 60.0), {"style": "drop", "radius": 4.5, "col": _col(), "accel": Vector2(0, 70.0)})
+
+
+# ───── Poderes propios ─────
+func _signature_tick(delta: float) -> void:
+	var p = level.player if level else null
+	if p == null or p.dead:
+		return
+	if gust_t > 0.0:
+		gust_t -= delta
+		p.wind_t = 0.12
+		p.wind_v = gust_dir * (100.0 + 15.0 * float(phase - 1)) * (1.15 if _is_finaltop() else 1.0)
+	if laser_mode > 0:
+		_laser_tick(delta, p)
+
+
+# Slime — Escupitajo: lanza bolas de baba en arco; al caer dejan un charco pegajoso que frena y quita salto.
+func _atk_spit() -> void:
+	var n := 2 + phase
+	for i in n:
+		tw.tween_callback(_fire_spit)
+		tw.tween_interval(0.6 / sp)
+	tw.tween_interval(1.4)
+
+
+func _fire_spit() -> void:
+	var from := global_position + Vector2(fdir * radius * 0.6, -6.0)
+	var tx := clampf(_target().x + amb_rng.randf_range(-45.0, 45.0), ox + 30.0, ox + 450.0)
+	var ty := Cfg.FLOOR_Y - 6.0
+	var g := 420.0
+	var flight := 1.15
+	var v := Vector2((tx - from.x) / flight, (ty - from.y) / flight - 0.5 * g * flight)
+	level.add_hazard(from, v, {"col": Color(0.55, 1.0, 0.2), "radius": 7.0, "accel": Vector2(0, g), "life": flight, "end_fx": "goo", "src": "baba"})
+	Fx.burst(get_parent(), from, Color(0.55, 1.0, 0.2), 6, 70.0, 0.35, 2.0)
+	AudioManager.sfx("shoot", -6.0, 0.55)
+
+
+# Pulpo — Tinta: dispara bolas de tinta; al explotar manchan la pantalla unos segundos.
+func _atk_ink() -> void:
+	var n := 2 + phase
+	for i in n:
+		tw.tween_callback(_fire_ink)
+		tw.tween_interval(0.75 / sp)
+	tw.tween_interval(1.6)
+
+
+func _fire_ink() -> void:
+	var from := global_position + Vector2(fdir * radius * 0.5, 4.0)
+	var to := _target() + Vector2(amb_rng.randf_range(-20.0, 20.0), amb_rng.randf_range(-12.0, 4.0))
+	var spd := 118.0 * sp
+	var d := to - from
+	level.add_hazard(from, d.normalized() * spd, {"col": Color(0.4, 0.15, 0.7), "radius": 7.5, "life": maxf(0.5, d.length() / spd), "end_fx": "ink", "src": "tinta"})
+	Fx.burst(get_parent(), from, Color(0.4, 0.15, 0.7), 6, 70.0, 0.35, 2.0)
+	AudioManager.sfx("shoot", -6.0, 0.5)
+
+
+# Murciélago — Ráfaga: aletea y empuja al jugador hacia una pared que se llena de espinas.
+func _atk_gust() -> void:
+	var rounds := 1 if phase == 1 else 2
+	for r in rounds:
+		tw.tween_callback(_gust_start.bind(r))
+		tw.tween_interval(1.0)
+		tw.tween_callback(_gust_blow)
+		tw.tween_interval(2.4)
+		tw.tween_callback(func(): gust_t = 0.0)
+		tw.tween_interval(0.9)
+
+
+func _gust_start(r: int) -> void:
+	if r == 0:
+		gust_dir = 1.0 if move_rng.randf() < 0.5 else -1.0
+	else:
+		gust_dir = -gust_dir
+	gust_warn = true
+	level.add_spikes(gust_dir, 1.0, 1.0 + 2.4 + 0.5)
+	AudioManager.sfx("warn", -4.0, 0.8)
+
+
+func _gust_blow() -> void:
+	gust_warn = false
+	gust_t = 2.4
+	AudioManager.sfx("dash", -6.0, 0.5)
+	Fx.shake(1.5, 0.4)
+
+
+# Calavera — Ojos láser: dos rayos continuos que persiguen al jugador; hay que moverse (o hacer dash) para no ser alcanzado.
+func _atk_lasereyes() -> void:
+	tw.tween_callback(_laser_begin)
+	tw.tween_interval(1.0)
+	tw.tween_callback(func(): laser_mode = 2; Fx.shake(2.0, 0.3); AudioManager.sfx("phase", -4.0, 0.5))
+	tw.tween_interval(2.0 + 0.6 * float(phase))
+	tw.tween_callback(func(): laser_mode = 0)
+	tw.tween_interval(0.8)
+
+
+func _laser_begin() -> void:
+	laser_mode = 1
+	for i in 2:
+		laser_ang[i] = (_target() - _eye_pos(i)).angle()
+	AudioManager.sfx("warn", -4.0, 1.4)
+
+
+func _eye_pos(i: int) -> Vector2:
+	var ex := -20.0 if i == 0 else 18.0
+	return global_position + Vector2(ex * -fdir, -12.0)
+
+
+func _laser_end(i: int) -> Vector2:
+	var o := _eye_pos(i)
+	var d := Vector2.RIGHT.rotated(laser_ang[i])
+	var ln := 700.0
+	if d.y > 0.05:
+		ln = minf(ln, (Cfg.FLOOR_Y - o.y) / d.y)
+	return o + d * ln
+
+
+func _laser_tick(delta: float, p) -> void:
+	var rate := 3.6 if laser_mode == 1 else (0.5 + 0.2 * float(phase) + 0.05 * float(kind)) * (1.25 if _is_finaltop() else 1.0)
+	for i in 2:
+		var want := (_target() - _eye_pos(i)).angle()
+		laser_ang[i] += clampf(angle_difference(laser_ang[i], want), -rate * delta, rate * delta)
+	if laser_mode == 2:
+		for i in 2:
+			var a := _eye_pos(i)
+			var b := _laser_end(i)
+			var cp := Geometry2D.get_closest_point_to_segment(p.global_position, a, b)
+			if cp.distance_to(p.global_position) <= 8.0:
+				p.hurt("laser_ojos")
+
+
+func _draw_signature() -> void:
+	if laser_mode > 0:
+		var hot := Color(1.0, 0.2, 0.15) if phase < 3 else Color(1.0, 0.1, 0.45)
+		var tex := HazardCls.glow()
+		for i in 2:
+			var a := to_local(_eye_pos(i))
+			var b := to_local(_laser_end(i))
+			if laser_mode == 1:
+				draw_line(a, b, Color(hot, 0.35 + 0.3 * sin(t * 40.0)), 1.0)
+				draw_texture_rect(tex, Rect2(a - Vector2(12, 12), Vector2(24, 24)), false, Color(hot, 0.6))
+			else:
+				var fl := 0.85 + 0.15 * sin(t * 60.0 + float(i))
+				draw_line(a, b, Color(hot, 0.16 * fl), 16.0)
+				draw_line(a, b, Color(hot, 0.4 * fl), 9.0)
+				draw_line(a, b, Color(1.0, 0.75, 0.6, 0.95), 4.0)
+				draw_line(a, b, Color(1, 1, 1, 1), 1.6)
+				draw_texture_rect(tex, Rect2(a - Vector2(16, 16), Vector2(32, 32)), false, Color(hot, 0.9))
+				draw_texture_rect(tex, Rect2(b - Vector2(22, 12), Vector2(44, 24)), false, Color(hot, 0.85))
+	if gust_warn or gust_t > 0.0:
+		var arrow := gust_dir
+		for k in 16:
+			var y := 24.0 + fposmod(float(k) * 41.0, 210.0)
+			var x := ox + fposmod(float(k) * 53.0 + t * 380.0 * arrow * (1.0 if gust_t > 0.0 else 0.0), 480.0)
+			var a2 := 0.4 if gust_t > 0.0 else 0.15
+			draw_line(to_local(Vector2(x, y)), to_local(Vector2(x - arrow * 22.0, y)), Color(0.9, 0.95, 1.0, a2), 1.5)
+		if gust_warn:
+			var wx := ox + (440.0 if gust_dir > 0.0 else 40.0)
+			for k in 3:
+				var ax := wx + gust_dir * float(k) * 10.0
+				draw_colored_polygon(PackedVector2Array([to_local(Vector2(ax, 130.0 - 10.0)), to_local(Vector2(ax + gust_dir * 10.0, 130.0)), to_local(Vector2(ax, 130.0 + 10.0))]), Color(1.0, 0.4, 0.35, 0.6 + 0.3 * sin(t * 25.0)))
 
 
 func _atk_fan() -> void:
@@ -1251,6 +1427,9 @@ func _draw() -> void:
 		var dv := dive_to - position
 		draw_line(Vector2.ZERO, to_local(dive_to), Color(1.0, 0.3, 0.3, 0.35 + 0.3 * sin(t * 30.0)), 5.0)
 	_draw_abduct_beam()
+	# Aura suave del jefe: crece con la fase.
+	var aura := radius * (2.2 + 0.25 * float(phase)) * (1.0 + 0.04 * sin(t * 3.0))
+	draw_texture_rect(HazardCls.glow(), Rect2(Vector2(-aura, -aura), Vector2(aura, aura) * 2.0), false, Color(_col(), 0.14 + 0.05 * float(phase - 1)))
 	if fdir > 0.0:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0, 1.0))
 	match kind:
@@ -1264,6 +1443,8 @@ func _draw() -> void:
 			_draw_martian()
 		4:
 			_draw_skull()
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_signature()   # rayos y viento van por encima del cuerpo
 
 
 func _eyes(pos_l: Vector2, pos_r: Vector2, r: float, col: Color, pupil: Color) -> void:
@@ -1507,6 +1688,8 @@ func _draw_skull() -> void:
 		var c := Vector2(ex, -12.0 + bob)
 		draw_circle(c, 15.0, Color(0.06, 0.04, 0.07))
 		draw_circle(c, 9.0 + sin(t * 8.0 + ex) * 1.2, Color(glow.r, glow.g, glow.b, 0.45))
+		if laser_mode > 0:
+			draw_circle(c, 13.0, Color(1.0, 0.2, 0.1, 0.55 + 0.25 * sin(t * 30.0)))
 		draw_circle(c + look * 4.0, 4.0, glow)
 		draw_circle(c + look * 4.0, 2.0, Color(1.0, 1.0, 0.8))
 	# Nariz

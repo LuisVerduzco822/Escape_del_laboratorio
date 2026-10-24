@@ -382,3 +382,12 @@ Capturas en `docs/capturas/` (daño con flash y screenshake, monedas y compuesto
 - **Presión continua:** mientras pelea, cada jefe suma entre sus ataques rayos del cielo, rayos de piso y lluvia de balas (`Boss._ambient`). La frecuencia y la cantidad suben con el número de jefe (1 a 5) y con la fase; en FinalTop es 1.3 veces más intensa. No aparecen si ya hay demasiadas balas. El descanso entre ataques también se acorta con el jefe.
 - **Volumen:** los sonidos de ataques y alertas (`shoot`, `warn`, `phase`, `boom`, `select`) se atenúan en `AudioManager.ATTACK_DB`, y el mismo sonido no se repite más de una vez cada 40 ms. El disparo del jugador conserva su volumen (`pshoot`).
 - Prueba: `game/tests/boss_ambient_test.gd`.
+
+## Poderes propios de cada jefe
+
+- **Slime — baba:** escupe bolas verdes en arco; al caer dejan un charco pegajoso (`Goo.gd`) que ralentiza al jugador y le quita fuerza de salto unos segundos.
+- **Pulpo — tinta:** lanza bolas de tinta; al estallar manchan la pantalla (`InkOverlay.gd`) unos 5 segundos y se desvanecen.
+- **Murciélago — ráfaga:** aletea y empuja al jugador hacia una pared que se llena de espinas (`Spikes.gd`). La fuerza sube con la fase; el dash rompe el empuje.
+- **Marciano — abducción:** rayo tractor que se escapa con el dash (ya existía).
+- **Calavera — ojos láser:** dos rayos continuos que persiguen al jugador; primero apuntan y luego disparan. En fases altas giran más rápido.
+- Prueba: `game/tests/boss_signatures_test.gd`. Además cada jefe tiene un aura suave que crece con la fase.

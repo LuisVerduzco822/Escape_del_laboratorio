@@ -45,6 +45,8 @@ static func glow() -> Texture2D:
 # Balas de robot: se pueden destruir a disparos y desaparecen solas pasado `life` segundos (0 = no caducan).
 var shootable := false
 var life := 0.0
+var end_fx := ""   # "goo": deja baba en el piso; "ink": mancha la pantalla
+var end_done := false
 
 
 func _ready() -> void:
@@ -149,13 +151,21 @@ func parried() -> void:
 
 
 func vanish() -> void:
+	if not end_done:
+		end_done = true
+		var lv := get_parent()
+		if lv != null:
+			if end_fx == "goo" and lv.has_method("add_goo"):
+				lv.add_goo(global_position.x)
+			elif end_fx == "ink" and lv.has_method("ink_splat"):
+				lv.ink_splat(global_position)
 	Fx.burst(get_parent(), global_position, col, 4, 60.0, 0.3, 2.0)
 	queue_free()
 
 
 func _draw() -> void:
 	var c := Color(1.0, 0.45, 0.8) if pink else col
-	if life > 0.0 and age > life - 0.6:
+	if life > 0.0 and end_fx == "" and age > life - 0.6:
 		modulate.a = 0.35 + 0.65 * absf(sin(age * 30.0))   # parpadea antes de desaparecer
 	_neon(c)
 	if style == "drop":
