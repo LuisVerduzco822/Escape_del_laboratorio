@@ -423,7 +423,7 @@ func _quit() -> void:
 		return
 	busy = true
 	await Telemetry.finish(false)
-	get_tree().quit()
+	AudioManager.quit_game()
 
 
 func _notification(what: int) -> void:
@@ -437,7 +437,7 @@ func _notification(what: int) -> void:
 		window_focused = true
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		await Telemetry.finish(false)
-		get_tree().quit()
+		AudioManager.quit_game()
 
 
 func _logout() -> void:
@@ -950,7 +950,7 @@ func _build_credits() -> void:
 	text.fit_content = true
 	text.scroll_active = false
 	text.add_theme_font_size_override("normal_font_size", 8)
-	text.text = "ESCAPE DEL LABORATORIO\nUna aventura en busca del antídoto.\n\nEQUIPO DEL JUEGO\nDiseño, programación y dirección creativa:\nEquipo Escape del Laboratorio\nArte procedural, jefes, música y parallax:\ncreados para este proyecto.\nGracias a quienes juegan y prueban el laboratorio.\n\nMOTOR\nGodot Engine · godotengine.org\n\nARTE, INTERFAZ Y TIPOGRAFÍA\nGamepad Inputs UI — Gimicko / GoncaloMCOliveira\ngoncalomcoliveira.itch.io/gamepad-inputs-ui\nCC0 1.0 Universal\nLanzallamas — Player 24 / MainMenuMaster\nmainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb\nModern Interiors Free v2.2 — personaje Adam\nUso no comercial\nPress Start 2P — SIL OFL 1.1\nFondos y bola de fuego: recursos proporcionados al proyecto.\n\nEFECTOS VISUALES\nBattle Effects — pimen\nhttps://pimen.itch.io/pixel-battle-effects\nCC BY 4.0\nhttps://creativecommons.org/licenses/by/4.0/\nEffect 2: PNG original sin modificar.\nCuatro cuadros; escala y velocidad en el juego.\n\nExplosions - Pixel Art — Aim studios\nhttps://aim-studios.itch.io/explosions-pixel-art\nCC0 1.0 Universal\nhttps://creativecommons.org/publicdomain/zero/1.0/\nExplosiones azules, verdes y de burbujas.\nPNG originales; escala y velocidad en el juego.\n\nLos autores no patrocinan este proyecto.\nLas licencias de recursos son independientes\nde la licencia del código del juego."
+	text.text = "ESCAPE DEL LABORATORIO\nUna aventura en busca del antídoto.\n\nEQUIPO DEL JUEGO\nDiseño, programación y dirección creativa:\nEquipo Escape del Laboratorio\nArte procedural, jefes, música y parallax:\ncreados para este proyecto.\nGracias a quienes juegan y prueban el laboratorio.\n\nMOTOR\nGodot Engine · godotengine.org\n\nARTE, INTERFAZ Y TIPOGRAFÍA\nCompuertas — Kenney\nPixel Platformer Industrial Expansion\nkenney.nl/assets/pixel-platformer-industrial-expansion\nCC0 1.0 Universal\nGamepad Inputs UI — Gimicko / GoncaloMCOliveira\ngoncalomcoliveira.itch.io/gamepad-inputs-ui\nCC0 1.0 Universal\nLanzallamas — Player 24 / MainMenuMaster\nmainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb\nModern Interiors Free v2.2 — personaje Adam\nUso no comercial\nPress Start 2P — SIL OFL 1.1\nFondos y bola de fuego: recursos proporcionados al proyecto.\n\nEFECTOS VISUALES\nBattle Effects — pimen\nhttps://pimen.itch.io/pixel-battle-effects\nCC BY 4.0\nhttps://creativecommons.org/licenses/by/4.0/\nEffect 2: PNG original sin modificar.\nCuatro cuadros; escala y velocidad en el juego.\n\nExplosions - Pixel Art — Aim studios\nhttps://aim-studios.itch.io/explosions-pixel-art\nCC0 1.0 Universal\nhttps://creativecommons.org/publicdomain/zero/1.0/\nExplosiones azules, verdes y de burbujas.\nPNG originales; escala y velocidad en el juego.\n\nLos autores no patrocinan este proyecto.\nLas licencias de recursos son independientes\nde la licencia del código del juego."
 	scroll.add_child(text)
 	credits_back = _btn(box, "VOLVER", _hide_credits)
 	credits_layer.visible = false

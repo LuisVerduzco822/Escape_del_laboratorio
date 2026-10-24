@@ -38,6 +38,23 @@ func frames(count: int) -> void:
 
 func _run() -> void:
 	var ownership := Ownership.new()
+	var stale := Ownership.new()
+	stale.observe(key(KEY_D))
+	stale.observe(axis(0.9))
+	stale.reconcile_desktop(func(_code): return true, func(_button): return false)
+	check(stale.owner == "desktop", "Polling preserves a physically held keyboard key")
+	stale.reconcile_desktop(func(_code): return false, func(_button): return false)
+	check(stale.owner == "pad:3", "Missing keyboard release yields to waiting controller")
+	stale.observe(axis(0.0))
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	stale.observe(click)
+	stale.observe(axis(0.9))
+	stale.reconcile_desktop(func(_code): return false, func(_button): return true)
+	check(stale.owner == "desktop", "Polling preserves a physically held mouse button")
+	stale.reconcile_desktop(func(_code): return false, func(_button): return false)
+	check(stale.owner == "pad:3", "Missing mouse release yields to waiting controller")
 	var resting_trigger := axis(-1.0)
 	resting_trigger.axis = JOY_AXIS_TRIGGER_LEFT
 	ownership.observe(resting_trigger)
@@ -87,7 +104,7 @@ func _run() -> void:
 	check(gentle.owner == "desktop", "Centered gentle stick yields to waiting keyboard")
 	if not OS.get_data_dir().begins_with("/tmp/escape-controls-"):
 		push_error("Use XDG_DATA_HOME=/tmp/escape-controls-ownership-tests")
-		quit(2)
+		root.get_node("AudioManager").quit_game(2)
 		return
 	var gm := root.get_node("GameManager")
 	gm.input_ownership = Ownership.new()
@@ -147,4 +164,4 @@ func _run() -> void:
 	await process_frame
 	gm.input_ownership.clear()
 	print("INPUT OWNERSHIP: %d failures" % failures)
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

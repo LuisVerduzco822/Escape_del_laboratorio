@@ -860,6 +860,10 @@ func _sync_input_owner() -> void:
 
 
 func _process(delta: float) -> void:
+	# Headless simulations use parse_input_event, which does not update the OS
+	# keyboard/mouse state. Real windows can recover missing release events.
+	if DisplayServer.get_name() != "headless":
+		input_ownership.reconcile_desktop(Input.is_physical_key_pressed, Input.is_mouse_button_pressed)
 	input_ownership.advance(delta)
 	_sync_input_owner()
 

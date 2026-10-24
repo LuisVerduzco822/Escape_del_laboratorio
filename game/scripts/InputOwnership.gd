@@ -88,6 +88,21 @@ func advance(delta: float) -> void:
 		owner = waiting.pop_front()
 
 
+func reconcile_desktop(key_pressed: Callable, mouse_pressed: Callable) -> void:
+	# A release can be lost when GUI handling or a window transition consumes it.
+	# Only discard stale holds; polling must never create activity or claim input.
+	if not sources.has(DESKTOP):
+		return
+	var state: Dictionary = sources[DESKTOP]
+	for code in state["keys"].keys():
+		if not key_pressed.call(code):
+			state["keys"].erase(code)
+	for button in state.mouse.keys():
+		if not mouse_pressed.call(button):
+			state.mouse.erase(button)
+	advance(0.0)
+
+
 func remove_device(device: int) -> void:
 	var source := "pad:%d" % device
 	sources.erase(source)

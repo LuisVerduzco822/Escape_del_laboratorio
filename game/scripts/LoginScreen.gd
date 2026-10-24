@@ -28,7 +28,7 @@ var offline_dialog: ConfirmationDialog
 
 func _ready() -> void:
 	GameManager.set_mouse_gameplay(false)
-	get_tree().set_auto_accept_quit(true)
+	get_tree().set_auto_accept_quit(false)
 	UI.apply_theme()
 	AudioManager.play_music("menu")
 	if ResourceLoader.exists(BG_PATH):
@@ -94,7 +94,7 @@ func _ready() -> void:
 	offline_btn.pressed.connect(_play_offline)
 	box.add_child(offline_btn)
 	exit_btn = _button("Salir", Color(1.0, 0.55, 0.5))
-	exit_btn.pressed.connect(func(): get_tree().quit())
+	exit_btn.pressed.connect(AudioManager.quit_game)
 	box.add_child(exit_btn)
 
 	var small := StyleBoxFlat.new()
@@ -149,6 +149,11 @@ func _ready() -> void:
 	user_edit.text = Database.last_user()
 	_show_choices()
 	_check_server()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		AudioManager.quit_game()
 
 
 func _play_offline() -> void:

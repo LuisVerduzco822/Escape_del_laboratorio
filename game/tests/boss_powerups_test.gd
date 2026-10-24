@@ -42,7 +42,7 @@ func picture(name: String) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Use APPDATA inside the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	gm = root.get_node("GameManager")
@@ -210,7 +210,7 @@ func _run() -> void:
 		await process_frame
 	saves.clear()
 	print("POWERUP TESTS: ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)
 
 func opening_encounters() -> void:
 	for index in 3:

@@ -22,7 +22,7 @@ func frames(n: int) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Use APPDATA inside the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	var db = root.get_node("Database")
 	var gm = root.get_node("GameManager")
@@ -86,4 +86,4 @@ func _run() -> void:
 	await frames(10)
 	check(is_instance_valid(far) and absf(far.position.distance_to(player.position) - d_far) < 25.0, "A very distant coin does not move toward the player")
 	print("UNLOCK AND COINS TESTS: ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

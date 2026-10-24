@@ -60,17 +60,19 @@ Alternativa con Docker: `docker compose up -d --build` en la raíz del repositor
 
 ## Capturas de pantalla
 
+Vistas nuevas de la versión actual. Se recreó una partida de ejemplo en una base temporal: la API recibió los datos de Godot y el script contrastó puntos y monedas con el ranking. Las demás filas del panel son datos de muestra. [Método de captura](CAPTURAS.md).
+
 **1. Leaderboard del panel web local**
 
-![Leaderboard](captura1_leaderboard.png)
+![Leaderboard](media/capturas/09-leaderboard.png)
 
 **2. Inicio de sesión del juego conectado al servidor**
 
-![Inicio de sesión](captura2_inicio_sesion.png)
+![Inicio de sesión](media/capturas/07-inicio-sesion.png)
 
-**3. Partida en curso: los puntos, monedas y tiempo de esta pantalla se almacenan en la base de datos**
+**3. Derrota registrada: Alberto, 4,650 puntos y 125 monedas, también visibles en el leaderboard**
 
-![Partida](captura3_derrotado.png)
+![Partida](media/capturas/08-derrota.png)
 
 ## Estructura del repositorio
 

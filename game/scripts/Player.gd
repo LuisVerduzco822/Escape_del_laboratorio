@@ -164,6 +164,8 @@ func _physics_process(delta: float) -> void:
 		coyote = maxf(0.0, coyote - delta)
 
 	if GameManager.gameplay_just_pressed("jump"):
+		if get_parent().try_use_exit():
+			return
 		buffer = BUFFER
 
 	if dash_t > 0.0:
@@ -305,7 +307,8 @@ func _shoot() -> void:
 	s.position = to_global(_weapon_muzzle() + aim * 2.0)
 	s.vel = dir * 360.0
 	get_parent().add_child(s)
-	AudioManager.sfx("pshoot", -10.0, randf_range(0.95, 1.08))
+	AudioManager.sfx("boost_shoot" if weapon_power_t > 0.0 else "pshoot", -10.0, randf_range(0.97, 1.03))
+	Fx.shot_rumble()
 	mute_flash = 0.05
 
 
@@ -458,7 +461,7 @@ func hurt(source: String = "") -> void:
 	last_hurt_src = source
 	Telemetry.event("hurt", _where({"hp_left": GameManager.hp, "src": source}))
 	Fx.impact(get_parent(), global_position + Vector2(0, -3), "hit", 0.9)
-	AudioManager.sfx("hurt")
+	AudioManager.sfx("player_hurt")
 	Fx.shake(3.0, 0.25)
 	Fx.hitstop(0.08)
 	var hit_color := Color(0.45, 0.7, 0.15) if GameManager.hp <= 0 else Color(1, 0.1, 0.1)
@@ -495,7 +498,7 @@ func _die() -> void:
 	sprite.play("idle_right" if facing > 0 else "idle_left")
 	sprite.stop()
 	sprite.frame = 0
-	AudioManager.sfx("gameover")
+	AudioManager.sfx("player_death")
 	queue_redraw()
 
 

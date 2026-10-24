@@ -24,7 +24,7 @@ func _run() -> void:
 	# Never overwrite real user settings.
 	if not OS.get_data_dir().begins_with("/tmp/escape-controls-"):
 		push_error("Run with XDG_DATA_HOME=/tmp/escape-controls-tests")
-		quit(2)
+		root.get_node("AudioManager").quit_game(2)
 		return
 	gm = root.get_node("GameManager")
 	check(gm.restore_bindings().is_empty(), "Reset defaults")
@@ -92,4 +92,4 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	print("REBIND TESTS: %d failures" % failures)
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

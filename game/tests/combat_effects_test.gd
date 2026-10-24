@@ -14,7 +14,7 @@ func check(ok: bool, label: String) -> void:
 
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	var fx = root.get_node("Fx")
@@ -61,7 +61,9 @@ func _run() -> void:
 	fx.reset()
 	level.boss.st_t = 2.5
 	level.boss._physics_process(0.2)
-	check(level.boss.is_queued_for_deletion(), "Boss finishes its staged death")
+	check(not level.boss.is_queued_for_deletion() and level.boss.modulate.a == 1.0, "Boss stays opaque while final explosion begins")
+	level.boss._physics_process(0.26)
+	check(level.boss.is_queued_for_deletion(), "Boss pops out halfway through final explosion")
 	check(get_nodes_in_group("sprite_effect").any(func(n): return n.sprite_frames == fx.effect_frames.finale), "Final explosion exists before the KO transition")
 	level.queue_free()
 	await process_frame
@@ -69,16 +71,15 @@ func _run() -> void:
 	var main = load("res://scripts/Main.gd").new()
 	root.add_child(main)
 	await create_timer(0.4).timeout
-	var credit_button = main.menu_layer.get_children().filter(func(n): return n is Button and n.text == "CREDITOS VFX")[0]
-	check(credit_button.position.y + credit_button.size.y <= 270.0, "Credits button fits the game viewport")
-	main._show_effect_credits()
+	var credit_button = main.credits_btn
+	check(credit_button.get_global_rect().end.y <= 270.0, "Credits button fits viewport")
+	main._show_credits()
 	await process_frame
-	var dialogs: Array = main.get_children().filter(func(n): return n is AcceptDialog)
-	check(dialogs.size() == 1 and dialogs[0].visible, "Credits open from the menu")
-	var credit_text: RichTextLabel = dialogs[0].get_children().filter(func(n): return n is RichTextLabel)[0]
-	check(credit_text.text.contains("pimen") and credit_text.text.contains("CC BY 4.0") and credit_text.text.contains("Aim studios"), "In-game credits include creators and licenses")
-	check(credit_text.text.contains("\n"), "Credits use readable line breaks")
+	check(main.credits_layer.visible, "Credits open from menu")
+	var texts: Array = main.credits_layer.find_children("*", "RichTextLabel", true, false)
+	var credit_text: RichTextLabel = texts[0]
+	check(credit_text.text.contains("pimen") and credit_text.text.contains("CC BY 4.0") and credit_text.text.contains("Aim studios") and credit_text.text.contains("Kenney"), "Credits include effect and exit creators and licenses")
 	main.queue_free()
 	await process_frame
 	print("COMBAT EFFECT TESTS: ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

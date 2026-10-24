@@ -12,11 +12,11 @@ func check(ok: bool, label: String) -> void:
 	else:
 		print("PASS: " + label)
 
-func find_controls(node: Node) -> Button:
+func find_controls(node: Node, text: String = "CONTROLES") -> Button:
 	for child in node.get_children():
-		if child is Button and child.text == "CONTROLES":
+		if child is Button and child.text == text:
 			return child
-		var found := find_controls(child)
+		var found := find_controls(child, text)
 		if found != null:
 			return found
 	return null
@@ -40,12 +40,13 @@ func _run() -> void:
 	await process_frame
 	var main = current_scene
 	var menu_controls := find_controls(main.menu_layer)
-	var bottom_row := menu_controls.get_parent().get_child(menu_controls.get_index() + 1)
-	var connect_btn: Button = bottom_row.get_child(0)
-	var quit_btn: Button = bottom_row.get_child(1)
+	var connect_btn := find_controls(main.menu_layer, "CONECTARSE")
+	var quit_btn := find_controls(main.menu_layer, "SALIR")
 	menu_controls.grab_focus()
 	await arrow(KEY_DOWN)
-	check(connect_btn.has_focus(), "Down from Controls selects Connect")
+	check(main.credits_btn.has_focus(), "Down from Controls selects Credits")
+	await arrow(KEY_DOWN)
+	check(connect_btn.has_focus(), "Down from Credits selects Connect")
 	await arrow(KEY_RIGHT)
 	check(quit_btn.has_focus(), "Right from Connect selects Exit")
 	await arrow(KEY_RIGHT)
@@ -56,7 +57,9 @@ func _run() -> void:
 	check(connect_btn.has_focus(), "Left at the start of the row stays on Connect")
 	await arrow(KEY_RIGHT)
 	await arrow(KEY_UP)
-	check(menu_controls.has_focus(), "Up from Exit returns to Controls")
+	check(main.credits_btn.has_focus(), "Up from Exit returns to Credits")
+	await arrow(KEY_UP)
+	check(menu_controls.has_focus(), "Up from Credits returns to Controls")
 	for layer in [main.menu_layer, main.pause_layer]:
 		main.menu_layer.visible = layer == main.menu_layer
 		main.pause_layer.visible = layer == main.pause_layer
@@ -78,4 +81,4 @@ func _run() -> void:
 		check(paused == (layer == main.pause_layer), "Closing Controls preserves pause state")
 	paused = false
 	print("Controls focus failures: %d" % failures)
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

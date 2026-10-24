@@ -27,7 +27,7 @@ func tap(action: String) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Use APPDATA inside the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	var gm = root.get_node("GameManager")
@@ -62,4 +62,4 @@ func _run() -> void:
 	check(not is_instance_valid(near) or near.is_queued_for_deletion(), "The sword cuts a nearby enemy during the double jump")
 	check(is_instance_valid(far) and not far.is_queued_for_deletion(), "A far enemy is not hit")
 	print("SWORD TESTS: %d failures" % failures)
-	quit(1 if failures > 0 else 0)
+	root.get_node("AudioManager").quit_game(1 if failures > 0 else 0)

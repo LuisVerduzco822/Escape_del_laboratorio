@@ -1,0 +1,44 @@
+[
+  {
+    "event": "player_1",
+    "source": "FilmCow Designed SFX/laser gun 7.wav",
+    "trim_start_seconds": 0.052,
+    "duration_seconds": 0.4559,
+    "peak_dbfs": -6
+  },
+  {
+    "event": "player_2",
+    "source": "FilmCow Designed SFX/laser gun 9.wav",
+    "trim_start_seconds": 0.0292,
+    "duration_seconds": 0.4915,
+    "peak_dbfs": -6
+  },
+  {
+    "event": "enemy",
+    "source": "FilmCow Designed SFX/laser gun 11.wav",
+    "trim_start_seconds": 0.0948,
+    "duration_seconds": 0.5433,
+    "peak_dbfs": -6
+  },
+  {
+    "event": "boost",
+    "source": "FilmCow Designed SFX/laser gun 16.wav",
+    "trim_start_seconds": 0.0633,
+    "duration_seconds": 0.6487,
+    "peak_dbfs": -6
+  },
+  {
+    "event": "boom",
+    "source": "FilmCow Designed SFX/deep sci fi stinger 1.wav",
+    "trim_start_seconds": 0.274,
+    "duration_seconds": 1.1,
+    "peak_dbfs": -6
+  },
+  {
+    "event": "hurt",
+    "source": "FilmCow Designed SFX/sci fi hit 3.wav",
+    "trim_start_seconds": 0.2766,
+    "duration_seconds": 0.5,
+    "peak_dbfs": -6
+  }
+]

@@ -40,4 +40,4 @@ func _run() -> void:
 					found = true
 			check(found, "%s keeps its keyboard key %s" % [action, OS.get_keycode_string(code)])
 	print("INPUT MAP TESTS: ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

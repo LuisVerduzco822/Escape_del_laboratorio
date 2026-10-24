@@ -17,7 +17,7 @@ func check(ok: bool, label: String) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Run with APPDATA set to the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	db = root.get_node("Database")
 	saves = root.get_node("SaveGame")
@@ -77,6 +77,24 @@ func _run() -> void:
 	var again: Dictionary = saves.capture(level)
 	check(again.actors == saved.actors, "All actor properties survive reconstruction")
 	check(level.ing_spawned == [true, true, true], "Ingredient spawn flags restored")
+	# Legacy snapshots must restore all current slots before the level or HUD reads them.
+	for count in [9, 12]:
+		var legacy: Dictionary = saved.duplicate(true)
+		legacy.stats.ingredients.resize(count)
+		for slot in count:
+			legacy.stats.ingredients[slot] = slot % 2 == 0
+		check(saves.valid(legacy), "Legacy %d-slot snapshot accepted" % count)
+		await main._start_level(1, "collect", false, legacy)
+		paused = true
+		check(gm.ingredients.size() == root.get_node("Cfg").ING_TOTAL, "Legacy %d-slot snapshot expanded" % count)
+		for slot in root.get_node("Cfg").ING_TOTAL:
+			check(gm.ingredients[slot] == (slot < count and slot % 2 == 0), "Legacy %d-slot ingredient %d preserved or initialized" % [count, slot])
+		check(gm.level_ingredients(4) == 0, "New level compounds start uncollected")
+		check(legacy.stats.ingredients.size() == count, "Restoring does not mutate the legacy snapshot")
+		check(saves.capture(main.level).stats.ingredients.size() == root.get_node("Cfg").ING_TOTAL, "Next snapshot stores all current compounds")
+	await main._start_level(1, "collect", false, saved)
+	paused = true
+	level = main.level
 	# Enter the boss and capture the start of phase one.
 	for child in level.get_children():
 		if child.get_script() in saves.SCRIPTS.values(): child.queue_free()
@@ -105,7 +123,7 @@ func _run() -> void:
 	var boss_save: Dictionary = saves.load_saved()
 	if boss_save.is_empty():
 		check(false, "Boss snapshot passes validation")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	check(boss_save.boss.hp == checkpoint.boss.hp and boss_save.stats.hp == 3 and boss_save.stats.super_meter == 55.0 and boss_save.stats.score == checkpoint_score, "Mid-phase damage and spent resources cannot be mixed")
 	await main._start_level(1, "boss", false, boss_save)
@@ -218,4 +236,4 @@ func _run() -> void:
 	main.level.boss._die()
 	check(saves.load_saved().is_empty(), "Defeated boss checkpoint is invalidated")
 	print("SAVE TESTS: ", checks, " checks, ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

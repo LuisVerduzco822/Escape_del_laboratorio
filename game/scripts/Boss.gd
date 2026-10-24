@@ -161,6 +161,7 @@ var lift := 0.0
 var warn_x := -1.0
 var warn_y := -1.0
 var radius := 46.0
+var death_pop_t := -1.0
 var boom_t := 0.0
 var sp := 1.0
 var ox := 0.0
@@ -306,6 +307,10 @@ func _physics_process(delta: float) -> void:
 			if st_t >= 2.2:
 				_enter_fight()
 		St.DEAD:
+			if death_pop_t >= 0.0:
+				if st_t >= death_pop_t:
+					queue_free()
+				return
 			position += Vector2(randf_range(-1.5, 1.5), randf_range(-1.5, 1.5))
 			boom_t -= delta
 			if boom_t <= 0.0:
@@ -318,9 +323,9 @@ func _physics_process(delta: float) -> void:
 				Fx.impact(get_parent(), global_position, "finale", maxf(1.5, radius / 20.0))
 				Fx.shake(6.0, 0.35)
 				AudioManager.sfx("boom", -3.0, 0.65)
-				queue_free()
+				death_pop_t = st_t + 4.0 / 16.0
 	if st == St.DEAD:
-		blink_alpha = 1.0 - smoothstep(1.7, 2.6, st_t)
+		blink_alpha = 1.0
 	modulate = Color(1.8, 1.8, 1.8, blink_alpha) if flash > 0.0 else Color(1, 1, 1, blink_alpha)
 	queue_redraw()
 
@@ -410,7 +415,6 @@ func _phase_change(n: int) -> void:
 func _die() -> void:
 	if st == St.DEAD:
 		return
-	Fx.impact(get_parent(), global_position, "finale", 1.5)
 	abducting = false
 	_set_darkness(0.5)
 	hp = 0.0
@@ -1271,7 +1275,11 @@ func _dive_mark() -> void:
 	var dirv := (tgt - position).normalized()
 	dive_to = position + dirv * 560.0
 	warn_dive = true
-	get_tree().create_timer(0.7).timeout.connect(func(): warn_dive = false)
+	get_tree().create_timer(0.7).timeout.connect(_clear_dive_warning, CONNECT_ONE_SHOT)
+
+
+func _clear_dive_warning() -> void:
+	warn_dive = false
 
 
 var warn_dive := false

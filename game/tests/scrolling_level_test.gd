@@ -102,7 +102,7 @@ func picture(name: String) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Use an isolated APPDATA under the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	root.get_node("Cfg").boxes_enabled = false   # el recorrido automático no salta cajas (las prueba box_test.gd)
@@ -111,7 +111,7 @@ func _run() -> void:
 	gm.god = true
 	if OS.get_cmdline_user_args().has("--preview"):
 		await preview_remaining_routes()
-		quit()
+		root.get_node("AudioManager").quit_game()
 		return
 	gm.reset_run()
 	await fresh()
@@ -207,7 +207,7 @@ func _run() -> void:
 	await process_frame
 	saves.clear()
 	print("SCROLLING TESTS: ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)
 
 func shifted(route: Array, dx: float) -> Array:
 	return route.map(func(v): return Vector2(v.x + dx, v.y))
