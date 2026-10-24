@@ -124,4 +124,4 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	print("ROW NAVIGATION: %d failures" % failures)
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

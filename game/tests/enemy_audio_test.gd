@@ -107,4 +107,4 @@ func run() -> void:
 	for p in audio.pool:
 		p.stop()
 	await process_frame
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

@@ -423,7 +423,7 @@ func _quit() -> void:
 		return
 	busy = true
 	await Telemetry.finish(false)
-	get_tree().quit()
+	AudioManager.quit_game()
 
 
 func _notification(what: int) -> void:
@@ -437,7 +437,7 @@ func _notification(what: int) -> void:
 		window_focused = true
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		await Telemetry.finish(false)
-		get_tree().quit()
+		AudioManager.quit_game()
 
 
 func _logout() -> void:

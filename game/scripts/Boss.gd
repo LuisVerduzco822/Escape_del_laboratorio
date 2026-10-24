@@ -1275,7 +1275,11 @@ func _dive_mark() -> void:
 	var dirv := (tgt - position).normalized()
 	dive_to = position + dirv * 560.0
 	warn_dive = true
-	get_tree().create_timer(0.7).timeout.connect(func(): warn_dive = false)
+	get_tree().create_timer(0.7).timeout.connect(_clear_dive_warning, CONNECT_ONE_SHOT)
+
+
+func _clear_dive_warning() -> void:
+	warn_dive = false
 
 
 var warn_dive := false

@@ -41,6 +41,50 @@ var cache := {}
 var current := ""
 var music_tween: Tween
 var ducked := false
+var shutting_down := false
+var shutdown_complete := false
+var quit_requested := false
+
+
+func _exit_tree() -> void:
+	_release_audio()
+
+
+func _release_audio() -> void:
+	if music_tween:
+		music_tween.kill()
+	# Release active playback before the audio server shuts down.
+	for player in pool + [music]:
+		if is_instance_valid(player):
+			player.stop()
+			player.stream = null
+	cache.clear()
+	current = ""
+
+
+func shutdown() -> void:
+	if shutting_down:
+		while not shutdown_complete:
+			await get_tree().process_frame
+		return
+	shutting_down = true
+	_release_audio()
+	# stop() queues a fade/removal on the audio thread. Tree teardown is too late
+	# to drain it. Use wall time: --fixed-fps and hitstop change game-time timers.
+	var drain_until := Time.get_ticks_msec() + 100
+	while Time.get_ticks_msec() < drain_until:
+		await get_tree().process_frame
+	shutdown_complete = true
+
+
+func quit_game(code: int = 0) -> void:
+	if quit_requested:
+		return
+	quit_requested = true
+	get_tree().paused = true
+	get_node("/root/Fx").reset()
+	await shutdown()
+	get_tree().quit(code)
 
 
 func _ready() -> void:
@@ -136,6 +180,8 @@ var last_ms := {}
 
 
 func sfx(name: String, vol: float = 0.0, pitch: float = 1.0) -> void:
+	if shutting_down:
+		return
 	var key := name
 	if not SFX_FILES.has(key):
 		return
@@ -188,6 +234,8 @@ func sfx(name: String, vol: float = 0.0, pitch: float = 1.0) -> void:
 
 
 func play_music(name: String) -> void:
+	if shutting_down:
+		return
 	if name == current and music.playing:
 		return
 	current = name

@@ -308,6 +308,7 @@ func _shoot() -> void:
 	s.vel = dir * 360.0
 	get_parent().add_child(s)
 	AudioManager.sfx("boost_shoot" if weapon_power_t > 0.0 else "pshoot", -10.0, randf_range(0.97, 1.03))
+	Fx.shot_rumble()
 	mute_flash = 0.05
 
 

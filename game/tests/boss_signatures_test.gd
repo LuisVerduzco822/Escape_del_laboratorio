@@ -56,7 +56,7 @@ func run_attack(b, name: String, max_frames: int = 1500) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Use APPDATA inside the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	gm = root.get_node("GameManager")
@@ -129,4 +129,4 @@ func _run() -> void:
 		await run_attack(level.boss, pair[1])
 		check(not level.boss.busy and level.boss.laser_mode == 0 and level.boss.gust_t == 0.0, "'%s' termina y se limpia" % pair[1])
 	print("failures=%d" % failures)
-	quit(1 if failures > 0 else 0)
+	root.get_node("AudioManager").quit_game(1 if failures > 0 else 0)

@@ -33,7 +33,7 @@ func frames(count: int) -> void:
 func _run() -> void:
 	if not OS.get_data_dir().begins_with("/tmp/escape-controls-"):
 		push_error("Use XDG_DATA_HOME=/tmp/escape-controls-mouse-tests")
-		quit(2)
+		root.get_node("AudioManager").quit_game(2)
 		return
 	gm = root.get_node("GameManager")
 	gm.set_pointing_mode("keyboard")
@@ -158,4 +158,4 @@ func _run() -> void:
 	await process_frame
 	gm.restore_bindings()
 	print("MOUSE AIM: %d failures" % failures)
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

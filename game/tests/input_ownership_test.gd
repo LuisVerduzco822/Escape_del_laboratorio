@@ -104,7 +104,7 @@ func _run() -> void:
 	check(gentle.owner == "desktop", "Centered gentle stick yields to waiting keyboard")
 	if not OS.get_data_dir().begins_with("/tmp/escape-controls-"):
 		push_error("Use XDG_DATA_HOME=/tmp/escape-controls-ownership-tests")
-		quit(2)
+		root.get_node("AudioManager").quit_game(2)
 		return
 	var gm := root.get_node("GameManager")
 	gm.input_ownership = Ownership.new()
@@ -164,4 +164,4 @@ func _run() -> void:
 	await process_frame
 	gm.input_ownership.clear()
 	print("INPUT OWNERSHIP: %d failures" % failures)
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

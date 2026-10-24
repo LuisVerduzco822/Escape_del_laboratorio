@@ -6,6 +6,15 @@ var flash_rect: ColorRect
 var flash_alpha := 0.0
 var flash_speed := 3.0
 var stop_token := 0
+var rumble_pad := -1
+var shot_rumble_t := 0.0
+
+# Camera amplitudes are in viewport pixels; motor strengths stay within [0, 1].
+const RUMBLE_FULL_AMP := 6.0
+# Short high-frequency recoil, distinct from the stronger low-frequency impacts.
+const SHOT_RUMBLE_TIME := 0.035
+const SHOT_RUMBLE_WEAK := 0.18
+const SHOT_RUMBLE_STRONG := 0.04
 
 
 func _ready() -> void:
@@ -21,18 +30,76 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if rumble_pad >= 0 and (get_tree().paused or not _has_focus() or rumble_pad not in _connected_pads() or rumble_pad != _rumble_target()):
+		_stop_rumble()
+	if shot_rumble_t > 0.0:
+		shot_rumble_t = maxf(0.0, shot_rumble_t - delta)
+		if shot_rumble_t <= 0.0 and shake_t <= 0.0:
+			_stop_rumble()
 	if shake_t > 0.0:
 		shake_t -= delta
 		if shake_t <= 0.0:
 			shake_amp = 0.0
+			_stop_rumble()
 	if flash_alpha > 0.0:
 		flash_alpha = maxf(0.0, flash_alpha - flash_speed * delta)
 		flash_rect.color.a = flash_alpha
 
 
 func shake(amp: float, time: float) -> void:
+	if amp <= 0.0 or time <= 0.0:
+		return
 	shake_amp = maxf(shake_amp, amp)
 	shake_t = maxf(shake_t, time)
+	shot_rumble_t = 0.0
+	var strength := clampf(shake_amp / RUMBLE_FULL_AMP, 0.0, 1.0)
+	_start_rumble(strength * 0.7, strength, shake_t)
+
+
+func shot_rumble() -> void:
+	# Discard recoil during impacts: holding fire must never mask damage feedback.
+	if shake_t > 0.0:
+		return
+	if _start_rumble(SHOT_RUMBLE_WEAK, SHOT_RUMBLE_STRONG, SHOT_RUMBLE_TIME):
+		shot_rumble_t = SHOT_RUMBLE_TIME
+
+
+func _start_rumble(weak: float, strong: float, duration: float) -> bool:
+	var device := _rumble_target()
+	if device != rumble_pad:
+		_stop_rumble()
+	if device >= 0 and not get_tree().paused and _has_focus():
+		rumble_pad = device
+		Input.start_joy_vibration(device, weak, strong, duration)
+		return true
+	return false
+
+
+func _connected_pads() -> Array[int]:
+	return Input.get_connected_joypads()
+
+
+func _has_focus() -> bool:
+	return get_window().has_focus()
+
+
+func _rumble_target() -> int:
+	var connected := _connected_pads()
+	var active_pad: int = get_node("/root/GameManager").active_pad
+	if active_pad in connected:
+		return active_pad
+	return connected[0] if not connected.is_empty() else -1
+
+
+func _stop_rumble() -> void:
+	shot_rumble_t = 0.0
+	if rumble_pad >= 0:
+		Input.stop_joy_vibration(rumble_pad)
+		rumble_pad = -1
+
+
+func _exit_tree() -> void:
+	_stop_rumble()
 
 
 func shake_offset() -> Vector2:
@@ -57,6 +124,7 @@ func hitstop(sec: float) -> void:
 
 
 func reset() -> void:
+	_stop_rumble()
 	stop_token += 1
 	Engine.time_scale = 1.0
 	shake_t = 0.0
@@ -95,9 +163,13 @@ func burst(parent: Node, pos: Vector2, color: Color, n: int = 10, speed: float =
 	p.z_index = 20
 	parent.add_child(p)
 	p.emitting = true
-	p.finished.connect(func():
-		live_bursts = maxi(0, live_bursts - 1)
-		p.queue_free())
+	# Teardown also removes unfinished bursts; keep the global budget accurate.
+	p.tree_exited.connect(_burst_exited, CONNECT_ONE_SHOT)
+	p.finished.connect(p.queue_free, CONNECT_ONE_SHOT)
+
+
+func _burst_exited() -> void:
+	live_bursts = maxi(0, live_bursts - 1)
 
 
 func popup(parent: Node, text: String, pos: Vector2, color: Color = Color.WHITE) -> void:

@@ -23,7 +23,7 @@ func space(echo: bool = false) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Run with APPDATA set to the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	await change_scene_to_file("res://scenes/Main.tscn")
@@ -54,4 +54,4 @@ func _run() -> void:
 	main.story_tween.custom_step(10.0)
 	check(main.story_label.visible_ratio == 1.0 and main.story_hint.visible, "Natural text completion shows prompt")
 	print("Story input failures: %d" % failures)
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

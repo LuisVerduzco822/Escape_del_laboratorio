@@ -27,7 +27,7 @@ func tap(action: String) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Use APPDATA inside the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	var gm = root.get_node("GameManager")
@@ -86,5 +86,7 @@ func _run() -> void:
 	await tap("jump")
 	await frames(2)
 	check(not falling or p.air_jumps == 0, "A fall allows one air jump")
+	level.queue_free()
+	await process_frame
 	print("DOUBLE JUMP TESTS: ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

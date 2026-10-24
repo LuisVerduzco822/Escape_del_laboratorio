@@ -29,7 +29,7 @@ func tap(action: String) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Use APPDATA inside the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	gm = root.get_node("GameManager")
@@ -85,4 +85,4 @@ func _run() -> void:
 	await frames(60)
 	check(level.player.slam_t == 0.0 and not level.player.air_flipped, "A normal jump lands without slashing")
 	print("PURGE/SLASH TESTS: %d failures" % failures)
-	quit(1 if failures > 0 else 0)
+	root.get_node("AudioManager").quit_game(1 if failures > 0 else 0)

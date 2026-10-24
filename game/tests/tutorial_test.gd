@@ -57,7 +57,7 @@ func picture(name: String) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Use isolated APPDATA under .save-check")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	gm = root.get_node("GameManager")
@@ -256,4 +256,4 @@ func _run() -> void:
 	await frames(300)
 	check(is_instance_valid(main.level) and not main.level.is_tutorial and main.cur_index == 0, "Play starts level 1 directly without tutorial")
 	print("Tutorial failures: %d" % failures)
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

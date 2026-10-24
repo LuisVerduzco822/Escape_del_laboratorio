@@ -14,7 +14,7 @@ func check(ok: bool, label: String) -> void:
 
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	root.get_node("Database").start_offline()
 	var fx = root.get_node("Fx")
@@ -82,4 +82,4 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	print("COMBAT EFFECT TESTS: ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)

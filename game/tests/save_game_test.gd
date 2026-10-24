@@ -17,7 +17,7 @@ func check(ok: bool, label: String) -> void:
 func _run() -> void:
 	if not OS.get_user_data_dir().contains(".save-check"):
 		push_error("Run with APPDATA set to the workspace .save-check directory")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	db = root.get_node("Database")
 	saves = root.get_node("SaveGame")
@@ -105,7 +105,7 @@ func _run() -> void:
 	var boss_save: Dictionary = saves.load_saved()
 	if boss_save.is_empty():
 		check(false, "Boss snapshot passes validation")
-		quit(1)
+		root.get_node("AudioManager").quit_game(1)
 		return
 	check(boss_save.boss.hp == checkpoint.boss.hp and boss_save.stats.hp == 3 and boss_save.stats.super_meter == 55.0 and boss_save.stats.score == checkpoint_score, "Mid-phase damage and spent resources cannot be mixed")
 	await main._start_level(1, "boss", false, boss_save)
@@ -218,4 +218,4 @@ func _run() -> void:
 	main.level.boss._die()
 	check(saves.load_saved().is_empty(), "Defeated boss checkpoint is invalidated")
 	print("SAVE TESTS: ", checks, " checks, ", failures, " failures")
-	quit(1 if failures else 0)
+	root.get_node("AudioManager").quit_game(1 if failures else 0)
