@@ -48,6 +48,15 @@ var input_ownership := preload("res://scripts/InputOwnership.gd").new()
 var gameplay_current: Dictionary = {}
 var gameplay_previous: Dictionary = {}
 var blocked_gameplay_actions: Dictionary = {}
+var touch_actions: Dictionary = {}
+var touch_aim := Vector2.RIGHT
+var touch_seen := false
+var touch_visibility := "auto"
+var touch_size := 1.0
+var touch_opacity := 0.7
+var touch_separate_aim := false
+signal touch_reset
+const TOUCH_SETTINGS := "user://touch.cfg"
 const PAD_DEADZONE := 0.25
 const CAPTURE_THRESHOLD := 0.65
 
@@ -68,6 +77,7 @@ func _ready() -> void:
 	_setup_menu_gamepad()
 	Input.joy_connection_changed.connect(_pad_connection_changed)
 	_load_bindings()
+	_load_touch_settings()
 	reset_run()
 
 
@@ -99,6 +109,8 @@ func _setup_inputs() -> void:
 # F11 o Alt+Enter alternan entre pantalla completa y ventana grande (el juego arranca a pantalla completa).
 func _input(event: InputEvent) -> void:
 	observe_input(event)
+	if (event is InputEventMouseButton or event is InputEventMouseMotion) and event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	if event is InputEventMouseMotion and mouse_capture_active and not capturing_controls:
 		apply_mouse_aim_motion(event.screen_relative, false)
 		return
@@ -298,6 +310,8 @@ func binding_label(event: InputEvent) -> String:
 
 
 func action_hint(action: String) -> String:
+	if is_touch_active():
+		return touch_hint(action)
 	var names := PackedStringArray()
 	var events := control_events(action, last_input_pad)
 	for event in events:
@@ -614,6 +628,8 @@ func _pad_connection_changed(device: int, connected: bool) -> void:
 
 
 func aim_direction(move_axis: float, vertical: float) -> Vector2:
+	if is_touch_active():
+		return touch_aim
 	var horizontal := gameplay_axis("aim_left", "aim_right")
 	# The right stick (or remapped independent aim) overrides left-stick/D-Pad aim.
 	var independent_vertical := _independent_aim_strength("aim_down") - _independent_aim_strength("aim_up")
@@ -690,6 +706,7 @@ func _migrate_pad_defaults(file: ConfigFile) -> void:
 
 
 func release_gameplay_buttons() -> void:
+	reset_touch()
 	# Accept/back on a menu must not also jump or dash on the first resumed frame.
 	for action in ["jump", "shoot", "super", "dash", "lock"]:
 		if _physical_action_strength(action, true) > 0.0:
@@ -734,7 +751,7 @@ func primary_icon(action: String) -> Texture2D:
 
 
 func use_keyboard_aim_smoothing() -> bool:
-	if pointing_mode == "mouse" or last_input_pad:
+	if pointing_mode == "mouse" or last_input_pad or is_touch_active():
 		return false
 	for event in control_events("lock"):
 		if event is InputEventKey and Input.is_physical_key_pressed(event.physical_keycode):
@@ -841,7 +858,7 @@ func apply_mouse_aim_motion(relative: Vector2, track_source: bool = true) -> voi
 
 
 func is_mouse_aiming() -> bool:
-	return pointing_mode == "mouse" and mouse_capture_active and not last_input_pad
+	return pointing_mode == "mouse" and mouse_capture_active and input_ownership.owner == "desktop"
 
 
 func _clamp_mouse_cursor() -> void:
@@ -854,6 +871,8 @@ func reset_mouse_cursor() -> void:
 
 
 func _sync_input_owner() -> void:
+	if not touch_actions.is_empty() and input_ownership.owner != "touch" and not input_ownership.busy("touch"):
+		reset_touch()
 	last_input_pad = input_ownership.owner.begins_with("pad:")
 	active_pad = int(input_ownership.owner.trim_prefix("pad:")) if last_input_pad else -1
 	mouse_aim_owned = not last_input_pad
@@ -878,6 +897,9 @@ func _physical_action_strength(action: String, all_sources: bool = false) -> flo
 	var strength := 0.0
 	var sources: Array = input_ownership.sources.keys() if all_sources else [input_ownership.owner]
 	for source in sources:
+		if source == "touch":
+			strength = maxf(strength, touch_actions.get(action, 0.0))
+			continue
 		for event in InputMap.action_get_events(action):
 			strength = maxf(strength, input_ownership.strength(event, source, InputMap.action_get_deadzone(action)))
 	return strength
@@ -891,6 +913,9 @@ func gameplay_strength(action: String) -> float:
 		blocked_gameplay_actions.erase(action)
 	if physical > 0.0:
 		return _physical_action_strength(action)
+	if is_touch_active() or input_ownership.busy("touch"):
+		# Emulated mouse InputMap events must not leak into empty touch actions.
+		return 0.0
 	# Preserve explicit action_press/action_release used by training and simulations.
 	return Input.get_action_strength(action)
 
@@ -912,14 +937,76 @@ func gameplay_just_released(action: String) -> bool:
 
 
 func observe_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		touch_seen = true
 	input_ownership.observe(event)
 	_sync_input_owner()
 
 
 func clear_input_activity() -> void:
+	reset_touch()
 	input_ownership.clear()
 	gameplay_current.clear()
 	gameplay_previous.clear()
 	blocked_gameplay_actions.clear()
 	for action in CONTROL_ACTIONS:
 		Input.action_release(action)
+
+
+func is_touch_active() -> bool:
+	return input_ownership.owner == "touch"
+
+
+func touch_controls_visible() -> bool:
+	if touch_visibility == "off":
+		return false
+	return touch_visibility == "on" or ((DisplayServer.is_touchscreen_available() or touch_seen) and not last_input_pad)
+
+
+func touch_hint(action: String) -> String:
+	return {"move_left": "STICK L", "move_right": "STICK L", "aim_up": "STICK R" if touch_separate_aim else "STICK L", "aim_down": "STICK L ABAJO", "jump": "CRUZ / TOCAR PANTALLA", "shoot": "STICK R / CUADRADO" if touch_separate_aim else "CUADRADO", "super": "TRIANGULO", "dash": "CIRCULO", "lock": "L1", "pause": "MENU"}.get(action, "STICK L")
+
+
+func reset_touch() -> void:
+	touch_actions.clear()
+	input_ownership.sources.erase("touch")
+	input_ownership.waiting.erase("touch")
+	touch_reset.emit()
+
+
+func set_touch_settings(mode: String, scale_value: float, opacity_value: float, separate_aim: Variant = null) -> Error:
+	if mode not in ["auto", "on", "off"]:
+		return ERR_INVALID_PARAMETER
+	if separate_aim != null and not separate_aim is bool:
+		return ERR_INVALID_PARAMETER
+	var next_aim: bool = touch_separate_aim if separate_aim == null else separate_aim
+	var file := ConfigFile.new()
+	file.set_value("touch", "visibility", mode)
+	file.set_value("touch", "size", clampf(scale_value, 0.85, 1.15))
+	file.set_value("touch", "opacity", clampf(opacity_value, 0.35, 1.0))
+	file.set_value("touch", "separate_aim", next_aim)
+	var error := file.save(TOUCH_SETTINGS)
+	if error != OK:
+		return error
+	touch_visibility = mode
+	touch_size = clampf(scale_value, 0.85, 1.15)
+	touch_opacity = clampf(opacity_value, 0.35, 1.0)
+	touch_separate_aim = next_aim
+	reset_touch()
+	return OK
+
+
+func _load_touch_settings() -> void:
+	var file := ConfigFile.new()
+	if file.load(TOUCH_SETTINGS) != OK:
+		return
+	var mode = file.get_value("touch", "visibility", "auto")
+	touch_visibility = mode if mode in ["auto", "on", "off"] else "auto"
+	var scale_value = file.get_value("touch", "size", 1.0)
+	var opacity_value = file.get_value("touch", "opacity", 0.7)
+	var aim_value = file.get_value("touch", "separate_aim", false)
+	touch_separate_aim = aim_value if aim_value is bool else false
+	if (scale_value is float or scale_value is int) and is_finite(float(scale_value)):
+		touch_size = clampf(float(scale_value), 0.85, 1.15)
+	if (opacity_value is float or opacity_value is int) and is_finite(float(opacity_value)):
+		touch_opacity = clampf(float(opacity_value), 0.35, 1.0)

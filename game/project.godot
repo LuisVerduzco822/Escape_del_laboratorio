@@ -40,6 +40,12 @@ window/size/mode=3
 window/size/window_width_override=1600
 window/size/window_height_override=900
 window/stretch/mode="viewport"
+window/handheld/orientation=4
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true
+pointing/emulate_touch_from_mouse=false
 
 [dotnet]
 
@@ -57,6 +63,7 @@ project/assembly_name="Escape del Laboratorio"
 
 [rendering]
 
+textures/vram_compression/import_etc2_astc=true
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

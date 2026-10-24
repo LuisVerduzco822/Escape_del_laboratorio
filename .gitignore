@@ -1,14 +1,34 @@
 # Godot
 .godot/
 .import/
-export_presets.cfg
+/game/builds/
+/game/android/
+/game/.godot-export-settings.cfg
 *.translation
 .save-check/
+
+# Android exports, generated Gradle caches and local signing keys
+*.apk
+*.aab
+*.idsig
+*.tpz
+.gradle/
+*.keystore
+*.jks
+
+# Python tool caches
+__pycache__/
+*.py[cod]
 
 # Servidor
 node_modules/
 .env
+.env.*
+!.env.example
 npm-debug.log*
+
+# Local account credentials
+/.aws/
 
 # Local asset evaluation packs; ship only selected, credited resources.
 game/assets/tmp/*

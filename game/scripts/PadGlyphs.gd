@@ -67,6 +67,16 @@ const REGIONS := {
 static var cache: Dictionary = {}
 
 
+static func neutral_stick_texture(right: bool = false) -> Texture2D:
+	var key := "Joystick8" if right else "Joystick7"
+	if not cache.has(key):
+		var atlas := AtlasTexture.new()
+		atlas.atlas = SHEETS.Joystick
+		atlas.region = REGIONS[key]
+		cache[key] = atlas
+	return cache[key]
+
+
 static func detect_family(name: String) -> String:
 	var lower := name.to_lower()
 	for token in ["playstation", "dualshock", "dualsense", "sony", "ps3", "ps4", "ps5"]:

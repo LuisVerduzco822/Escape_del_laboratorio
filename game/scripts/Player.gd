@@ -608,6 +608,11 @@ func _draw() -> void:
 
 
 func _update_aim(horizontal: float, vertical: float, delta: float) -> void:
+	if GameManager.is_touch_active():
+		aim = GameManager.touch_aim
+		if absf(aim.x) > 0.001:
+			facing = 1 if aim.x > 0 else -1
+		return
 	if GameManager.is_mouse_aiming():
 		# Canvas inverse accounts for camera scrolling and shake, while the cursor stays on screen.
 		var target: Vector2 = get_global_transform_with_canvas().affine_inverse() * GameManager.mouse_cursor_position

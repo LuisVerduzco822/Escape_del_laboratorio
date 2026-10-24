@@ -22,7 +22,7 @@ func key(code: int) -> InputEventKey:
 
 func _run() -> void:
 	# Never overwrite real user settings.
-	if not OS.get_data_dir().begins_with("/tmp/escape-controls-"):
+	if not preload("res://tests/TestIsolation.gd").active():
 		push_error("Run with XDG_DATA_HOME=/tmp/escape-controls-tests")
 		root.get_node("AudioManager").quit_game(2)
 		return

@@ -249,4 +249,23 @@ func current_lesson() -> Array:
 			lesson[1] = "{lock} fija; mueve el raton arriba"
 	if step == 7:
 		lesson[2] = "Tienes 100 de energia. Activa ULTRA."
+	if GameManager.touch_controls_visible():
+		lesson[1] = ["Stick L: mover y apuntar", "CRUZ o toque: saltar", "Manten CUADRADO para disparar", "L1 fija; el stick L sigue apuntando", "CIRCULO: cruza la franja roja", "CRUZ en el aire junto al rosa", "TRIANGULO: SUPER con media barra", "TRIANGULO: ULTRA con barra llena", "Salta con CRUZ hasta el frasco", "Combina stick L, CUADRADO y CRUZ"][step]
+		if step == 1:
+			lesson[2] = "Pulsa CRUZ o toca una zona libre. Manten para saltar mas alto."
+		if step == 1 and tutorial_state.get("jump_landed", false):
+			lesson[1] = "CRUZ otra vez en el aire"
+			lesson[2] = "El segundo toque activa el doble salto con espada."
+		if step == 2:
+			lesson[2] = "Apunta con L; manten CUADRADO. Soltar CUADRADO detiene el tiro."
+		if step == 3:
+			lesson[2] = "Pulsa L1, mueve L arriba y manten CUADRADO para disparar."
+		if GameManager.touch_separate_aim:
+			if step == 2:
+				lesson[1] = "Manten stick R para apuntar y disparar"
+				lesson[2] = "Toque en CUADRADO central: tiro fijo naranja; otro toque lo libera."
+			if step == 3:
+				lesson[1] = "Stick R apunta con prioridad sobre L"
+				lesson[2] = "Bajo el blanco, manten el stick R hacia arriba."
+		lesson[2] = str(lesson[2]).replace("{shoot}", "CUADRADO").replace("{jump}", "CRUZ")
 	return lesson

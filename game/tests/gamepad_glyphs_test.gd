@@ -19,7 +19,7 @@ func button(index: int) -> InputEventJoypadButton:
 	return event
 
 func _run() -> void:
-	if not OS.get_data_dir().begins_with("/tmp/escape-controls-"):
+	if not preload("res://tests/TestIsolation.gd").active():
 		push_error("Use XDG_DATA_HOME=/tmp/escape-controls-glyph-tests")
 		root.get_node("AudioManager").quit_game(2)
 		return

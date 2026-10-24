@@ -17,7 +17,7 @@ func frames(count: int) -> void:
 		await process_frame
 
 func _run() -> void:
-	if not OS.get_data_dir().begins_with("/tmp/escape-controls-"):
+	if not preload("res://tests/TestIsolation.gd").active():
 		push_error("Use XDG_DATA_HOME=/tmp/escape-controls-hints-tests")
 		root.get_node("AudioManager").quit_game(2)
 		return
@@ -73,6 +73,16 @@ func _run() -> void:
 	level.is_tutorial = false
 	await frames(2)
 	check(guide.visible, "Guide returns for normal gameplay")
+	gm.touch_visibility = "on"
+	await frames(2)
+	check(not guide.visible and cfg.show_key_hints, "Touch hides keyboard hints even when the clean HUD option is disabled")
+	gm.touch_visibility = "off"
+	await frames(2)
+	check(guide.visible, "Configured keyboard hints return after hiding touch controls")
+	cfg.show_key_hints = false
+	await frames(2)
+	check(not guide.visible, "Clean HUD can hide hints again during gameplay")
+	cfg.show_key_hints = true
 	level.player.dead = true
 	await frames(2)
 	check(not guide.visible, "Guide hides on defeat")

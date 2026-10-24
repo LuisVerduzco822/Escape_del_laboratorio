@@ -40,6 +40,14 @@ func _draw() -> void:
 		return
 	var step := int(level.tutorial_state.step)
 	var lesson: Array = level.current_lesson()
+	if GameManager.touch_controls_visible():
+		draw_rect(Rect2(4, 3, 420, 54), Color(0.02, 0.06, 0.09, 0.92))
+		UI.text(self, "%d/10 %s" % [step + 1, lesson[0]], 210, 16, 8, Color(1, 0.9, 0.4), 1)
+		UI.text(self, lesson[1], 210, 32, 8, Color.WHITE, 1)
+		UI.text(self, lesson[2], 240, 112, 6, Color(0.6, 0.95, 0.85), 1)
+		if step in [6, 7]:
+			_draw_super()
+		return
 	draw_rect(Rect2(4, 3, 472, 54), Color(0.02, 0.06, 0.09, 0.92))
 	UI.text(self, "NIVEL 0 - PROTOCOLO DE EVACUACION", 240, 15, 8, Color(0.55, 0.95, 1), 1)
 	UI.text(self, "%d/10  %s" % [step + 1, lesson[0]], 240, 31, 8, Color(1, 0.9, 0.4), 1)
@@ -56,6 +64,11 @@ func _draw() -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
+	if is_instance_valid(skip):
+		skip.position = Vector2(195, 57) if GameManager.touch_controls_visible() else Vector2(320, 240)
+		skip.size = Vector2(90, 24) if GameManager.touch_controls_visible() else Vector2(152, 28)
+		skip.custom_minimum_size.x = 90 if GameManager.touch_controls_visible() else 152
+		skip_binding.visible = not GameManager.touch_controls_visible()
 	if is_instance_valid(skip_binding):
 		skip_binding.queue_redraw()
 

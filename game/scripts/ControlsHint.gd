@@ -16,6 +16,8 @@ func _ready() -> void:
 
 
 func _should_show() -> bool:
+	if GameManager.touch_controls_visible():
+		return false
 	return Cfg.show_key_hints and is_instance_valid(level) and not level.is_tutorial and not level.player.dead and level.st <= 3 and not level.is_player_frozen()
 
 

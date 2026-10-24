@@ -51,6 +51,7 @@ var end_sub: Label
 var credits_layer: CanvasLayer
 var credits_btn: Button
 var credits_back: Button
+var credits_scroll: ScrollContainer
 var tutorial_had_progress := false
 
 var window_focused := true
@@ -85,6 +86,10 @@ func _ready() -> void:
 	GameManager.controller_disconnected.connect(_controller_disconnected)
 	_build_fade()
 	_show_menu()
+	var touch_layer := _layer(15)
+	var touch := preload("res://scripts/TouchControls.gd").new()
+	touch.main = self
+	touch_layer.add_child(touch)
 
 
 func _layer(n: int) -> CanvasLayer:
@@ -427,13 +432,15 @@ func _quit() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_android_back()
+	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		window_focused = false
 		GameManager.clear_input_activity()
 		GameManager.set_mouse_gameplay(false)
 		if in_game and not busy and not get_tree().paused:
 			_set_pause(true)
-	elif what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
+	elif what == NOTIFICATION_WM_WINDOW_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:
 		window_focused = true
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		await Telemetry.finish(false)
@@ -475,6 +482,7 @@ func _hide_how() -> void:
 
 
 func _clear_level() -> void:
+	GameManager.reset_touch()
 	GameManager.set_mouse_gameplay(false)
 	GameManager.reset_mouse_cursor()
 	Fx.reset()
@@ -798,6 +806,7 @@ func _restart_level() -> void:
 
 
 func _set_pause(on: bool) -> void:
+	GameManager.reset_touch()
 	if on:
 		GameManager.set_mouse_gameplay(false)
 	if not on:
@@ -845,10 +854,13 @@ func _input(e: InputEvent) -> void:
 		if layer.visible:
 			UI.wire_focus_rows(layer)
 			break
+	if credits_layer.visible and credits_scroll.handle_input(e):
+		get_viewport().set_input_as_handled()
+		return
 	if how_layer.visible and how_panel.handle_input(e):
 		get_viewport().set_input_as_handled()
 		return
-	if waiting_story and ((e is InputEventKey and e.keycode == KEY_SPACE) or (e is InputEventJoypadButton and e.button_index == JOY_BUTTON_A)) and e.is_pressed() and not e.is_echo():
+	if waiting_story and ((e is InputEventKey and e.keycode == KEY_SPACE) or (e is InputEventJoypadButton and e.button_index == JOY_BUTTON_A) or (e is InputEventScreenTouch and not e.canceled)) and e.is_pressed() and not e.is_echo():
 		get_viewport().set_input_as_handled()
 		if story_label.visible_ratio < 1.0:
 			if story_tween:
@@ -896,6 +908,8 @@ func _controller_disconnected() -> void:
 
 func _refresh_story_prompt() -> void:
 	story_hint.text = "CONTINUAR" if GameManager.last_input_pad else "PULSA ESPACIO"
+	if GameManager.touch_controls_visible():
+		story_hint.text = "TOCA PARA CONTINUAR"
 	story_hint_icon.visible = GameManager.last_input_pad
 	if story_hint_icon.visible:
 		story_hint_icon.texture = GameManager.binding_icon(GameManager._pad_button(JOY_BUTTON_A))
@@ -919,7 +933,24 @@ func _sync_mouse_capture() -> void:
 	var initial_cursor := Vector2(-1, -1)
 	if playing:
 		initial_cursor = level.player.get_global_transform_with_canvas() * level.player._weapon_hand() + level.player.aim * 80.0
-	GameManager.set_mouse_gameplay(playing, level.player.aim if playing else Vector2.RIGHT, initial_cursor)
+	GameManager.set_mouse_gameplay(playing and not GameManager.is_touch_active(), level.player.aim if playing else Vector2.RIGHT, initial_cursor)
+
+
+func touch_gameplay_available() -> bool:
+	return window_focused and in_game and not busy and is_instance_valid(level) and not get_tree().paused and not level.player.dead and level.st <= Level.S.BOSS and not level.is_player_frozen() and not (how_layer.visible or menu_layer.visible or rank_layer.visible or fail_layer.visible or end_layer.visible or card_layer.visible or story_layer.visible)
+
+
+func _android_back() -> void:
+	if busy:
+		return
+	if how_layer != null and how_layer.visible:
+		_hide_how()
+	elif credits_layer != null and credits_layer.visible:
+		_hide_credits()
+	elif rank_layer != null and rank_layer.visible:
+		rank_layer.visible = false
+	elif in_game and is_instance_valid(level) and not level.player.dead:
+		_set_pause(not get_tree().paused)
 
 
 func _exit_tree() -> void:
@@ -939,7 +970,8 @@ func _build_credits() -> void:
 	var box := _center_box(credits_layer, 8)
 	box.custom_minimum_size.x = 408
 	box.add_child(_label("CRÉDITOS", 16, Color(1.0, 0.85, 0.3)))
-	var scroll := ScrollContainer.new()
+	var scroll := preload("res://scripts/CreditsScroll.gd").new()
+	credits_scroll = scroll
 	scroll.custom_minimum_size = Vector2(408, 172)
 	scroll.focus_mode = Control.FOCUS_ALL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -949,10 +981,13 @@ func _build_credits() -> void:
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.fit_content = true
 	text.scroll_active = false
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.add_theme_font_size_override("normal_font_size", 8)
 	text.text = "ESCAPE DEL LABORATORIO\nUna aventura en busca del antídoto.\n\nEQUIPO DEL JUEGO\nDiseño, programación y dirección creativa:\nEquipo Escape del Laboratorio\nArte procedural, jefes, música y parallax:\ncreados para este proyecto.\nGracias a quienes juegan y prueban el laboratorio.\n\nMOTOR\nGodot Engine · godotengine.org\n\nARTE, INTERFAZ Y TIPOGRAFÍA\nCompuertas — Kenney\nPixel Platformer Industrial Expansion\nkenney.nl/assets/pixel-platformer-industrial-expansion\nCC0 1.0 Universal\nGamepad Inputs UI — Gimicko / GoncaloMCOliveira\ngoncalomcoliveira.itch.io/gamepad-inputs-ui\nCC0 1.0 Universal\nLanzallamas — Player 24 / MainMenuMaster\nmainmenumaster.itch.io/weapons-axe-blade-pipe-chainsaw-flamethrowerorb\nModern Interiors Free v2.2 — personaje Adam\nUso no comercial\nPress Start 2P — SIL OFL 1.1\nFondos y bola de fuego: recursos proporcionados al proyecto.\n\nEFECTOS VISUALES\nBattle Effects — pimen\nhttps://pimen.itch.io/pixel-battle-effects\nCC BY 4.0\nhttps://creativecommons.org/licenses/by/4.0/\nEffect 2: PNG original sin modificar.\nCuatro cuadros; escala y velocidad en el juego.\n\nExplosions - Pixel Art — Aim studios\nhttps://aim-studios.itch.io/explosions-pixel-art\nCC0 1.0 Universal\nhttps://creativecommons.org/publicdomain/zero/1.0/\nExplosiones azules, verdes y de burbujas.\nPNG originales; escala y velocidad en el juego.\n\nLos autores no patrocinan este proyecto.\nLas licencias de recursos son independientes\nde la licencia del código del juego."
 	scroll.add_child(text)
+	box.add_child(_label("ARRASTRA / ARRIBA-ABAJO: LEER   IZQ-DER: TEXTO / VOLVER", 6, Color(0.6, 0.8, 0.85)))
 	credits_back = _btn(box, "VOLVER", _hide_credits)
+	scroll.back = credits_back
 	credits_layer.visible = false
 
 
@@ -962,5 +997,6 @@ func _show_credits() -> void:
 
 
 func _hide_credits() -> void:
+	credits_scroll.cancel_drag()
 	credits_layer.visible = false
 	credits_btn.grab_focus()
