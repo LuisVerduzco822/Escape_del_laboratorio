@@ -1,5 +1,7 @@
 # Android y controles táctiles
 
+Para exportaciones de producción firmadas y publicación en GitHub, consulta [Releases automáticos](RELEASES.md). El APK universal incluye ARMv7, ARM64, x86 y x86_64.
+
 El preset **Android** genera un APK firmado de prueba, instalable directamente. Las pruebas en Android y en emuladores quedan para ejecución manual del usuario. Los scripts no crean ni inician emuladores.
 
 El identificador Android es `mx.udg.alumnos.juegos.escape_del_laboratorio`. Android lo considera una aplicación distinta de las versiones con el identificador anterior; pueden coexistir y sus datos locales son independientes.
@@ -34,7 +36,7 @@ python game/tools/build_android.py --godot "C:/ruta/Godot_v4.7.2-stable_win64_co
 
 El resultado predeterminado es `game/builds/Escape-del-Laboratorio-debug.apk`. Puedes cambiarlo con `--output`. El script usa la clave estándar de depuración de `~/.android/debug.keystore` si existe, o la configuración de firma de Godot. Puedes indicar otra clave de depuración con `--keystore`; se espera el alias y contraseña estándar de Android. No se incluyen claves, credenciales ni rutas del equipo en el preset del repositorio.
 
-El APK incluye ARM64 y ARMv7, Android 7.0 o posterior, orientación horizontal con rotación de sensor y permiso de Internet. El script **solo compila**: no instala ni abre aplicaciones en dispositivos y conserva el servidor ADB compartido. La distribución en Google Play y la firma de producción quedan fuera de esta entrega.
+El APK incluye ARM64, ARMv7, x86 y x86_64, Android 7.0 o posterior, orientación horizontal con rotación de sensor y permiso de Internet. El script **solo compila**: no instala ni abre aplicaciones en dispositivos y conserva el servidor ADB compartido. La distribución en Google Play queda fuera de esta entrega; el workflow de releases realiza la firma de producción.
 
 ## Instalar y probar tú mismo
 

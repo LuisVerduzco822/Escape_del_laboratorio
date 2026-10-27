@@ -39,6 +39,8 @@ Capturas renderizadas en Godot con escenas preparadas de la versión actual. [Ga
 
 ## Jugar
 
+La automatización de APK firmado, Windows y Linux AppImage está descrita en [Releases automáticos](docs/RELEASES.md).
+
 El repositorio contiene el proyecto fuente; se ejecuta desde Godot.
 
 1. Clona el repositorio:

@@ -1,4 +1,5 @@
 # Godot
+/build/
 .godot/
 .import/
 /game/builds/

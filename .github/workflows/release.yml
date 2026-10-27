@@ -1,0 +1,78 @@
+name: Release game
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag, e.g. v1.0.0-alpha.1+1'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: game-releases
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: automation
+      - name: Resolve immutable source and validate version
+        id: version
+        run: python automation/.github/scripts/release.py resolve
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install export tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libx11-6 libxcursor1 libxinerama1 libxi6 libxrandr2 libgl1 libasound2 libpulse0 libfontconfig1 libfreetype6 libxrender1
+          sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.1'
+          mkdir -p tools "$HOME/.local/share/godot/export_templates/4.7.2.stable"
+          gh release download 4.7.2-stable --repo godotengine/godot-builds --pattern 'Godot_v4.7.2-stable_linux.x86_64.zip' --pattern 'Godot_v4.7.2-stable_export_templates.tpz' --dir tools
+          unzip -q tools/Godot_v4.7.2-stable_linux.x86_64.zip -d tools
+          unzip -q tools/Godot_v4.7.2-stable_export_templates.tpz -d tools/templates
+          mv tools/templates/templates/* "$HOME/.local/share/godot/export_templates/4.7.2.stable/"
+          echo "$GITHUB_WORKSPACE/tools" >> "$GITHUB_PATH"
+          gh release download 1.9.1 --repo AppImage/appimagetool --pattern appimagetool-x86_64.AppImage --dir tools
+          chmod +x tools/Godot_v4.7.2-stable_linux.x86_64 tools/appimagetool-x86_64.AppImage
+      - name: Configure signing and export
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: python automation/.github/scripts/release.py build
+      - name: Preserve complete builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.version.outputs.tag }}
+          path: dist/*
+          if-no-files-found: error
+      - name: Publish verified release
+        run: python automation/.github/scripts/release.py publish
+      - name: Clean up an interrupted publication
+        if: ${{ always() }}
+        run: python automation/.github/scripts/release.py cleanup
+      - name: Remove runner signing material
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/android-release.keystore"
