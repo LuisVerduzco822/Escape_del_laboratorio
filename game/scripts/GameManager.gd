@@ -55,7 +55,16 @@ var touch_visibility := "auto"
 var touch_size := 1.0
 var touch_opacity := 0.7
 var touch_separate_aim := false
+# Práctica 6: zona muerta del stick, vibración háptica opcional y modo de depuración con ratón.
+const TOUCH_DEADZONE_RANGE := Vector2(0.10, 0.40)
+const HAPTIC_MS_RANGE := Vector2i(30, 80)
+var touch_deadzone := 0.2
+var touch_haptics := true
+var touch_haptic_ms := 50
+var touch_mouse_debug := false
+var haptic_coin_ms := -1000
 signal touch_reset
+signal haptic_played(kind: String, ms: int)
 const TOUCH_SETTINGS := "user://touch.cfg"
 const PAD_DEADZONE := 0.25
 const CAPTURE_THRESHOLD := 0.65
@@ -957,9 +966,37 @@ func is_touch_active() -> bool:
 	return input_ownership.owner == "touch"
 
 
+# Depuración en PC: el ratón hace de dedo (clic izquierdo = toque). Se activa en CONTROLES → TÁCTIL
+# o con el argumento --touch-debug, y solo si el equipo NO tiene pantalla táctil real.
+func touch_mouse_debug_active() -> bool:
+	if DisplayServer.is_touchscreen_available():
+		return false
+	return touch_mouse_debug or "--touch-debug" in OS.get_cmdline_args() or "--touch-debug" in OS.get_cmdline_user_args()
+
+
+# Vibración háptica (Android). kind: "hurt" (daño), "pickup" (ingrediente/vida/power-up) o "coin" (más corta).
+# Solo vibra si el jugador usa controles táctiles y no la ha desactivado; las monedas tienen un límite de frecuencia.
+func haptic(kind: String) -> void:
+	if not touch_haptics or not touch_controls_visible() or last_input_pad:
+		return
+	var now := Time.get_ticks_msec()
+	var ms := touch_haptic_ms
+	if kind == "coin":
+		ms = HAPTIC_MS_RANGE.x
+		if now - haptic_coin_ms < 140:
+			return
+		haptic_coin_ms = now
+	elif kind == "pickup":
+		ms = clampi(int(touch_haptic_ms * 0.6), HAPTIC_MS_RANGE.x, HAPTIC_MS_RANGE.y)
+	Input.vibrate_handheld(ms)
+	haptic_played.emit(kind, ms)
+
+
 func touch_controls_visible() -> bool:
 	if touch_visibility == "off":
 		return false
+	if touch_mouse_debug_active():
+		return true
 	return touch_visibility == "on" or ((DisplayServer.is_touchscreen_available() or touch_seen) and not last_input_pad)
 
 
@@ -981,6 +1018,7 @@ func set_touch_settings(mode: String, scale_value: float, opacity_value: float, 
 		return ERR_INVALID_PARAMETER
 	var next_aim: bool = touch_separate_aim if separate_aim == null else separate_aim
 	var file := ConfigFile.new()
+	file.load(TOUCH_SETTINGS)   # conserva los ajustes extra (zona muerta, vibración)
 	file.set_value("touch", "visibility", mode)
 	file.set_value("touch", "size", clampf(scale_value, 0.85, 1.15))
 	file.set_value("touch", "opacity", clampf(opacity_value, 0.35, 1.0))
@@ -996,6 +1034,27 @@ func set_touch_settings(mode: String, scale_value: float, opacity_value: float, 
 	return OK
 
 
+# Zona muerta del stick, vibración y depuración con ratón (se guardan junto al resto del táctil).
+func set_touch_extra(deadzone: float, haptics: bool, haptic_ms: int, mouse_debug: bool) -> Error:
+	var file := ConfigFile.new()
+	file.load(TOUCH_SETTINGS)
+	var dz := clampf(deadzone, TOUCH_DEADZONE_RANGE.x, TOUCH_DEADZONE_RANGE.y)
+	var ms := clampi(haptic_ms, HAPTIC_MS_RANGE.x, HAPTIC_MS_RANGE.y)
+	file.set_value("touch", "deadzone", dz)
+	file.set_value("touch", "haptics", haptics)
+	file.set_value("touch", "haptic_ms", ms)
+	file.set_value("touch", "mouse_debug", mouse_debug)
+	var error := file.save(TOUCH_SETTINGS)
+	if error != OK:
+		return error
+	touch_deadzone = dz
+	touch_haptics = haptics
+	touch_haptic_ms = ms
+	touch_mouse_debug = mouse_debug
+	reset_touch()
+	return OK
+
+
 func _load_touch_settings() -> void:
 	var file := ConfigFile.new()
 	if file.load(TOUCH_SETTINGS) != OK:
@@ -1005,6 +1064,14 @@ func _load_touch_settings() -> void:
 	var scale_value = file.get_value("touch", "size", 1.0)
 	var opacity_value = file.get_value("touch", "opacity", 0.7)
 	var aim_value = file.get_value("touch", "separate_aim", false)
+	var dz_value = file.get_value("touch", "deadzone", 0.2)
+	touch_deadzone = clampf(float(dz_value), TOUCH_DEADZONE_RANGE.x, TOUCH_DEADZONE_RANGE.y) if (dz_value is float or dz_value is int) and is_finite(float(dz_value)) else 0.2
+	var hap_value = file.get_value("touch", "haptics", true)
+	touch_haptics = hap_value if hap_value is bool else true
+	var ms_value = file.get_value("touch", "haptic_ms", 50)
+	touch_haptic_ms = clampi(int(ms_value), HAPTIC_MS_RANGE.x, HAPTIC_MS_RANGE.y) if ms_value is int or ms_value is float else 50
+	var dbg_value = file.get_value("touch", "mouse_debug", false)
+	touch_mouse_debug = dbg_value if dbg_value is bool else false
 	touch_separate_aim = aim_value if aim_value is bool else false
 	if (scale_value is float or scale_value is int) and is_finite(float(scale_value)):
 		touch_size = clampf(float(scale_value), 0.85, 1.15)

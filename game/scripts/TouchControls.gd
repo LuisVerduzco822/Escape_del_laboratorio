@@ -6,7 +6,8 @@ const PadGlyphs := preload("res://scripts/PadGlyphs.gd")
 const ACTIVE_COLOR := Color(0.4, 0.9, 1.0)
 const LOCKED_COLOR := Color(1.0, 0.48, 0.0)
 const REST_COLOR := Color(0.55, 0.69, 0.78)
-const DEADZONE := 0.2
+const MIN_BUTTON_PX := 96.0   # lado mínimo físico de un botón (≈ 9 mm en un teléfono de 400 ppp)
+const MOUSE_FINGER := 99     # índice del "dedo" que simula el ratón en el modo de depuración
 var main: Node
 var fingers: Dictionary = {}
 var centers: Dictionary = {}
@@ -77,7 +78,26 @@ func _process(_delta: float) -> void:
 
 
 func _radius(role: String) -> float:
-	return (37.0 if role in ["move", "aim"] else (18.0 if role in ["lock", "pause"] else 21.0)) * GameManager.touch_size
+	var base := 37.0 if role in ["move", "aim"] else (18.0 if role in ["lock", "pause"] else 21.0)
+	var r := base * GameManager.touch_size
+	# En un teléfono real, ningún botón baja de MIN_BUTTON_PX píxeles físicos (con tope para no solaparse).
+	if DisplayServer.is_touchscreen_available():
+		r = maxf(r, minf(min_radius(screen_scale()), base * 1.3))
+	return r
+
+
+# Píxeles de pantalla por cada píxel del juego (480x270).
+func screen_scale() -> float:
+	return maxf(0.01, get_viewport().get_screen_transform().get_scale().x)
+
+
+func min_radius(scale_value: float) -> float:
+	return MIN_BUTTON_PX * 0.5 / maxf(0.01, scale_value)
+
+
+# Diámetro físico (en píxeles de pantalla) de un botón con un factor de escala dado.
+func physical_diameter(role: String, scale_value: float) -> float:
+	return _radius(role) * 2.0 * scale_value
 
 
 func _role_at(point: Vector2) -> String:
@@ -89,6 +109,9 @@ func _role_at(point: Vector2) -> String:
 
 
 func _input(event: InputEvent) -> void:
+	if GameManager.touch_mouse_debug_active() and (event is InputEventMouseButton or event is InputEventMouseMotion):
+		_mouse_as_finger(event)
+		return
 	if not (event is InputEventScreenTouch or event is InputEventScreenDrag):
 		return
 	if not can_play() or not GameManager.touch_controls_visible():
@@ -97,7 +120,36 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+# Depuración en PC: convierte el clic izquierdo del ratón en un dedo para probar los controles táctiles.
+func _mouse_as_finger(event: InputEvent) -> void:
+	if not can_play() or not GameManager.touch_controls_visible():
+		return
+	if event is InputEventMouseButton:
+		if event.button_index != MOUSE_BUTTON_LEFT:
+			return
+		var touch := InputEventScreenTouch.new()
+		touch.index = MOUSE_FINGER
+		touch.position = event.position
+		touch.pressed = event.pressed
+		if handle_touch(touch, not event.pressed):
+			get_viewport().set_input_as_handled()
+	elif fingers.has(MOUSE_FINGER) and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+		var drag := InputEventScreenDrag.new()
+		drag.index = MOUSE_FINGER
+		drag.position = event.position
+		handle_touch(drag)
+		get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if GameManager.touch_mouse_debug_active() and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed and can_play() and GameManager.touch_controls_visible():
+		var tap := InputEventScreenTouch.new()
+		tap.index = MOUSE_FINGER
+		tap.position = event.position
+		tap.pressed = true
+		if handle_touch(tap):
+			get_viewport().set_input_as_handled()
+		return
 	# GUI buttons (including tutorial OMITIR) get first refusal on free-screen taps.
 	if event is InputEventScreenTouch and event.pressed and not event.canceled and can_play() and GameManager.touch_controls_visible():
 		if handle_touch(event):
@@ -185,7 +237,8 @@ func _drag(role: String, point: Vector2) -> void:
 
 
 func _set_move() -> void:
-	var x := signf(stick.x) * clampf((absf(stick.x) - 0.2) / 0.8, 0, 1)
+	var dz := GameManager.touch_deadzone
+	var x := signf(stick.x) * clampf((absf(stick.x) - dz) / (1.0 - dz), 0, 1)
 	GameManager.touch_actions.move_left = maxf(0, -x)
 	GameManager.touch_actions.move_right = maxf(0, x)
 	GameManager.touch_actions.aim_down = 1.0 if stick.y > 0.55 else 0.0
@@ -194,9 +247,9 @@ func _set_move() -> void:
 
 func _update_touch_aim() -> void:
 	# Match the two gamepad sticks: independent aim wins, then movement direction.
-	if GameManager.touch_separate_aim and aim_knob.length() > DEADZONE:
+	if GameManager.touch_separate_aim and aim_knob.length() > GameManager.touch_deadzone:
 		GameManager.touch_aim = aim_knob.normalized()
-	elif stick.length() > DEADZONE:
+	elif stick.length() > GameManager.touch_deadzone:
 		GameManager.touch_aim = stick.normalized()
 
 

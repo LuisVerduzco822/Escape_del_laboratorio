@@ -172,4 +172,4 @@ details.more > summary { cursor: pointer; font-weight: 600; color: var(--text); 
 .rp-ev.bad span { color: var(--red); font-weight: 600; }
 .rp-ev.good span { color: var(--green); }
 .rp-ev.now { background: #2c403a; box-shadow: inset 3px 0 0 var(--gold); }
-@media (max-width: 900px) { .rp-layout { grid-template-columns: 1fr; } .rp-side { position: static; max-height: none; } }
+@media (max-width: 900px) { .rp-layout { grid-template-columns: 1fr; } .rp-side { position: static; max-height: none; } .rp-list { max-height: 230px; } }

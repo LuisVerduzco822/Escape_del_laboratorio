@@ -75,7 +75,7 @@ godot --path game
 
 Las asignaciones se pueden cambiar en **CONTROLES**. Los menús y las ayudas muestran el dispositivo activo y las entradas reasignadas. [Guía de teclado, ratón y mando](docs/CONTROLES.md).
 
-**Táctil / Android:** stick izquierdo para moverse, zona derecha para apuntar y activar fuego continuo, TIRO para apagarlo y botones de salto, dash y súper/ultra. Visibilidad, tamaño y opacidad se ajustan en **CONTROLES → TÁCTIL**. [Generar el APK, instalarlo y probarlo manualmente](docs/ANDROID.md).
+**Táctil / Android:** stick izquierdo para moverse, zona derecha para apuntar y activar fuego continuo, TIRO para apagarlo y botones de salto, dash y súper/ultra. Visibilidad, tamaño, opacidad, zona muerta del stick, vibración y depuración con ratón se ajustan en **CONTROLES → TÁCTIL**. [Práctica 6](docs/PRACTICA6.md). [Generar el APK, instalarlo y probarlo manualmente](docs/ANDROID.md).
 
 ## Cuentas, ranking y panel local
 
@@ -134,7 +134,7 @@ El ejecutor usa guardados temporales y considera fallos los errores de ejecució
 | Arquitectura, parámetros y validación | [Desarrollo](docs/DESARROLLO.md) |
 | Instalación de PostgreSQL y servidor | [Guía local](docs/GUIA_POSTGRESQL.md) |
 | API y consultas SQL | [API](docs/API.md) · [Consultas](docs/consultas.sql) |
-| Evidencias académicas | [Práctica 4](docs/PRACTICA4.md) · [Práctica 5](docs/PRACTICA5.md) |
+| Evidencias académicas | [Práctica 4](docs/PRACTICA4.md) · [Práctica 5](docs/PRACTICA5.md) · [Práctica 6](docs/PRACTICA6.md) |
 | Recursos y atribuciones | [Créditos y licencias](docs/CREDITOS.md) |
 
 ## Créditos y uso de recursos

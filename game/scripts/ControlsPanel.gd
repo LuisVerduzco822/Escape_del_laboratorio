@@ -229,6 +229,8 @@ func _restore() -> void:
 			status.text = "Pulsa RESTAURAR otra vez para restablecer solo el tactil."
 			return
 		var result := GameManager.set_touch_settings("auto", 1.0, 0.7, false)
+		if result == OK:
+			result = GameManager.set_touch_extra(0.2, true, 50, false)
 		_show_touch()
 		status.text = "Tactil restaurado." if result == OK else "No se pudo guardar."
 		return
@@ -364,7 +366,6 @@ func _show_touch() -> void:
 		aim_switch.set_pressed_no_signal(GameManager.touch_separate_aim)
 		status.text = "Punteria separada guardada." if result == OK else "No se pudo guardar."
 	)
-	_text("STICK L mueve y apunta. CUADRADO dispara mientras lo mantienes; arrastrarlo no cambia la punteria. L1 fija tu posicion: el stick sigue apuntando.\nCRUZ o un toque en una zona libre: salto, doble salto o parry. Abajo + salto: bajar de plataformas. CIRCULO: dash. TRIANGULO: SUPER con media barra o ULTRA con barra llena. Tres rayas: pausa.\nPUNTERIA SEPARADA anade un stick R que apunta y dispara, con prioridad sobre L. Un toque en el cuadrado de su centro bloquea el disparo (naranja). Pausar o cambiar de modo libera los controles.")
 	var picker := OptionButton.new()
 	picker.add_theme_font_size_override("font_size", 8)
 	for label in ["AUTOMATICO", "ACTIVADO", "DESACTIVADO"]:
@@ -378,7 +379,54 @@ func _show_touch() -> void:
 	)
 	_touch_slider("TAMANO", 0.85, 1.15, GameManager.touch_size, true)
 	_touch_slider("OPACIDAD", 0.35, 1.0, GameManager.touch_opacity, false)
+	_extra_slider("ZONA MUERTA", GameManager.TOUCH_DEADZONE_RANGE.x, GameManager.TOUCH_DEADZONE_RANGE.y, 0.01, GameManager.touch_deadzone, func(v: float): return _save_extra(v, GameManager.touch_haptics, GameManager.touch_haptic_ms, GameManager.touch_mouse_debug))
+	_extra_slider("VIBRACION MS", GameManager.HAPTIC_MS_RANGE.x, GameManager.HAPTIC_MS_RANGE.y, 5.0, GameManager.touch_haptic_ms, func(v: float): return _save_extra(GameManager.touch_deadzone, GameManager.touch_haptics, int(v), GameManager.touch_mouse_debug))
+	var haptic_switch := CheckButton.new()
+	haptic_switch.text = "VIBRACION (DANO Y RECOGER)"
+	haptic_switch.add_theme_font_size_override("font_size", 8)
+	haptic_switch.custom_minimum_size.y = 28
+	haptic_switch.button_pressed = GameManager.touch_haptics
+	rows.add_child(haptic_switch)
+	haptic_switch.toggled.connect(func(active: bool):
+		status.text = "Vibracion guardada." if _save_extra(GameManager.touch_deadzone, active, GameManager.touch_haptic_ms, GameManager.touch_mouse_debug) == OK else "No se pudo guardar."
+		if active:
+			Input.vibrate_handheld(GameManager.touch_haptic_ms)
+	)
+	var debug_switch := CheckButton.new()
+	debug_switch.text = "DEPURACION: RATON COMO DEDO (PC)"
+	debug_switch.add_theme_font_size_override("font_size", 8)
+	debug_switch.custom_minimum_size.y = 28
+	debug_switch.button_pressed = GameManager.touch_mouse_debug
+	rows.add_child(debug_switch)
+	debug_switch.toggled.connect(func(active: bool):
+		status.text = "Depuracion guardada." if _save_extra(GameManager.touch_deadzone, GameManager.touch_haptics, GameManager.touch_haptic_ms, active) == OK else "No se pudo guardar."
+	)
+	_text("STICK L mueve y apunta. CUADRADO dispara mientras lo mantienes; arrastrarlo no cambia la punteria. L1 fija tu posicion: el stick sigue apuntando.\nCRUZ o un toque en una zona libre: salto, doble salto o parry. Abajo + salto: bajar de plataformas. CIRCULO: dash. TRIANGULO: SUPER con media barra o ULTRA con barra llena. Tres rayas: pausa.\nPUNTERIA SEPARADA anade un stick R que apunta y dispara, con prioridad sobre L. Un toque en el cuadrado de su centro bloquea el disparo (naranja). Pausar o cambiar de modo libera los controles.")
 	status.text = "Automatico: aparece con pantalla tactil; se oculta al usar mando."
+
+
+func _save_extra(deadzone: float, haptics: bool, haptic_ms: int, mouse_debug: bool) -> Error:
+	return GameManager.set_touch_extra(deadzone, haptics, haptic_ms, mouse_debug)
+
+
+func _extra_slider(label: String, minimum: float, maximum: float, step_value: float, value: float, save: Callable) -> void:
+	var row := HBoxContainer.new()
+	rows.add_child(row)
+	var title := Label.new()
+	title.text = label
+	title.custom_minimum_size.x = 110
+	title.add_theme_font_size_override("font_size", 8)
+	row.add_child(title)
+	var slider := HSlider.new()
+	slider.min_value = minimum
+	slider.max_value = maximum
+	slider.step = step_value
+	slider.value = value
+	slider.custom_minimum_size = Vector2(210, 26)
+	row.add_child(slider)
+	slider.value_changed.connect(func(next: float):
+		status.text = "Ajuste guardado." if save.call(next) == OK else "No se pudo guardar."
+	)
 
 
 func _touch_slider(label: String, minimum: float, maximum: float, value: float, is_size: bool) -> void:

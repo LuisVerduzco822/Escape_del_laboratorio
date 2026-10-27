@@ -88,16 +88,19 @@ func _on_body(b: Node) -> void:
 		else:
 			Fx.popup(get_parent(), "VIDA COMPLETA", global_position + Vector2(0, -18), Color(1.0, 0.4, 0.55))
 		AudioManager.sfx("pickup")
+		GameManager.haptic("pickup")
 		queue_free()
 		return
 	if is_powerup():
 		if get_parent().claim_powerup(kind):
+			GameManager.haptic("pickup")
 			Fx.burst(get_parent(), global_position, col, 14, 80.0, 0.5, 2.0)
 			queue_free()
 		return
 	if kind == "coin":
 		GameManager.add_coin(value)
 		Telemetry.event("coin", {"value": value})
+		GameManager.haptic("coin")
 		AudioManager.sfx("coin", -8.0, randf_range(0.95, 1.15))
 		queue_free()
 		return
@@ -106,11 +109,13 @@ func _on_body(b: Node) -> void:
 		GameManager.add_super(10.0)
 		GameManager.add_coin(25)
 		Telemetry.event("ingredient", {"name": label, "idx": idx, "coins": 25})
+		GameManager.haptic("pickup")
 		AudioManager.sfx("pickup")
 		Fx.popup(get_parent(), label, global_position + Vector2(0, -16), col)
 		Fx.burst(get_parent(), global_position, col, 14, 90.0, 0.6, 2.5)
 	else:
 		Telemetry.event("heal", {"hp": GameManager.hp})
+		GameManager.haptic("pickup")
 		if GameManager.hp < Cfg.MAX_HP:
 			GameManager.heal(1)
 			Fx.popup(get_parent(), "+1 VIDA", global_position + Vector2(0, -16), Color(0.5, 1.0, 0.6))

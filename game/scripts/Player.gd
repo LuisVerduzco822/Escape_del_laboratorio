@@ -462,6 +462,7 @@ func hurt(source: String = "") -> void:
 	Telemetry.event("hurt", _where({"hp_left": GameManager.hp, "src": source}))
 	Fx.impact(get_parent(), global_position + Vector2(0, -3), "hit", 0.9)
 	AudioManager.sfx("player_hurt")
+	GameManager.haptic("hurt")
 	Fx.shake(3.0, 0.25)
 	Fx.hitstop(0.08)
 	var hit_color := Color(0.45, 0.7, 0.15) if GameManager.hp <= 0 else Color(1, 0.1, 0.1)
