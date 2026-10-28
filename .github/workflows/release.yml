@@ -26,22 +26,22 @@ jobs:
       GH_REPO: ${{ github.repository }}
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: automation
       - name: Resolve immutable source and validate version
         id: version
         run: python automation/.github/scripts/release.py resolve
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ steps.version.outputs.sha }}
           path: source
           persist-credentials: false
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           packages: platform-tools
       - name: Install export tools
@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y libx11-6 libxcursor1 libxinerama1 libxi6 libxrandr2 libgl1 libasound2 libpulse0 libfontconfig1 libfreetype6 libxrender1
+          sudo apt-get install -y appstream libx11-6 libxcursor1 libxinerama1 libxi6 libxrandr2 libgl1 libasound2 libpulse0 libfontconfig1 libfreetype6 libxrender1
           sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.1'
           mkdir -p tools "$HOME/.local/share/godot/export_templates/4.7.2.stable"
           gh release download 4.7.2-stable --repo godotengine/godot-builds --pattern 'Godot_v4.7.2-stable_linux.x86_64.zip' --pattern 'Godot_v4.7.2-stable_export_templates.tpz' --dir tools
@@ -66,7 +66,7 @@ jobs:
           GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: python automation/.github/scripts/release.py build
       - name: Preserve complete builds
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: release-${{ steps.version.outputs.tag }}
           path: dist/*

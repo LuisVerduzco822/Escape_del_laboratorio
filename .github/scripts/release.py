@@ -87,6 +87,8 @@ def build():
     key.chmod(0o600)
     os.environ['GODOT_ANDROID_KEYSTORE_RELEASE_PATH'] = str(key)
     game = Path('source/game').resolve()
+    shutil.copy2(Path(__file__).resolve().parents[2] / 'game/scripts/ReleaseSmoke.gd',
+                 game / 'scripts/ReleaseSmoke.gd')
     dist = Path('dist').resolve()
     dist.mkdir()
     preset = (game / 'export_presets.cfg').read_text()
@@ -102,6 +104,7 @@ name="{name}"
 platform="{platform}"
 runnable=false
 export_filter="all_resources"
+include_filter=""
 exclude_filter="tests/*,tools/*,.save-check/*,builds/*"
 script_export_mode=1
 [preset.{index}.options]
@@ -163,10 +166,23 @@ application/product_version="{state['name'].split('-')[0]}.0"
     (appdir / 'escape-del-laboratorio.desktop').write_text('[Desktop Entry]\nType=Application\n'
         'Name=Escape del Laboratorio\nExec=escape-del-laboratorio\nIcon=escape-del-laboratorio\nCategories=Game;\n')
     image = dist / f'{PREFIX}-linux-x86_64-{version}.AppImage'
+    metainfo = appdir / 'usr/share/metainfo'
+    metainfo.mkdir(parents=True)
+    (metainfo / 'mx.udg.alumnos.juegos.escape_del_laboratorio.appdata.xml').write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<component type="desktop-application">'
+        '<id>mx.udg.alumnos.juegos.escape_del_laboratorio</id>'
+        '<metadata_license>CC0-1.0</metadata_license>'
+        '<name>Escape del Laboratorio</name>'
+        '<summary>Escape the laboratory and craft the antidote</summary>'
+        '<launchable type="desktop-id">escape-del-laboratorio.desktop</launchable>'
+        '<description><p>Collect ingredients and defeat bosses to escape the laboratory.</p></description>'
+        '</component>\n')
     run(str(Path('tools/appimagetool-x86_64.AppImage').resolve()), '--appimage-extract-and-run',
         str(appdir), str(image), env={**os.environ, 'ARCH': 'x86_64'})
     # Exercise the packaged game rather than just checking the output filename.
-    run(str(image), '--appimage-extract-and-run', '--headless', '--quit-after', '2', timeout=60)
+    run(str(image), '--appimage-extract-and-run', '--headless', '--script',
+        'res://scripts/ReleaseSmoke.gd', timeout=60)
     expected = [apk.name, exe.name, image.name]
     for filename in expected:
         if not (dist / filename).stat().st_size:

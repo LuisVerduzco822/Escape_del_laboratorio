@@ -33,7 +33,7 @@ class ReleaseTests(unittest.TestCase):
     def test_workflow_initializes_android_sdk_before_using_sdkmanager(self):
         workflow = Path(__file__).parents[1] / 'workflows' / 'release.yml'
         contents = workflow.read_text()
-        self.assertLess(contents.index('android-actions/setup-android@v3'),
+        self.assertLess(contents.index('android-actions/setup-android@v4'),
                         contents.index("sdkmanager 'platform-tools'"))
 
     def resolve_source(self, ref, sha):
