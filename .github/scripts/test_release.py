@@ -30,6 +30,12 @@ class ReleaseTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 release.parse(value)
 
+    def test_workflow_initializes_android_sdk_before_using_sdkmanager(self):
+        workflow = Path(__file__).parents[1] / 'workflows' / 'release.yml'
+        contents = workflow.read_text()
+        self.assertLess(contents.index('android-actions/setup-android@v3'),
+                        contents.index("sdkmanager 'platform-tools'"))
+
     def resolve_source(self, ref, sha):
         with patch.dict(os.environ, RELEASE_TAG='v1.0.0+2', GITHUB_SHA='branch-sha',
                         GITHUB_OUTPUT='output', GH_REPO='owner/repo'), \
