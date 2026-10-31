@@ -27,6 +27,12 @@ var training := false
 
 const CONTROL_ACTIONS := ["move_left", "move_right", "aim_up", "aim_down", "jump", "shoot", "super", "dash", "lock", "pause", "aim_left", "aim_right"]
 const CONTROL_NAMES := ["IZQUIERDA", "DERECHA", "APUNTAR ARRIBA", "APUNTAR ABAJO", "SALTO / PARRY", "DISPARO", "SUPER / ULTRA", "DASH", "FIJAR POSICION", "PAUSA", "APUNTAR IZQ", "APUNTAR DER"]
+# Bindings remain on the editable actions above. Resolved actions have no physical
+# bindings: only the input adapter writes them, so emulated mouse and inactive
+# devices cannot leak into gameplay or release another device's held action.
+const PLAY_PREFIX := "play_"
+const LOOK_ACTIONS := ["play_look_left", "play_look_right", "play_look_up", "play_look_down"]
+const KEYBOARD_AIM_SPEED := deg_to_rad(120.0)
 const PadGlyphs := preload("res://scripts/PadGlyphs.gd")
 const GLYPH_STYLES := ["auto", "xbox", "playstation", "nintendo", "generic"]
 var gamepad_glyph_style := "auto"
@@ -78,7 +84,11 @@ func _ready() -> void:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
 		InputMap.action_set_deadzone(action, PAD_DEADZONE)
+		InputMap.add_action(PLAY_PREFIX + action, 0.0)
+		InputMap.add_action("touch_" + action, 0.0)
 		default_bindings[action] = InputMap.action_get_events(action).duplicate(true)
+	for action in LOOK_ACTIONS:
+		InputMap.add_action(action, 0.0)
 	_init_mouse_profiles()
 	_setup_gamepad()
 	for action in CONTROL_ACTIONS:
@@ -647,6 +657,51 @@ func aim_direction(move_axis: float, vertical: float) -> Vector2:
 	return Vector2(move_axis, vertical)
 
 
+func aim_tracks_view() -> bool:
+	return is_mouse_aiming()
+
+
+# Resolve device-specific aiming here, then expose only Input Map actions and a
+# facing value to the character. Geometry is supplied by the moving character so
+# pointer aim remains correct after camera scrolling, shake and hand animation.
+func update_aim_actions(horizontal: float, vertical: float, delta: float,
+		current: Vector2, facing: int, locked: bool, canvas_inverse: Transform2D,
+		hand: Vector2, sprite_position: Vector2) -> int:
+	var direction := current
+	if is_touch_active():
+		direction = touch_aim
+		if absf(direction.x) > 0.001:
+			facing = 1 if direction.x > 0 else -1
+	elif is_mouse_aiming():
+		var target := canvas_inverse * mouse_cursor_position
+		var side := target.x - sprite_position.x
+		if absf(side) > 0.001:
+			facing = 1 if side > 0.0 else -1
+		var offset := target - hand
+		if offset.length_squared() > 1.0:
+			direction = offset.normalized()
+		mouse_aim_direction = direction
+	else:
+		var raw := aim_direction(horizontal, vertical)
+		if locked and use_keyboard_aim_smoothing():
+			if raw != Vector2.ZERO:
+				var turn := direction.angle_to(raw.normalized())
+				direction = direction.rotated(clampf(turn, -KEYBOARD_AIM_SPEED * delta, KEYBOARD_AIM_SPEED * delta)).normalized()
+			if absf(direction.x) > 0.001:
+				facing = 1 if direction.x > 0.0 else -1
+		else:
+			if horizontal != 0.0:
+				facing = 1 if horizontal > 0.0 else -1
+			if raw.x != 0.0:
+				facing = 1 if raw.x > 0.0 else -1
+			direction = Vector2(facing, 0) if raw == Vector2.ZERO else raw.normalized()
+	_write_action("play_look_left", maxf(0.0, -direction.x))
+	_write_action("play_look_right", maxf(0.0, direction.x))
+	_write_action("play_look_up", maxf(0.0, -direction.y))
+	_write_action("play_look_down", maxf(0.0, direction.y))
+	return facing
+
+
 func _independent_aim_strength(action: String) -> float:
 	if not last_input_pad:
 		return 0.0
@@ -721,6 +776,7 @@ func release_gameplay_buttons() -> void:
 		if _physical_action_strength(action, true) > 0.0:
 			blocked_gameplay_actions[action] = true
 		Input.action_release(action)
+		Input.action_release(PLAY_PREFIX + action)
 		gameplay_current[action] = 0.0
 		gameplay_previous[action] = 0.0
 
@@ -907,14 +963,14 @@ func _physical_action_strength(action: String, all_sources: bool = false) -> flo
 	var sources: Array = input_ownership.sources.keys() if all_sources else [input_ownership.owner]
 	for source in sources:
 		if source == "touch":
-			strength = maxf(strength, touch_actions.get(action, 0.0))
+			strength = maxf(strength, Input.get_action_strength("touch_" + action))
 			continue
 		for event in InputMap.action_get_events(action):
 			strength = maxf(strength, input_ownership.strength(event, source, InputMap.action_get_deadzone(action)))
 	return strength
 
 
-func gameplay_strength(action: String) -> float:
+func _resolve_gameplay_strength(action: String) -> float:
 	var physical := _physical_action_strength(action, true)
 	if blocked_gameplay_actions.has(action):
 		if physical > 0.0:
@@ -927,6 +983,31 @@ func gameplay_strength(action: String) -> float:
 		return 0.0
 	# Preserve explicit action_press/action_release used by training and simulations.
 	return Input.get_action_strength(action)
+
+
+func gameplay_strength(action: String) -> float:
+	var strength := _resolve_gameplay_strength(action)
+	_write_action(PLAY_PREFIX + action, strength)
+	return Input.get_action_strength(PLAY_PREFIX + action)
+
+
+func _write_action(action: String, strength: float) -> void:
+	if strength > 0.0:
+		Input.action_press(action, strength)
+	elif Input.is_action_pressed(action):
+		# Releasing an already idle action would create a new just_released edge
+		# every tick and repeatedly shorten jumps that are no longer held.
+		Input.action_release(action)
+
+
+func set_touch_action(action: String, strength: float) -> void:
+	# Keep the source snapshot for diagnostics; gameplay reads Input Map actions.
+	if strength > 0.0:
+		touch_actions[action] = strength
+	else:
+		touch_actions.erase(action)
+	_write_action("touch_" + action, strength)
+	gameplay_strength(action)
 
 
 func gameplay_axis(negative: String, positive: String) -> float:
@@ -959,6 +1040,9 @@ func clear_input_activity() -> void:
 	gameplay_previous.clear()
 	blocked_gameplay_actions.clear()
 	for action in CONTROL_ACTIONS:
+		Input.action_release(action)
+		Input.action_release(PLAY_PREFIX + action)
+	for action in LOOK_ACTIONS:
 		Input.action_release(action)
 
 
@@ -1006,9 +1090,13 @@ func touch_hint(action: String) -> String:
 
 func reset_touch() -> void:
 	touch_actions.clear()
+	for action in CONTROL_ACTIONS:
+		Input.action_release("touch_" + action)
 	input_ownership.sources.erase("touch")
 	input_ownership.waiting.erase("touch")
 	touch_reset.emit()
+	for action in CONTROL_ACTIONS:
+		gameplay_strength(action)
 
 
 func set_touch_settings(mode: String, scale_value: float, opacity_value: float, separate_aim: Variant = null) -> Error:

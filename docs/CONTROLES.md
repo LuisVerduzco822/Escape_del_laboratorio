@@ -146,6 +146,16 @@ El stick tiene una zona muerta de 25%; durante la reasignación hay que superar 
 Los ejes que ya estaban inclinados al abrir una captura deben volver al centro antes de asignarse.
 Esto usa las acciones y zonas muertas nativas de [Godot 4.7](https://docs.godotengine.org/en/4.7/tutorials/inputs/controllers_gamepads_joysticks.html).
 
+El adaptador de `GameManager` conserva las asignaciones editables (`move_left`, `jump`, etc.)
+y publica su resultado en acciones del Input Map con prefijo `play_`. El personaje lee
+`Input.get_axis`, `Input.is_action_pressed` y sus transiciones sobre esas acciones,
+sin consultar si la entrada viene de teclado, ratón, táctil o mando. Los controles táctiles
+inyectan acciones `touch_*` mediante `Input.action_press/release`; las acciones `play_*`
+ya tienen aplicada la zona muerta y no aplican otra. La puntería se publica en `play_look_*`.
+Se conservan la prioridad del dispositivo activo y el bloqueo de pulsaciones al salir de menús.
+Los iconos siguen usando el dispositivo y la familia del mando (Xbox, PlayStation,
+Nintendo o genérico), incluida la elección manual y las asignaciones personalizadas.
+
 En menús, **A/✕** acepta, **B/○** vuelve y el D-Pad o el stick izquierdo navegan.
 En el texto introductorio, **A/✕** revela el texto y una segunda pulsación continúa.
 Durante una captura, **Start/Options** cancela y **View/Select** borra la entrada;

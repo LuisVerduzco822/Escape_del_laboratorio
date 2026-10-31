@@ -179,7 +179,7 @@ func handle_touch(event: InputEvent, allow_jump: bool = true) -> bool:
 			elif role == "shoot":
 				_sync_fire()
 			elif role in ["jump", "dash", "super"]:
-				GameManager.touch_actions.erase(role)
+				GameManager.set_touch_action(role, 0.0)
 			GameManager.observe_input(event)
 			return true
 		var role := _role_at(event.position)
@@ -209,9 +209,9 @@ func handle_touch(event: InputEvent, allow_jump: bool = true) -> bool:
 			_sync_fire()
 		elif role == "lock":
 			fixing = not fixing
-			GameManager.touch_actions.lock = 1.0 if fixing else 0.0
+			GameManager.set_touch_action("lock", 1.0 if fixing else 0.0)
 		elif role in ["jump", "dash", "super"]:
-			GameManager.touch_actions[role] = 1.0
+			GameManager.set_touch_action(role, 1.0)
 		else:
 			_drag(role, event.position)
 		return true
@@ -239,9 +239,9 @@ func _drag(role: String, point: Vector2) -> void:
 func _set_move() -> void:
 	var dz := GameManager.touch_deadzone
 	var x := signf(stick.x) * clampf((absf(stick.x) - dz) / (1.0 - dz), 0, 1)
-	GameManager.touch_actions.move_left = maxf(0, -x)
-	GameManager.touch_actions.move_right = maxf(0, x)
-	GameManager.touch_actions.aim_down = 1.0 if stick.y > 0.55 else 0.0
+	GameManager.set_touch_action("move_left", maxf(0, -x))
+	GameManager.set_touch_action("move_right", maxf(0, x))
+	GameManager.set_touch_action("aim_down", 1.0 if stick.y > 0.55 else 0.0)
 	_update_touch_aim()
 
 
@@ -255,7 +255,7 @@ func _update_touch_aim() -> void:
 
 func _sync_fire() -> void:
 	firing = fire_locked or "aim" in fingers.values() or "shoot" in fingers.values()
-	GameManager.touch_actions.shoot = 1.0 if firing else 0.0
+	GameManager.set_touch_action("shoot", 1.0 if firing else 0.0)
 
 
 func fire_color() -> Color:

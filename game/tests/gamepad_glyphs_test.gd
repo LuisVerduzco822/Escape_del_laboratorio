@@ -46,6 +46,14 @@ func _run() -> void:
 	check(gm.gamepad_glyph_family() == "playstation", "Manual choice survives reload without hardware")
 	check(gm.same_binding(old_jump[0], gm.control_events("jump", true)[0]), "Changing glyphs preserves bindings")
 	check(not gm.set_gamepad_glyph_style("invalid").is_empty(), "Invalid style rejected")
+	for family in ["xbox", "playstation", "nintendo", "generic"]:
+		gm.set_gamepad_glyph_style(family)
+		gm.last_input_pad = true
+		gm.gameplay_strength("jump")
+		check(gm.primary_icon("jump").region == Glyphs.texture(old_jump[0], family).region,
+			"Resolved action publishing preserves " + family + " controller glyphs")
+	gm.last_input_pad = false
+	gm.set_gamepad_glyph_style("playstation")
 	root.get_node("Database").start_offline()
 	await change_scene_to_file("res://scenes/Main.tscn")
 	await process_frame

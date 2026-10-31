@@ -123,13 +123,16 @@ func _run() -> void:
 	Input.parse_input_event(key(KEY_A))
 	await frames(3)
 	check(gm.last_input_pad and level.player.velocity.x > 0, "Character and icons keep pad ownership despite opposite keyboard movement")
+	check(Input.get_axis("play_move_left", "play_move_right") > 0.0, "Resolved Input Map movement belongs to the active pad")
 	Input.parse_input_event(key(KEY_SPACE))
 	await frames(3)
 	check(level.player.is_on_floor(), "Inactive keyboard jump cannot interrupt controller gameplay")
+	check(not Input.is_action_pressed("play_jump"), "Inactive device cannot inject a resolved jump action")
 	Input.parse_input_event(key(KEY_SPACE, false))
 	Input.parse_input_event(axis(0))
 	await frames(3)
 	check(not gm.last_input_pad and level.player.velocity.x < 0, "Held waiting keyboard takes control when stick centers")
+	check(Input.get_axis("play_move_left", "play_move_right") < 0.0, "Input Map movement transfers to the waiting keyboard")
 	Input.parse_input_event(axis(0.9))
 	await frames(3)
 	check(not gm.last_input_pad and level.player.velocity.x < 0, "Waiting stick cannot override held keyboard movement")
@@ -159,6 +162,11 @@ func _run() -> void:
 	check(not gm.last_input_pad and gm.is_mouse_aiming(), "Mouse movement reclaims idle controller and restores mouse hints")
 	gm.set_mouse_gameplay(false)
 	gm.set_pointing_mode("keyboard")
+	gm.clear_input_activity()
+	for action in gm.CONTROL_ACTIONS:
+		check(not Input.is_action_pressed("play_" + action), "Clear releases resolved action " + action)
+	for action in gm.LOOK_ACTIONS:
+		check(not Input.is_action_pressed(action), "Clear releases aim action " + action)
 	level.queue_free()
 	await process_frame
 	await process_frame
