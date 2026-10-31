@@ -55,6 +55,25 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(state['sha'], 'tagged-commit')
         self.assertTrue(state['existing_tag'])
 
+    def test_published_versions_are_latest_including_preview_tags(self):
+        for tag in ('v1.0.0-alpha.3+3', 'v1.0.0-beta.3+3', 'v1.0.0-rc.1+3', 'v1.0.0+3'):
+            with self.subTest(tag=tag):
+                state = {**release.parse(tag), 'sha': 'commit', 'existing_tag': True,
+                         'assets': ['game.apk']}
+                release.STATE.write_text(json.dumps(state))
+                Path('dist').mkdir(exist_ok=True)
+                Path('dist/game.apk').write_bytes(b'apk')
+                with patch.object(release, 'optional', side_effect=[None,
+                        {'object': {'type': 'commit', 'sha': 'commit'}}]), \
+                        patch.object(release, 'api', side_effect=[{'id': 7},
+                            [{'name': 'game.apk', 'size': 3, 'state': 'uploaded'}], {}]) as api, \
+                        patch.object(release, 'run'):
+                    release.publish()
+                self.assertFalse(api.call_args_list[0].args[2]['prerelease'])
+                self.assertEqual(api.call_args_list[-1].args,
+                                 ('releases/7', 'PATCH', {'draft': False,
+                                  'prerelease': False, 'make_latest': 'true'}))
+
     def test_failed_upload_removes_draft_and_new_tag(self):
         state = {**release.parse('v1.0.0+2'), 'sha': 'commit', 'existing_tag': False, 'assets': ['game.apk']}
         release.STATE.write_text(json.dumps(state))

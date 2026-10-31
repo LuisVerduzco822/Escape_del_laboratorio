@@ -235,14 +235,16 @@ def publish():
         if publication['created_tag']:
             api('git/refs', 'POST', {'ref': f'refs/tags/{state["tag"]}', 'sha': state['sha']})
         release = api('releases', 'POST', {'tag_name': state['tag'], 'name': state['tag'],
-            'target_commitish': state['sha'], 'draft': True, 'prerelease': state['prerelease'],
+            'target_commitish': state['sha'], 'draft': True, 'prerelease': False,
             'generate_release_notes': True})
         run('gh', 'release', 'upload', state['tag'], *[str(Path('dist') / name) for name in state['assets']])
         remote = api(f'releases/{release["id"]}/assets?per_page=100')
         expected = {name: (Path('dist') / name).stat().st_size for name in state['assets']}
         if {asset['name']: asset['size'] for asset in remote if asset['state'] == 'uploaded'} != expected:
             raise ValueError('Uploaded assets do not match the complete local build')
-        api(f'releases/{release["id"]}', 'PATCH', {'draft': False, 'make_latest': 'false' if state['prerelease'] else 'true'})
+        # GitHub excludes prereleases from Latest; the tag still identifies alpha/beta/rc builds.
+        api(f'releases/{release["id"]}', 'PATCH',
+            {'draft': False, 'prerelease': False, 'make_latest': 'true'})
     except BaseException:
         cleanup()
         raise

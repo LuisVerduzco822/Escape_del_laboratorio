@@ -14,7 +14,11 @@ Por ejemplo: `v1.0.0-alpha.1+1`, `v1.0.0-beta.1+2`, `v1.0.0+3`.
 El nombre del archivo omite la `v`, pero conserva `+CODIGO`.
 Android recibe `1.0.0-alpha.1` como versión visible y `1` como código interno.
 El código debe ser positivo, no superar 2100000000 y superar el de todos los releases publicados.
-Los tags con alpha, beta o rc generan prereleases; las versiones estables generan releases normales.
+Todas las nuevas publicaciones se marcan como **Latest**, también las versiones alpha, beta o rc.
+El tag y los archivos conservan ese sufijo para identificar su etapa de desarrollo, pero la publicación
+usa `prerelease=false` y `make_latest=true`: GitHub no permite marcar una prerelease como Latest.
+Esto permite acceder a la descarga destacada mediante la página del repositorio y `/releases/latest`.
+Los releases ya publicados no se modifican automáticamente.
 
 ## Disparadores y publicación
 
