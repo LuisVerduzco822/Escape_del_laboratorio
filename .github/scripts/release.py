@@ -121,6 +121,9 @@ application/product_version="{state['name'].split('-')[0]}.0"
         project_text = re.sub(r'^config/version=.*$', f'config/version="{state["name"]}"', project_text, flags=re.M)
     else:
         project_text = project_text.replace('[application]', f'[application]\nconfig/version="{state["name"]}"', 1)
+    # El juego compara su número de compilación con el de los Releases para avisar de versiones nuevas.
+    project_text = re.sub(r'^config/build_code=.*\n', '', project_text, flags=re.M)
+    project_text = project_text.replace('[application]', f'[application]\nconfig/build_code={state["code"]}', 1)
     project.write_text(project_text)
     config = Path.home() / '.config/godot/editor_settings-4.7.tres'
     config.parent.mkdir(parents=True, exist_ok=True)

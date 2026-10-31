@@ -62,6 +62,9 @@ var cur_index := 0
 var mode := "story"  # "story" o "finaltop"
 var last_fail := {}
 var crafting: Node2D
+const UpdateCheck := preload("res://scripts/UpdateCheck.gd")
+var update_btn: Button
+var update_url := ""
 
 
 func _ready() -> void:
@@ -86,10 +89,25 @@ func _ready() -> void:
 	GameManager.controller_disconnected.connect(_controller_disconnected)
 	_build_fade()
 	_show_menu()
+	var checker := UpdateCheck.new()
+	checker.found.connect(_on_update_found)
+	add_child(checker)
+	checker.check()
 	var touch_layer := _layer(15)
 	var touch := preload("res://scripts/TouchControls.gd").new()
 	touch.main = self
 	touch_layer.add_child(touch)
+
+
+func _on_update_found(info: Dictionary) -> void:
+	update_url = info.url
+	update_btn.text = "NUEVA VERSION %s - DESCARGAR" % str(info.name).to_upper()
+	update_btn.visible = true
+
+
+func _open_update() -> void:
+	if update_url != "":
+		OS.shell_open(update_url)
 
 
 func _layer(n: int) -> CanvasLayer:
@@ -175,6 +193,12 @@ func _build_menu() -> void:
 		rank_btn.tooltip_text = "Conéctate e inicia sesión para ver el ranking"
 	_btn(extras, "CONTROLES", _show_how)
 	credits_btn = _btn(box, "CRÉDITOS", _show_credits)
+	update_btn = _btn(box, "", _open_update)
+	update_btn.visible = false
+	update_btn.add_theme_color_override("font_color", Color(1.0, 0.9, 0.35))
+	var installed := UpdateCheck.installed_name()
+	if installed != "":
+		box.add_child(_label("VERSION " + installed.to_upper(), 6, Color(0.6, 0.65, 0.78), 2))
 	var footer := _menu_row(box)
 	_btn(footer, "CONECTARSE" if Database.offline_mode else "CERRAR SESIÓN", _logout)
 	_btn(footer, "SALIR", _quit)

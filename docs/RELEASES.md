@@ -62,3 +62,12 @@ El workflow comprueba la firma APK, las cuatro arquitecturas y el arranque headl
 ```bash
 python -m unittest discover -s .github/scripts -p "test_*.py" -v
 ```
+
+## Aviso de nueva versión dentro del juego
+
+Al abrir el menú, el juego consulta `GitHub API /releases` (incluye alpha/beta/rc) y, si hay una versión más nueva que la instalada, muestra el botón amarillo **NUEVA VERSION x.y.z - DESCARGAR**. Al tocarlo se abre en el navegador el APK de esa Release; Android pregunta si se quiere instalar.
+
+- Solo funciona en builds hechos por el workflow *Release game* (inyecta `config/version` y `config/build_code`). Las builds de desarrollo no muestran el aviso.
+- Se compara por versión semántica (alpha < beta < rc < estable).
+- Para que actualice encima de la instalada, el APK debe ir firmado con la misma llave y tener un código de versión mayor.
+- Sin internet o sin Releases, no pasa nada (falla en silencio).
