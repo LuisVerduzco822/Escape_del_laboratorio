@@ -46,6 +46,23 @@ def parse(tag):
             'code': int(match[6]), 'prerelease': match[4] is not None}
 
 
+def configure_smoke_test(project_text):
+    # Export templates disable --script/path overrides. Use a gated autoload
+    # through normal startup instead; it frees itself in ordinary player runs.
+    project_text = re.sub(r'^ReleaseSmoke=.*\n?', '', project_text, flags=re.M)
+    return project_text.replace('[autoload]',
+        '[autoload]\nReleaseSmoke="*res://scripts/ReleaseSmoke.gd"', 1)
+
+
+def smoke_test(image):
+    result = run(str(image), '--appimage-extract-and-run', '--headless', '--',
+                 '--release-smoke-test', timeout=60, capture_output=True)
+    print(result.stdout, end='')
+    print(result.stderr, end='', file=sys.stderr)
+    if 'RELEASE SMOKE: main scene loaded' not in result.stdout:
+        raise ValueError('Packaged game did not execute the release smoke test')
+
+
 def resolve():
     state = parse(os.environ['RELEASE_TAG'])
     encoded = quote(state['tag'], safe='')
@@ -124,7 +141,7 @@ application/product_version="{state['name'].split('-')[0]}.0"
     # El juego compara su número de compilación con el de los Releases para avisar de versiones nuevas.
     project_text = re.sub(r'^config/build_code=.*\n', '', project_text, flags=re.M)
     project_text = project_text.replace('[application]', f'[application]\nconfig/build_code={state["code"]}', 1)
-    project.write_text(project_text)
+    project.write_text(configure_smoke_test(project_text))
     config = Path.home() / '.config/godot/editor_settings-4.7.tres'
     config.parent.mkdir(parents=True, exist_ok=True)
     config.write_text('[gd_resource type="EditorSettings" format=3]\n\n[resource]\n'
@@ -184,8 +201,7 @@ application/product_version="{state['name'].split('-')[0]}.0"
     run(str(Path('tools/appimagetool-x86_64.AppImage').resolve()), '--appimage-extract-and-run',
         str(appdir), str(image), env={**os.environ, 'ARCH': 'x86_64'})
     # Exercise the packaged game rather than just checking the output filename.
-    run(str(image), '--appimage-extract-and-run', '--headless', '--script',
-        'res://scripts/ReleaseSmoke.gd', timeout=60)
+    smoke_test(image)
     expected = [apk.name, exe.name, image.name]
     for filename in expected:
         if not (dist / filename).stat().st_size:

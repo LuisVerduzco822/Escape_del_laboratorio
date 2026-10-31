@@ -36,6 +36,23 @@ class ReleaseTests(unittest.TestCase):
         self.assertLess(contents.index('android-actions/setup-android@v4'),
                         contents.index("sdkmanager 'platform-tools'"))
 
+    def test_smoke_autoload_is_configured_once_after_other_autoloads_exist(self):
+        original = '[autoload]\nAudioManager="*res://scripts/AudioManager.gd"\n'
+        configured = release.configure_smoke_test(original)
+        self.assertEqual(configured.count('ReleaseSmoke='), 1)
+        self.assertIn('AudioManager=', configured)
+        self.assertEqual(release.configure_smoke_test(configured), configured)
+
+    def test_smoke_uses_normal_startup_and_checks_marker(self):
+        with patch.object(release, 'run', return_value=subprocess.CompletedProcess(
+                [], 0, 'RELEASE SMOKE: main scene loaded\n', '')) as run:
+            release.smoke_test(Path('game.AppImage'))
+        self.assertEqual(run.call_args.args, ('game.AppImage', '--appimage-extract-and-run',
+                         '--headless', '--', '--release-smoke-test'))
+        with patch.object(release, 'run', return_value=subprocess.CompletedProcess([], 0, '', '')):
+            with self.assertRaisesRegex(ValueError, 'did not execute'):
+                release.smoke_test(Path('game.AppImage'))
+
     def resolve_source(self, ref, sha):
         with patch.dict(os.environ, RELEASE_TAG='v1.0.0+2', GITHUB_SHA='branch-sha',
                         GITHUB_OUTPUT='output', GH_REPO='owner/repo'), \

@@ -60,6 +60,10 @@ chmod +x Escape-del-Laboratorio-linux-x86_64-1.0.0+3.AppImage
 
 Si el sistema no dispone de FUSE, prueba `./archivo.AppImage --appimage-extract-and-run`.
 El workflow comprueba la firma APK, las cuatro arquitecturas y el arranque headless del AppImage; las pruebas gráficas en dispositivos reales y Windows siguen siendo manuales.
+La prueba de arranque usa `-- --release-smoke-test` y un autoload que el CI incorpora al compilar.
+Comprueba que cargue la escena principal y cierra mediante `AudioManager` para liberar el audio.
+Sin ese argumento, el autoload se elimina y el juego arranca normalmente. Las plantillas de exportación
+no admiten reemplazar el arranque mediante `--script`; el CI verifica además el mensaje de éxito de la prueba.
 
 ## Verificación de la automatización
 
