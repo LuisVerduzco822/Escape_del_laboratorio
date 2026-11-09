@@ -394,8 +394,9 @@ func collect_left() -> float:
 	return maxf(0.0, Cfg.collect_time(index) - collect_t)
 
 
+# Sin límite de tiempo por jefe: el reto es el reloj global, que corre hasta formar el antídoto.
 func boss_left() -> float:
-	return maxf(0.0, Cfg.boss_time(index) - boss_t)
+	return 99999.0
 
 
 func _process(_delta: float) -> void:
@@ -830,7 +831,7 @@ func _on_boss_defeated() -> void:
 	for child in get_children():
 		if child.get_script() == Pickup and (child.is_powerup() or child.kind == "boss_heart"):
 			child.queue_free()
-	var bonus := 5000 + int(boss_left()) * 20
+	var bonus := 5000 + int(maxf(0.0, 150.0 - boss_t)) * 20   # bono por pelear rápido
 	GameManager.add_score_raw(bonus)
 	GameManager.add_coin(100)
 	Telemetry.count("bosses_defeated")
@@ -955,6 +956,7 @@ func _restore_snapshot(saved: Dictionary) -> void:
 		boss.hp = minf(boss.hp, boss.max_hp)
 		boss.attack_rng.seed = saved.boss.rng_seed
 		boss.attack_rng.state = saved.boss.rng_state
+		boss.script_i = int(saved.boss.get("script_i", 0))
 		boss.position = boss.home + Vector2(sin(boss.t * 1.3) * 14.0, sin(boss.t * 2.1) * 9.0)
 		boss.st = Boss.St.FIGHT
 		boss.rest = 1.0

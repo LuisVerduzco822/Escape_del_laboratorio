@@ -152,6 +152,7 @@ func _draw_center() -> void:
 				UI.text(self, "JEFE EN %s   INGREDIENTES %d/3" % [GameManager.format_time(L.collect_left()), got], 240, 26, 8, Color(1, 0.9, 0.5), 1)
 			elif got < 3:
 				UI.text(self, "COMPUESTOS %d/3" % got, 240, 26, 8, Color(1, 0.9, 0.5), 1)
+			UI.text(self, "RELOJ %s" % GameManager.format_time(GameManager.play_time), 240, 40, 8, Color(0.55, 1.0, 0.9), 1)
 	elif L.st >= ST_WARN and L.st <= ST_KO:
 		if true:
 			var b = L.boss
@@ -174,8 +175,4 @@ func _draw_center() -> void:
 				var clock_col := Color(0.55, 1.0, 0.9)
 				UI.text(self, "RELOJ %s   JEFE %d/%d   DERROTAS %d" % [GameManager.format_clock(GameManager.play_time), L.index + 1, Cfg.LEVELS.size(), GameManager.deaths], 240, 42, 8, clock_col, 1)
 			elif L.st == ST_BOSS:
-				var left: float = L.boss_left()
-				var tc := Color(1, 1, 1) if left > 30.0 else Color(1.0, 0.35, 0.3)
-				if left <= 30.0 and int(t * 4.0) % 2 == 0:
-					tc = Color(1, 1, 0.5)
-				UI.text(self, "TIEMPO %s" % GameManager.format_time(left), 240, 42, 8, tc, 1)
+				UI.text(self, "RELOJ %s" % GameManager.format_time(GameManager.play_time), 240, 42, 8, Color(0.55, 1.0, 0.9), 1)

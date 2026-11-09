@@ -64,6 +64,7 @@ func capture(level: Node, boss_checkpoint: bool = false) -> Dictionary:
 		result.boss = read_fields(level.boss, "boss")
 		result.boss.rng_seed = level.boss.attack_rng.seed
 		result.boss.rng_state = level.boss.attack_rng.state
+		result.boss.script_i = level.boss.script_i   # posición en la coreografía de la fase
 	return result
 
 func store(state: Dictionary) -> bool:

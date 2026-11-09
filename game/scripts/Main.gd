@@ -9,7 +9,7 @@ const ParallaxBG := preload("res://scripts/ParallaxBG.gd")
 const Crafting := preload("res://scripts/Crafting.gd")
 const FinalTop := preload("res://scripts/FinalTop.gd")
 
-const STORY := "En el laboratorio ocurrio un accidente\ny un virus se esta propagando.\n\nSolo hay una salida: fabricar el antidoto.\nRecolecta 15 ingredientes en 5 zonas\ny derrota al jefe de cada una.\n\nTienes 20 minutos de pura accion."
+const STORY := "En el laboratorio ocurrio un accidente\ny un virus se esta propagando.\n\nSolo hay una salida: fabricar el antidoto.\nRecolecta 15 ingredientes en 5 zonas\ny derrota al jefe de cada una.\n\nSin limite de tiempo: el reloj corre\nhasta que formes el antidoto."
 
 var level: Node
 var holder: Node
@@ -785,7 +785,7 @@ func _on_crafting_done() -> void:
 		rank_text = "PARTIDA OFFLINE COMPLETADA"
 	if newly_unlocked:
 		rank_text += "\nFINALTOP DESBLOQUEADO"
-	end_stats.text = "PUNTUACION       %d\nTIEMPO DE JUEGO  %s\nINGREDIENTES      %d / %d\nMONEDAS           %d\nPARRYS            %d\nDERROTAS          %d\nMEJOR RACHA       %s\n%s" % [GameManager.score, GameManager.format_time(GameManager.play_time), GameManager.total_ingredients(), Cfg.ING_TOTAL, GameManager.coins, GameManager.parries, GameManager.deaths, GameManager.format_time(GameManager.best_streak), rank_text]
+	end_stats.text = "PUNTUACION       %d\nTIEMPO ANTIDOTO  %s\nINGREDIENTES      %d / %d\nMONEDAS           %d\nPARRYS            %d\nDERROTAS          %d\nMEJOR RACHA       %s\n%s" % [GameManager.score, GameManager.format_time(GameManager.play_time), GameManager.total_ingredients(), Cfg.ING_TOTAL, GameManager.coins, GameManager.parries, GameManager.deaths, GameManager.format_time(GameManager.best_streak), rank_text]
 	end_layer.visible = true
 	again_btn.grab_focus()
 	await _fade(0.0, 0.8)

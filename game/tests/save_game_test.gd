@@ -143,6 +143,7 @@ func _run() -> void:
 	level.boss.attack_rng.seed = boss_save.boss.rng_seed
 	level.boss.attack_rng.state = boss_save.boss.rng_state
 	level.boss.last_attack = boss_save.boss.last_attack
+	level.boss.script_i = int(boss_save.boss.get("script_i", 0))
 	level.boss.prev_attack = prev0   # el repertorio es más largo: el ataque anterior al anterior también cuenta
 	level.boss._pick_attack()
 	level.boss._stop_attack()

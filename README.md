@@ -6,7 +6,7 @@
 
 **El virus se propaga. La cura depende de ti.**
 
-Un juego de acción y plataformas 2D en pixel art. Recorre cinco zonas contaminadas, reúne los **15 ingredientes del antídoto** y enfréntate a cinco jefes antes de que se agote el tiempo. Combina disparos, dash, parry y una espada que aparece durante el salto doble para abrirte paso hasta la cura.
+Un juego de acción y plataformas 2D en pixel art. Recorre cinco zonas contaminadas, reúne los **15 ingredientes del antídoto** y enfréntate a cinco jefes sin límite de tiempo: el reloj solo cuenta lo que tardas en formar el antídoto. Combina disparos, dash, parry y una espada que aparece durante el salto doble para abrirte paso hasta la cura.
 
 ![Combate contra la Gárgola Viral en la azotea: proyectiles, parry rosa y disparo potenciado](docs/media/capturas/05-jefe-azotea.png)
 

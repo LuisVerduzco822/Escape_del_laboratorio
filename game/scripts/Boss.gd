@@ -75,7 +75,44 @@ const EXTRA_FT := {
 	3: [],
 }
 # Ataque propio de cada jefe (se suma a su repertorio en todas las fases).
-const SIGNATURE := {0: ["puddle", "spit"], 1: ["tentacles", "ink"], 2: ["dive", "gust"], 3: ["abduct"], 4: ["blackout", "lasereyes"]}
+const SIGNATURE := {
+	0: ["puddle", "spit", "hop", "tsunami"],
+	1: ["tentacles", "ink", "bubbles", "closing"],
+	2: ["dive", "gust", "featherstorm", "swoop"],
+	3: ["abduct", "saucers", "orbit"],
+	4: ["blackout", "lasereyes", "bonecage", "lasersweep"],
+}
+# Estilo Cuphead: en la historia cada jefe sigue una coreografía fija por fase (se aprende y se domina).
+# FINALTOP sigue eligiendo al azar para que cada intento sea distinto.
+const SCRIPT := {
+	0: {
+		1: ["aimed", "hop", "fan", "tsunami", "spit", "rain"],
+		2: ["hop", "fan", "tsunami", "pink", "slam", "spit", "ring", "hop", "rain", "puddle"],
+		3: ["hop", "tsunami", "ring", "slam", "spit", "pink", "summon", "tsunami", "hop", "puddle", "rain"],
+	},
+	1: {
+		1: ["bubbles", "aimed", "zones", "ink", "fan", "closing"],
+		2: ["bubbles", "tentacles", "closing", "beam", "ink", "zones", "pink", "ring"],
+		3: ["closing", "bubbles", "tentacles", "ink", "beam", "zones", "summon", "ring", "closing", "rain", "pink"],
+	},
+	2: {
+		1: ["featherstorm", "aimed", "swoop", "fan", "gust"],
+		2: ["swoop", "featherstorm", "charge", "gust", "beam", "dive", "ring", "pink"],
+		3: ["featherstorm", "swoop", "dive", "gust", "charge", "ring", "swoop", "bolts", "beam", "pink", "summon"],
+	},
+	3: {
+		1: ["saucers", "aimed", "orbit", "blink", "fan", "meteors"],
+		2: ["orbit", "saucers", "abduct", "spiral", "strafe", "wall", "orbit", "beam", "blink", "pink"],
+		3: ["saucers", "orbit", "abduct", "wall", "spiral", "strafe", "meteors", "orbit", "blink", "bolts", "summon", "charge", "pink"],
+	},
+	4: {
+		1: ["lasersweep", "eyes", "bonecage", "bonewave", "aimed", "lasereyes"],
+		2: ["bonecage", "lasersweep", "chomp", "eyes", "lasereyes", "bonewave", "spiral", "wall", "sweep", "pink"],
+		3: ["lasersweep", "bonecage", "chomp", "lasereyes", "blackout", "eyes", "bonewave", "spiral", "sweep", "curtain", "bounce", "beam", "pink", "grid"],
+	},
+}
+# Ataques que ya traen su propio "agacharse" o salto: no llevan la anticipación de siempre.
+const BIG_WINDUP := ["hop", "swoop", "slam", "charge", "dive", "abduct", "lasersweep", "lasereyes", "closing", "orbit"]
 const COLORS := [Color(0.45, 1.0, 0.4), Color(0.78, 0.4, 1.0), Color(1.0, 0.38, 0.3), Color(0.35, 0.92, 1.0), Color(0.95, 0.92, 0.78)]
 const RADII := [46.0, 44.0, 42.0, 44.0, 58.0]
 const HOMES := [Vector2(372, 112), Vector2(368, 104), Vector2(362, 100), Vector2(366, 102), Vector2(356, 104)]
@@ -125,9 +162,23 @@ const ATTACK_WEIGHTS := {
 	"ink": [2.0, 5.0, 6.0],
 	"gust": [5.0, 5.0, 4.0],
 	"lasereyes": [3.0, 5.0, 6.0],
+	"hop": [3.0, 5.0, 6.0],
+	"tsunami": [3.0, 5.0, 5.0],
+	"bubbles": [3.0, 5.0, 6.0],
+	"closing": [4.0, 5.0, 5.0],
+	"featherstorm": [4.0, 5.0, 5.0],
+	"swoop": [3.0, 5.0, 6.0],
+	"saucers": [3.0, 5.0, 6.0],
+	"orbit": [4.0, 5.0, 5.0],
+	"bonecage": [3.0, 5.0, 6.0],
+	"lasersweep": [3.0, 5.0, 6.0],
 }
 
 var level
+var script_i := 0
+var squash := Vector2.ONE   # deformación elástica del cuerpo (agacharse antes de atacar, golpes de fase)
+var ghosts: Array = []
+var last_pos := Vector2.ZERO
 var kind := 0
 var max_hp := 700.0
 var hp := 700.0
@@ -266,6 +317,14 @@ func _col() -> Color:
 func _physics_process(delta: float) -> void:
 	t += delta
 	st_t += delta
+	# Estela de movimiento: solo cuando el jefe se desplaza rápido (embestidas, saltos, picadas).
+	if delta > 0.0 and position.distance_to(last_pos) / delta > 190.0:
+		ghosts.push_front(global_position)
+		if ghosts.size() > 6:
+			ghosts.pop_back()
+	elif not ghosts.is_empty():
+		ghosts.pop_back()
+	last_pos = position
 	flash = maxf(0.0, flash - delta)
 	tick_cd = maxf(0.0, tick_cd - delta)
 	if not wing_shapes.is_empty():
@@ -383,6 +442,10 @@ func _try_drop_hearts() -> void:
 func _stop_attack() -> void:
 	if tw:
 		tw.kill()
+	squash = Vector2.ONE
+	laser_sweep = false
+	orbit_orbs.clear()
+	warn_dive = false
 	abducting = false
 	gust_t = 0.0
 	gust_warn = false
@@ -397,9 +460,12 @@ func _stop_attack() -> void:
 
 func _phase_change(n: int) -> void:
 	phase = n
+	script_i = 0
 	st = St.PHASE
 	st_t = 0.0
 	_stop_attack()
+	squash = Vector2(1.4, 0.65)
+	create_tween().tween_property(self, "squash", Vector2.ONE, 0.7).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	level.clear_threats()
 	GameManager.add_score_raw(1000)
 	_try_drop_hearts()
@@ -481,11 +547,29 @@ func _is_finaltop() -> bool:
 	return level != null and level.get("is_finaltop") == true
 
 
+# Coreografía de la historia: el siguiente ataque de la lista de la fase (vacío = elegir al azar).
+func _scripted_attack() -> String:
+	if _is_finaltop() or not SCRIPT.has(kind):
+		return ""
+	var seq: Array = SCRIPT[kind][phase]
+	script_i = script_i % seq.size()
+	var a: String = seq[script_i]
+	script_i += 1
+	if a == last_attack:   # nunca el mismo ataque dos veces seguidas (p. ej. al cambiar de fase)
+		script_i = script_i % seq.size()
+		a = seq[script_i]
+		script_i += 1
+	return a
+
+
 func _pick_attack() -> void:
-	var a := _choose_attack()
+	var a := _scripted_attack()
+	if a == "":
+		a = _choose_attack()
 	prev_attack = last_attack
 	last_attack = a
 	_new_tw()
+	_windup(a)
 	_relocate(a)
 	match a:
 		"fan": _atk_fan()
@@ -528,6 +612,16 @@ func _pick_attack() -> void:
 		"ink": _atk_ink()
 		"gust": _atk_gust()
 		"lasereyes": _atk_lasereyes()
+		"hop": _atk_hop()
+		"tsunami": _atk_tsunami()
+		"bubbles": _atk_bubbles()
+		"closing": _atk_closing()
+		"featherstorm": _atk_featherstorm()
+		"swoop": _atk_swoop()
+		"saucers": _atk_saucers()
+		"orbit": _atk_orbit()
+		"bonecage": _atk_bonecage()
+		"lasersweep": _atk_lasersweep()
 	tw.tween_callback(_done)
 
 
@@ -537,7 +631,7 @@ func _stations() -> Array:
 
 
 # Entre ataques el jefe cambia de sitio (casi siempre) y mira al jugador desde el nuevo puesto.
-const SELF_MOVING := ["slam", "chomp", "charge", "blink", "strafe", "dive", "abduct"]
+const SELF_MOVING := ["slam", "chomp", "charge", "blink", "strafe", "dive", "abduct", "hop", "swoop"]
 
 func _relocate(a: String) -> void:
 	if move_rng.randf() > 0.8:
@@ -601,6 +695,7 @@ func _ambient(delta: float) -> void:
 
 # ───── Poderes propios ─────
 func _signature_tick(delta: float) -> void:
+	_orbit_tick(delta)
 	var p = level.player if level else null
 	if p == null or p.dead:
 		return
@@ -713,6 +808,19 @@ func _laser_end(i: int) -> Vector2:
 
 
 func _laser_tick(delta: float, p) -> void:
+	if laser_sweep:
+		# Barrido: los rayos no persiguen al jugador, recorren el piso de lado a lado.
+		if laser_mode == 2:
+			laser_sweep_t += delta
+		var f := clampf(laser_sweep_t / laser_sweep_dur, 0.0, 1.0)
+		for i in 2:
+			laser_ang[i] = lerpf(sweep_a0[i], sweep_a1[i], f)
+		if laser_mode == 2:
+			for i in 2:
+				var cp := Geometry2D.get_closest_point_to_segment(p.global_position, _eye_pos(i), _laser_end(i))
+				if cp.distance_to(p.global_position) <= 8.0:
+					p.hurt("laser_ojos")
+		return
 	var rate := 3.6 if laser_mode == 1 else (0.5 + 0.2 * float(phase) + 0.05 * float(kind)) * (1.25 if _is_finaltop() else 1.0)
 	for i in 2:
 		var want := (_target() - _eye_pos(i)).angle()
@@ -1434,6 +1542,311 @@ func _summon(pink_spore: bool = false) -> void:
 	AudioManager.sfx("select", -2.0, 0.5)
 
 
+# ───── Ataques estilo Cuphead ─────
+# Anticipación: el jefe se agacha y se estira antes de atacar, para que cada ataque se lea de lejos.
+func _windup(a: String) -> void:
+	var big := a in BIG_WINDUP
+	var d := 1.0 if big else 0.7
+	tw.tween_property(self, "squash", Vector2(1.0 + 0.16 * d, 1.0 - 0.15 * d), 0.16).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(self, "squash", Vector2(1.0 - 0.1 * d, 1.0 + 0.13 * d), 0.1).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(self, "squash", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# Slime — Salto gigante: se agacha, salta en arco hasta donde está el jugador y al caer lanza ondas por el piso.
+var hop_from := Vector2.ZERO
+var hop_to := Vector2.ZERO
+
+func _atk_hop() -> void:
+	moving = true
+	var hops := 1 + phase
+	for i in hops:
+		tw.tween_callback(_hop_begin)
+		tw.tween_property(self, "squash", Vector2(1.25, 0.72), 0.22).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(self, "squash", Vector2(0.82, 1.28), 0.12).set_trans(Tween.TRANS_SINE)
+		tw.tween_method(_hop_step, 0.0, 1.0, 0.8 / sp)
+		tw.tween_callback(_hop_land)
+		tw.tween_property(self, "squash", Vector2.ONE, 0.3).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+		tw.tween_interval(0.25)
+	tw.tween_property(self, "position", home, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _hop_begin() -> void:
+	hop_from = position
+	hop_to = Vector2(clampf(_target().x + attack_rng.randf_range(-24.0, 24.0), ox + 60.0, ox + 420.0), Cfg.FLOOR_Y - radius + 4.0)
+	warn_x = hop_to.x
+	AudioManager.sfx("dash", -8.0, 0.6)
+
+
+func _hop_step(f: float) -> void:
+	var p := hop_from.lerp(hop_to, f)
+	p.y -= sin(f * PI) * 96.0
+	position = p
+	contact_on = f > 0.6
+
+
+func _hop_land() -> void:
+	contact_on = false
+	warn_x = -1.0
+	position = hop_to
+	Fx.shake(4.5, 0.35)
+	AudioManager.sfx("boom", -4.0, 0.8)
+	for dir in [-1, 1]:
+		level.add_hazard(Vector2(position.x + dir * 34.0, Cfg.FLOOR_Y - 8.0), Vector2(dir * 125.0 * sp, 0), {"style": "wave", "radius": 8.0, "col": _col()})
+	if phase >= 2:
+		level.add_goo(position.x + fdir * 50.0)
+
+
+# Slime — Marea de baba: olas bajas desde los dos bordes, alternadas; hay que saltarlas (la rosa se puede parry).
+func _atk_tsunami() -> void:
+	var waves := 2 + phase
+	for i in waves:
+		tw.tween_callback(_tsunami_warn.bind(i))
+		tw.tween_interval(0.55)
+		tw.tween_callback(_fire_tsunami.bind(i))
+		tw.tween_interval(0.9 / sp)
+	tw.tween_interval(0.9)
+
+
+func _tsunami_edge(i: int) -> float:
+	return ox - 24.0 if i % 2 == 0 else ox + 504.0
+
+
+func _tsunami_warn(i: int) -> void:
+	var edge_x := ox + (14.0 if i % 2 == 0 else 466.0)
+	Fx.burst(get_parent(), Vector2(edge_x, Cfg.FLOOR_Y - 10.0), _col(), 10, 60.0, 0.5, 2.5)
+	AudioManager.sfx("warn", -10.0, 0.7)
+
+
+func _fire_tsunami(i: int) -> void:
+	var dir := 1.0 if i % 2 == 0 else -1.0
+	var x := _tsunami_edge(i)
+	level.add_hazard(Vector2(x, Cfg.FLOOR_Y - 8.0), Vector2(dir * 112.0 * sp, 0), {"style": "wave", "radius": 8.5, "col": _col()})
+	if phase >= 2 and i % 2 == 1:
+		level.add_hazard(Vector2(x, Cfg.FLOOR_Y - 46.0), Vector2(dir * 112.0 * sp, 0), {"col": Color(1.0, 0.45, 0.8), "radius": 6.5, "pink": true})
+	AudioManager.sfx("boom", -14.0, 0.7)
+
+
+# Pulpo — Burbujas de tinta: una cortina de burbujas que flotan ondulando; las rosas se pueden parry.
+func _atk_bubbles() -> void:
+	var n := _n(8 + 2 * phase)
+	for i in n:
+		tw.tween_callback(_fire_bubble.bind(i))
+		tw.tween_interval(0.34 / sp)
+	tw.tween_interval(1.0)
+
+
+func _fire_bubble(i: int) -> void:
+	var from := global_position + Vector2(fdir * radius * 0.5, 6.0)
+	var v := Vector2(fdir * (62.0 + 13.0 * float(i % 4)) * sp, attack_rng.randf_range(-38.0, 22.0))
+	level.add_hazard(from, v, {"col": Color(0.55, 0.3, 0.95), "radius": 8.5, "wave_amp": 34.0, "wave_f": 4.2, "pink": i % 5 == 4, "life": 7.0})
+	AudioManager.sfx("shoot", -14.0, 0.5)
+
+
+# Pulpo — Cerco: un aro de tinta se cierra sobre el jugador; hay que escapar por el hueco.
+func _atk_closing() -> void:
+	var rings := 1 + (1 if phase >= 3 else 0)
+	for r in rings:
+		tw.tween_callback(_fire_closing)
+		tw.tween_interval(2.9)
+	tw.tween_interval(0.3)
+
+
+func _fire_closing() -> void:
+	var tg := _target()
+	var c := Vector2(clampf(tg.x, ox + 140.0, ox + 340.0), clampf(tg.y, 90.0, Cfg.FLOOR_Y - 40.0))
+	var n := 14
+	var gap := attack_rng.randi() % n
+	for i in n:
+		var rel := (i - gap + n) % n
+		if rel < 3:
+			continue
+		var dirv := Vector2.RIGHT.rotated(TAU * float(i) / float(n))
+		level.add_hazard(c + dirv * 100.0, -dirv * 46.0 * sp, {"col": _col(), "radius": 5.0, "pink": phase >= 2 and rel == n / 2, "life": 3.2})
+	Fx.burst(get_parent(), c, _col(), 10, 50.0, 0.6, 2.0)
+	AudioManager.sfx("warn", -8.0, 0.9)
+
+
+# Murciélago — Tormenta de plumas: las plumas salen en abanico, frenan y vuelven como bumerán hacia el jefe.
+func _atk_featherstorm() -> void:
+	var volleys := 1 + phase
+	for v in volleys:
+		tw.tween_callback(_fire_feathers.bind(v))
+		tw.tween_interval(1.0 / sp)
+	tw.tween_interval(1.9)
+
+
+func _fire_feathers(v: int) -> void:
+	var m := global_position
+	var n := maxi(6, _n(8))
+	var base := (_target() - m).angle() + (0.0 if v % 2 == 0 else deg_to_rad(12.0))
+	var T := 2.3
+	for i in n:
+		var frac := float(i) / float(n - 1)
+		var ang := base + deg_to_rad(110.0) * (frac - 0.5)
+		var v0 := Vector2.RIGHT.rotated(ang) * (150.0 + 12.0 * float(i % 3))
+		level.add_hazard(m, v0, {"col": _col(), "radius": 4.5, "accel": -v0 * 2.0 / T, "life": T + 0.15, "pink": phase >= 2 and i == n / 2 and v == 0})
+	AudioManager.sfx("dash", -10.0, 1.3)
+
+
+# Murciélago — Pasada en picada: cruza la pantalla en una curva que roza el piso donde estaba el jugador.
+var swoop_s := Vector2.ZERO
+var swoop_c := Vector2.ZERO
+var swoop_e := Vector2.ZERO
+
+func _atk_swoop() -> void:
+	moving = true
+	var passes := 1 + (1 if phase >= 2 else 0) + (1 if phase >= 3 else 0)
+	var left := position.x > ox + 240.0   # sale por el lado más cercano a su puesto
+	for p in passes:
+		var s := Vector2(ox - 50.0 if left else ox + 530.0, 40.0)
+		var e := Vector2(ox + 530.0 if left else ox - 50.0, 40.0)
+		tw.tween_property(self, "position", s, 0.55).set_trans(Tween.TRANS_SINE)
+		tw.tween_callback(_swoop_mark.bind(s, e))
+		tw.tween_interval(0.8)
+		tw.tween_callback(_set_contact.bind(true))
+		tw.tween_callback(AudioManager.sfx.bind("dash", 2.0, 0.7))
+		tw.tween_method(_swoop_step, 0.0, 1.0, 1.15 / sp)
+		tw.tween_callback(_set_contact.bind(false))
+		left = not left
+	tw.tween_property(self, "position", home, 1.0).set_trans(Tween.TRANS_SINE)
+
+
+func _swoop_mark(s: Vector2, e: Vector2) -> void:
+	var px := clampf(_target().x, ox + 50.0, ox + 430.0)
+	swoop_s = s
+	swoop_e = e
+	# Curva de Bézier cuyo punto más bajo (t = 0.5) queda justo en la columna marcada.
+	swoop_c = Vector2(2.0 * px - 0.5 * (s.x + e.x), 2.0 * (Cfg.FLOOR_Y - 40.0) - 40.0)
+	warn_x = px
+	AudioManager.sfx("warn", -6.0, 0.9)
+
+
+func _swoop_step(f: float) -> void:
+	var u := 1.0 - f
+	position = swoop_s * u * u + swoop_c * 2.0 * u * f + swoop_e * f * f
+
+
+# Marciano — Platillos: naves pequeñas cruzan ondulando (se pueden derribar a tiros) y disparan un rayo vertical.
+func _atk_saucers() -> void:
+	var rows := 2 + phase
+	for i in rows:
+		tw.tween_callback(_fire_saucer.bind(i))
+		tw.tween_interval(0.85 / sp)
+	tw.tween_interval(1.3)
+
+
+func _fire_saucer(i: int) -> void:
+	var from_left := i % 2 == 0
+	var y := 42.0 + 36.0 * float(i % 3)
+	var x0 := ox - 20.0 if from_left else ox + 500.0
+	level.add_hazard(Vector2(x0, y), Vector2((1.0 if from_left else -1.0) * 90.0 * sp, 0.0), {"col": Color(0.35, 0.92, 1.0), "radius": 9.0, "wave_amp": 22.0, "wave_f": 5.0, "shootable": true, "life": 7.0})
+	var px := clampf(_target().x + attack_rng.randf_range(-30.0, 30.0), ox + 20.0, ox + 460.0)
+	level.add_zone(Vector2(px, Cfg.FLOOR_Y * 0.5), Vector2(18, Cfg.FLOOR_Y), 0.95, 0.3, Color(0.35, 0.92, 1.0))
+	AudioManager.sfx("phase", -12.0, 1.7)
+
+
+# Marciano — Órbita: esferas de plasma giran alrededor de la nave y salen disparadas hacia el jugador una por una.
+var orbit_orbs: Array = []
+var orbit_a := 0.0
+var orbit_r := 0.0
+
+func _atk_orbit() -> void:
+	tw.tween_callback(_orbit_spawn)
+	tw.tween_property(self, "orbit_r", radius + 30.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(1.1 / sp)
+	for i in 3 + (1 if phase >= 3 else 0):
+		tw.tween_callback(_orbit_launch.bind(i))
+		tw.tween_interval(0.55 / sp)
+	tw.tween_interval(0.7)
+	tw.tween_callback(func(): orbit_orbs.clear())
+
+
+func _orbit_spawn() -> void:
+	orbit_orbs.clear()
+	orbit_r = 0.0
+	orbit_a = 0.0
+	for i in 3 + (1 if phase >= 3 else 0):
+		var h = level.add_hazard(global_position, Vector2.ZERO, {"col": _col(), "radius": 6.5, "life": 9.0})
+		orbit_orbs.append(h)
+	AudioManager.sfx("phase", -10.0, 1.1)
+
+
+func _orbit_launch(i: int) -> void:
+	if i >= orbit_orbs.size():
+		return
+	var h = orbit_orbs[i]
+	orbit_orbs[i] = null
+	if is_instance_valid(h):
+		h.vel = (_target() - h.global_position).normalized() * 150.0 * sp
+		AudioManager.sfx("shoot", -9.0, 1.0)
+
+
+func _orbit_tick(delta: float) -> void:
+	if orbit_orbs.is_empty():
+		return
+	orbit_a += delta * 3.4
+	var n := orbit_orbs.size()
+	for i in n:
+		var h = orbit_orbs[i]
+		if h != null and is_instance_valid(h):
+			h.position = global_position + Vector2.RIGHT.rotated(orbit_a + TAU * float(i) / float(n)) * Vector2(orbit_r, orbit_r * 0.6)
+
+
+# Calavera — Jaula de huesos: filas de huesos caen del techo con un hueco que se desplaza escalón a escalón.
+var bone_gap := 4
+
+func _atk_bonecage() -> void:
+	var rows := 4 + phase
+	for i in rows:
+		tw.tween_callback(_fire_bonerow.bind(i))
+		tw.tween_interval(0.62 / sp)
+	tw.tween_interval(1.0)
+
+
+func _fire_bonerow(i: int) -> void:
+	var cols := 10
+	if i == 0:
+		bone_gap = clampi(int((_target().x - ox) / 48.0), 1, cols - 3)
+	else:
+		bone_gap = clampi(bone_gap + attack_rng.randi_range(-1, 1), 1, cols - 3)
+	for c in cols:
+		if c == bone_gap or c == bone_gap + 1:
+			continue
+		level.add_hazard(Vector2(ox + 24.0 + 48.0 * float(c), -10.0), Vector2(0, 92.0 * sp), {"style": "drop", "radius": 5.0, "col": _col(), "accel": Vector2(0, 30.0), "pink": phase >= 2 and i % 3 == 2 and c == (bone_gap + 5) % cols})
+	AudioManager.sfx("boom", -16.0, 1.6)
+
+
+# Calavera — Barrido láser: los dos ojos barren el piso como tijeras; hay que saltar el rayo cuando pasa.
+var laser_sweep := false
+var laser_sweep_t := 0.0
+var laser_sweep_dur := 3.0
+var sweep_a0 := [0.0, 0.0]
+var sweep_a1 := [0.0, 0.0]
+
+func _atk_lasersweep() -> void:
+	tw.tween_callback(_lasersweep_begin)
+	tw.tween_interval(1.1)
+	tw.tween_callback(func(): laser_mode = 2; laser_sweep_t = 0.0; Fx.shake(2.0, 0.3); AudioManager.sfx("phase", -4.0, 0.5))
+	tw.tween_interval(3.0 - 0.2 * float(phase) + 0.3)
+	tw.tween_callback(func(): laser_mode = 0; laser_sweep = false)
+	tw.tween_interval(0.8)
+
+
+func _lasersweep_begin() -> void:
+	laser_sweep = true
+	laser_sweep_dur = 3.0 - 0.2 * float(phase)
+	var flip := attack_rng.randf() < 0.5
+	var left_pt := Vector2(ox + 30.0, Cfg.FLOOR_Y)
+	var right_pt := Vector2(ox + 450.0, Cfg.FLOOR_Y)
+	for i in 2:
+		var to_right := (i == 0) != flip
+		sweep_a0[i] = (_eye_pos(i).direction_to(left_pt if to_right else right_pt)).angle()
+		sweep_a1[i] = (_eye_pos(i).direction_to(right_pt if to_right else left_pt)).angle()
+		laser_ang[i] = sweep_a0[i]
+	laser_mode = 1
+	AudioManager.sfx("warn", -4.0, 1.4)
+
+
 func _draw() -> void:
 	if warn_x >= 0.0:
 		var lx := warn_x - position.x
@@ -1450,8 +1863,12 @@ func _draw() -> void:
 	# Aura suave del jefe: crece con la fase.
 	var aura := radius * (2.2 + 0.25 * float(phase)) * (1.0 + 0.04 * sin(t * 3.0))
 	draw_texture_rect(HazardCls.glow(), Rect2(Vector2(-aura, -aura), Vector2(aura, aura) * 2.0), false, Color(_col(), 0.14 + 0.05 * float(phase - 1)))
-	if fdir > 0.0:
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0, 1.0))
+	for i in ghosts.size():
+		var gp: Vector2 = to_local(ghosts[i])
+		var gr := radius * (1.5 - 0.06 * float(i))
+		draw_texture_rect(HazardCls.glow(), Rect2(gp - Vector2(gr, gr), Vector2(gr, gr) * 2.0), false, Color(_col(), 0.3 - 0.045 * float(i)))
+	if fdir > 0.0 or squash != Vector2.ONE:
+		draw_set_transform(Vector2(0.0, radius * (1.0 - squash.y)), 0.0, Vector2(-squash.x if fdir > 0.0 else squash.x, squash.y))
 	match kind:
 		0:
 			_draw_blob()
