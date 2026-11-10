@@ -76,39 +76,39 @@ const EXTRA_FT := {
 }
 # Ataque propio de cada jefe (se suma a su repertorio en todas las fases).
 const SIGNATURE := {
-	0: ["puddle", "spit", "hop", "tsunami"],
-	1: ["tentacles", "ink", "bubbles", "closing"],
-	2: ["dive", "gust", "featherstorm", "swoop"],
-	3: ["abduct", "saucers", "orbit"],
-	4: ["blackout", "lasereyes", "bonecage", "lasersweep"],
+	0: ["puddle", "spit", "hop", "tsunami", "geyser", "rollball", "lob"],
+	1: ["tentacles", "ink", "bubbles", "closing", "rising", "eightarms", "pincer"],
+	2: ["dive", "gust", "featherstorm", "swoop", "bombs", "crescents", "squall"],
+	3: ["abduct", "saucers", "orbit", "strike", "clusters"],
+	4: ["blackout", "lasereyes", "bonecage", "lasersweep", "graveyard", "spirits", "rollball"],
 }
 # Estilo Cuphead: en la historia cada jefe sigue una coreografía fija por fase (se aprende y se domina).
 # FINALTOP sigue eligiendo al azar para que cada intento sea distinto.
 const SCRIPT := {
 	0: {
-		1: ["aimed", "hop", "fan", "tsunami", "spit", "rain"],
-		2: ["hop", "fan", "tsunami", "pink", "slam", "spit", "ring", "hop", "rain", "puddle"],
-		3: ["hop", "tsunami", "ring", "slam", "spit", "pink", "summon", "tsunami", "hop", "puddle", "rain"],
+		1: ["aimed", "hop", "fan", "tsunami", "spit", "lob", "rain", "geyser", "rollball", "puddle"],
+		2: ["hop", "lob", "tsunami", "pink", "geyser", "slam", "spit", "rollball", "ring", "hop", "rain", "puddle", "fan", "tsunami"],
+		3: ["hop", "geyser", "tsunami", "ring", "rollball", "slam", "lob", "spit", "pink", "summon", "tsunami", "hop", "puddle", "geyser", "rain", "rollball", "lob"],
 	},
 	1: {
-		1: ["bubbles", "aimed", "zones", "ink", "fan", "closing"],
-		2: ["bubbles", "tentacles", "closing", "beam", "ink", "zones", "pink", "ring"],
-		3: ["closing", "bubbles", "tentacles", "ink", "beam", "zones", "summon", "ring", "closing", "rain", "pink"],
+		1: ["bubbles", "aimed", "rising", "zones", "ink", "pincer", "fan", "eightarms", "closing", "ring"],
+		2: ["bubbles", "eightarms", "tentacles", "closing", "pincer", "beam", "rising", "ink", "zones", "pink", "ring", "bubbles", "curtain"],
+		3: ["closing", "eightarms", "bubbles", "tentacles", "pincer", "ink", "rising", "beam", "zones", "summon", "ring", "closing", "rain", "eightarms", "pink", "curtain", "bubbles"],
 	},
 	2: {
-		1: ["featherstorm", "aimed", "swoop", "fan", "gust"],
-		2: ["swoop", "featherstorm", "charge", "gust", "beam", "dive", "ring", "pink"],
-		3: ["featherstorm", "swoop", "dive", "gust", "charge", "ring", "swoop", "bolts", "beam", "pink", "summon"],
+		1: ["featherstorm", "aimed", "crescents", "swoop", "fan", "gust", "squall", "bombs", "ring", "dive"],
+		2: ["swoop", "bombs", "featherstorm", "crescents", "charge", "gust", "squall", "beam", "dive", "ring", "pink", "crescents", "bolts"],
+		3: ["featherstorm", "bombs", "swoop", "crescents", "dive", "squall", "gust", "charge", "ring", "swoop", "bolts", "beam", "pink", "summon", "bombs", "crescents", "gust"],
 	},
 	3: {
-		1: ["saucers", "aimed", "orbit", "blink", "fan", "meteors"],
-		2: ["orbit", "saucers", "abduct", "spiral", "strafe", "wall", "orbit", "beam", "blink", "pink"],
-		3: ["saucers", "orbit", "abduct", "wall", "spiral", "strafe", "meteors", "orbit", "blink", "bolts", "summon", "charge", "pink"],
+		1: ["saucers", "aimed", "orbit", "clusters", "blink", "fan", "strike", "meteors", "ring", "spiral"],
+		2: ["orbit", "strike", "saucers", "abduct", "clusters", "spiral", "strafe", "wall", "orbit", "beam", "blink", "pink", "meteors", "clusters"],
+		3: ["saucers", "strike", "orbit", "abduct", "clusters", "wall", "spiral", "strafe", "meteors", "orbit", "blink", "bolts", "summon", "strike", "charge", "clusters", "pink"],
 	},
 	4: {
-		1: ["lasersweep", "eyes", "bonecage", "bonewave", "aimed", "lasereyes"],
-		2: ["bonecage", "lasersweep", "chomp", "eyes", "lasereyes", "bonewave", "spiral", "wall", "sweep", "pink"],
-		3: ["lasersweep", "bonecage", "chomp", "lasereyes", "blackout", "eyes", "bonewave", "spiral", "sweep", "curtain", "bounce", "beam", "pink", "grid"],
+		1: ["lasersweep", "eyes", "bonecage", "bonewave", "graveyard", "aimed", "spirits", "lasereyes", "rollball", "fan"],
+		2: ["bonecage", "lasersweep", "graveyard", "chomp", "eyes", "spirits", "lasereyes", "bonewave", "rollball", "spiral", "wall", "sweep", "pink", "graveyard"],
+		3: ["lasersweep", "graveyard", "bonecage", "chomp", "spirits", "lasereyes", "blackout", "eyes", "rollball", "bonewave", "spiral", "sweep", "curtain", "bounce", "beam", "pink", "grid", "graveyard", "eyes"],
 	},
 }
 # Ataques que ya traen su propio "agacharse" o salto: no llevan la anticipación de siempre.
@@ -172,6 +172,19 @@ const ATTACK_WEIGHTS := {
 	"orbit": [4.0, 5.0, 5.0],
 	"bonecage": [3.0, 5.0, 6.0],
 	"lasersweep": [3.0, 5.0, 6.0],
+	"geyser": [3.0, 5.0, 5.0],
+	"rollball": [3.0, 4.0, 5.0],
+	"lob": [3.0, 5.0, 5.0],
+	"rising": [3.0, 4.0, 5.0],
+	"eightarms": [3.0, 5.0, 6.0],
+	"pincer": [3.0, 5.0, 5.0],
+	"bombs": [3.0, 5.0, 5.0],
+	"crescents": [3.0, 5.0, 5.0],
+	"squall": [3.0, 4.0, 5.0],
+	"strike": [3.0, 5.0, 5.0],
+	"clusters": [3.0, 5.0, 5.0],
+	"graveyard": [3.0, 5.0, 6.0],
+	"spirits": [3.0, 4.0, 5.0],
 }
 
 var level
@@ -445,6 +458,8 @@ func _stop_attack() -> void:
 	squash = Vector2.ONE
 	laser_sweep = false
 	orbit_orbs.clear()
+	bomb_refs.clear()
+	cluster_refs.clear()
 	warn_dive = false
 	abducting = false
 	gust_t = 0.0
@@ -622,6 +637,19 @@ func _pick_attack() -> void:
 		"orbit": _atk_orbit()
 		"bonecage": _atk_bonecage()
 		"lasersweep": _atk_lasersweep()
+		"geyser": _atk_geyser()
+		"rollball": _atk_rollball()
+		"lob": _atk_lob()
+		"rising": _atk_rising()
+		"eightarms": _atk_eightarms()
+		"pincer": _atk_pincer()
+		"bombs": _atk_bombs()
+		"crescents": _atk_crescents()
+		"squall": _atk_squall()
+		"strike": _atk_strike()
+		"clusters": _atk_clusters()
+		"graveyard": _atk_graveyard()
+		"spirits": _atk_spirits()
 	tw.tween_callback(_done)
 
 
@@ -696,6 +724,8 @@ func _ambient(delta: float) -> void:
 # ───── Poderes propios ─────
 func _signature_tick(delta: float) -> void:
 	_orbit_tick(delta)
+	_bomb_tick()
+	_cluster_tick()
 	var p = level.player if level else null
 	if p == null or p.dead:
 		return
@@ -1845,6 +1875,255 @@ func _lasersweep_begin() -> void:
 		laser_ang[i] = sweep_a0[i]
 	laser_mode = 1
 	AudioManager.sfx("warn", -4.0, 1.4)
+
+
+# ───── Más repertorio: cada jefe tiene muchos más ataques propios ─────
+# Columnas de impacto con aviso. march = avanzan del jefe hacia el jugador; si no, caen dispersas cerca de él.
+func _column_seq(n: int, gap: float, warn: float, width: float, march: bool) -> void:
+	for i in n:
+		tw.tween_callback(_column_at.bind(i, n, warn, width, march))
+		tw.tween_interval(gap / sp)
+	tw.tween_interval(warn + 0.5)
+
+
+func _column_at(i: int, n: int, warn: float, width: float, march: bool) -> void:
+	var px := clampf(_target().x, ox + 30.0, ox + 450.0)
+	var x := 0.0
+	if march:
+		x = lerpf(clampf(global_position.x, ox + 20.0, ox + 460.0), px, float(i + 1) / float(n))
+	else:
+		x = clampf(px + attack_rng.randf_range(-110.0, 110.0), ox + 20.0, ox + 460.0)
+	level.add_zone(Vector2(x, Cfg.FLOOR_Y * 0.5), Vector2(width, Cfg.FLOOR_Y), warn, 0.4, _col())
+
+
+# Slime — Géiseres de baba: una hilera de columnas que avanza hacia ti.
+func _atk_geyser() -> void:
+	_column_seq(5 + phase * 2, 0.3, 0.75, 34.0, true)
+
+
+# Calavera — Cementerio: columnas de huesos brotan rápido y dispersas alrededor tuyo.
+func _atk_graveyard() -> void:
+	_column_seq(7 + phase * 2, 0.34, 0.6, 28.0, false)
+
+
+# Marciano — Ataque orbital: tres tandas de columnas de energía que cubren todo menos un hueco.
+func _atk_strike() -> void:
+	var volleys := 1 + phase
+	for v in volleys:
+		tw.tween_callback(_strike_volley)
+		tw.tween_interval(1.9 / sp)
+	tw.tween_interval(0.4)
+
+
+func _strike_volley() -> void:
+	var gap := attack_rng.randi_range(1, 6)
+	for k in 8:
+		if k == gap or k == gap + 1:
+			continue
+		level.add_zone(Vector2(ox + 30.0 + 60.0 * float(k), Cfg.FLOOR_Y * 0.5), Vector2(44, Cfg.FLOOR_Y), 1.0, 0.4, _col())
+	AudioManager.sfx("warn", -8.0, 1.2)
+
+
+# Slime / Calavera — Bola rodante: una bola enorme cruza el piso (hay que saltarla).
+func _atk_rollball() -> void:
+	var passes := 1 + (1 if phase >= 2 else 0) + (1 if phase >= 3 else 0)
+	for i in passes:
+		tw.tween_callback(_rollball_warn.bind(i))
+		tw.tween_interval(0.6)
+		tw.tween_callback(_fire_rollball.bind(i))
+		tw.tween_interval(2.4 / sp)
+	tw.tween_interval(1.0)
+
+
+func _rollball_warn(i: int) -> void:
+	var edge_x := ox + (14.0 if i % 2 == 0 else 466.0)
+	Fx.burst(get_parent(), Vector2(edge_x, Cfg.FLOOR_Y - 12.0), _col(), 12, 70.0, 0.5, 3.0)
+	AudioManager.sfx("warn", -10.0, 0.6)
+
+
+func _fire_rollball(i: int) -> void:
+	var dir := 1.0 if i % 2 == 0 else -1.0
+	var x := ox - 30.0 if dir > 0.0 else ox + 510.0
+	level.add_hazard(Vector2(x, Cfg.FLOOR_Y - 13.0), Vector2(dir * 150.0 * sp, 0), {"radius": 13.0, "col": _col(), "life": 6.0})
+	AudioManager.sfx("boom", -12.0, 0.5)
+
+
+# Slime — Lluvia de gotas: lanza gotas en abanico que suben y caen en arco por toda la arena.
+func _atk_lob() -> void:
+	var volleys := 1 + phase
+	for v in volleys:
+		tw.tween_callback(_fire_lob.bind(v))
+		tw.tween_interval(1.15 / sp)
+	tw.tween_interval(1.4)
+
+
+func _fire_lob(v: int) -> void:
+	var m := global_position
+	var tx := _target().x
+	for i in 7:
+		var vx := (float(i) - 3.0) * 38.0 + (tx - m.x) * 0.35
+		var vy := -230.0 + attack_rng.randf_range(-30.0, 30.0)
+		level.add_hazard(m, Vector2(vx, vy), {"col": _col(), "radius": 5.5, "accel": Vector2(0, 260.0), "life": 4.5, "pink": phase >= 2 and i == 3 and v == 1})
+	AudioManager.sfx("shoot", -12.0, 0.6)
+
+
+# Pulpo — Burbujas del fondo: suben desde el piso, ondulando, en lugares distintos.
+func _atk_rising() -> void:
+	var n := 10 + 2 * phase
+	for i in n:
+		tw.tween_callback(_fire_rising.bind(i))
+		tw.tween_interval(0.28 / sp)
+	tw.tween_interval(1.2)
+
+
+func _fire_rising(i: int) -> void:
+	var x := ox + 30.0 + float((i * 7) % 11) * 40.0 + attack_rng.randf_range(-10.0, 10.0)
+	level.add_hazard(Vector2(x, Cfg.FLOOR_Y + 60.0), Vector2(0, -62.0 * sp), {"col": _col(), "radius": 8.0, "wave_amp": 16.0, "wave_f": 3.5, "pink": i % 6 == 5, "life": 5.0})
+
+
+# Pulpo — Ocho brazos: ráfagas giratorias de ocho tentáculos de tinta que dibujan una espiral.
+func _atk_eightarms() -> void:
+	var bursts := 6 + 2 * phase
+	for i in bursts:
+		tw.tween_callback(_fire_arms.bind(i))
+		tw.tween_interval(0.32 / sp)
+	tw.tween_interval(1.0)
+
+
+func _fire_arms(i: int) -> void:
+	var m := global_position
+	for a in 8:
+		var ang := TAU * float(a) / 8.0 + float(i) * 0.21
+		level.add_hazard(m, Vector2.RIGHT.rotated(ang) * 95.0 * sp, {"col": _col(), "radius": 4.5, "pink": phase >= 2 and i == 3 and a == 0})
+	AudioManager.sfx("shoot", -16.0, 0.8)
+
+
+# Pulpo — Pinza: disparos que entran desde los dos bordes a alturas al azar.
+func _atk_pincer() -> void:
+	var n := 8 + 2 * phase
+	for i in n:
+		tw.tween_callback(_fire_pincer.bind(i))
+		tw.tween_interval(0.4 / sp)
+	tw.tween_interval(1.0)
+
+
+func _fire_pincer(i: int) -> void:
+	var from_left := i % 2 == 0
+	var y := attack_rng.randf_range(60.0, Cfg.FLOOR_Y - 14.0)
+	level.add_hazard(Vector2(ox - 14.0 if from_left else ox + 494.0, y), Vector2((1.0 if from_left else -1.0) * 135.0 * sp, 0), {"col": _col(), "radius": 5.0})
+	AudioManager.sfx("shoot", -17.0, 0.7)
+
+
+# Murciélago — Bombardeo: bombas caen donde estás y estallan en esquirlas al tocar el piso.
+var bomb_refs: Array = []
+
+func _atk_bombs() -> void:
+	var n := 2 + phase
+	for i in n:
+		tw.tween_callback(_drop_bomb)
+		tw.tween_interval(0.85 / sp)
+	tw.tween_interval(1.6)
+
+
+func _drop_bomb() -> void:
+	var x := clampf(_target().x + attack_rng.randf_range(-20.0, 20.0), ox + 30.0, ox + 450.0)
+	var h = level.add_hazard(Vector2(x, -10.0), Vector2.ZERO, {"col": Color(1.0, 0.6, 0.2), "radius": 8.0, "accel": Vector2(0, 330.0), "life": 4.0})
+	bomb_refs.append(h)
+	AudioManager.sfx("warn", -12.0, 1.5)
+
+
+func _bomb_tick() -> void:
+	for h in bomb_refs.duplicate():
+		if not is_instance_valid(h):
+			bomb_refs.erase(h)
+		elif h.position.y >= Cfg.FLOOR_Y - 8.0:
+			bomb_refs.erase(h)
+			var p: Vector2 = h.position
+			h.queue_free()
+			for i in 6:
+				var ang := -PI + PI * (float(i) + 0.5) / 6.0
+				level.add_hazard(p, Vector2.RIGHT.rotated(ang) * 115.0, {"col": _col(), "radius": 4.5, "accel": Vector2(0, 90.0), "life": 3.0})
+			for dir in [-1, 1]:
+				level.add_hazard(Vector2(p.x, Cfg.FLOOR_Y - 8.0), Vector2(dir * 120.0, 0), {"style": "wave", "radius": 7.0, "col": _col()})
+			Fx.shake(3.0, 0.25)
+			AudioManager.sfx("boom", -8.0, 1.1)
+
+
+# Murciélago — Cuchillas de viento: medialunas bajas (se saltan) y altas (se pasa por debajo), alternadas.
+func _atk_crescents() -> void:
+	var n := 4 + phase
+	for i in n:
+		tw.tween_callback(_fire_crescent.bind(i))
+		tw.tween_interval(0.78 / sp)
+	tw.tween_interval(1.0)
+
+
+func _fire_crescent(i: int) -> void:
+	var low := i % 2 == 0
+	var dir := 1.0 if _target().x > global_position.x else -1.0
+	var y := Cfg.FLOOR_Y - 10.0 if low else Cfg.FLOOR_Y - 60.0
+	level.add_hazard(Vector2(global_position.x, y), Vector2(dir * 145.0 * sp, 0), {"style": "wave", "radius": 8.0, "col": _col()})
+	AudioManager.sfx("dash", -12.0, 1.4)
+
+
+# Murciélago — Aguacero de plumas: caen plumas inclinadas por toda la arena.
+func _atk_squall() -> void:
+	var n := 14 + 4 * phase
+	for i in n:
+		tw.tween_callback(_fire_squall)
+		tw.tween_interval(0.17 / sp)
+	tw.tween_interval(1.2)
+
+
+func _fire_squall() -> void:
+	level.add_hazard(Vector2(ox + attack_rng.randf_range(20.0, 460.0), -10.0), Vector2(attack_rng.randf_range(-45.0, 45.0), 105.0 * sp), {"style": "drop", "radius": 4.2, "col": _col()})
+
+
+# Marciano — Bombas de racimo: esferas lentas que se parten en esquirlas a los 1.1 s.
+var cluster_refs: Array = []
+
+func _atk_clusters() -> void:
+	var n := 2 + (1 if phase >= 2 else 0) + (1 if phase >= 3 else 0)
+	for i in n:
+		tw.tween_callback(_fire_cluster.bind(i))
+		tw.tween_interval(0.9 / sp)
+	tw.tween_interval(1.8)
+
+
+func _fire_cluster(i: int) -> void:
+	var ang := (_target() - global_position).angle() + (float(i) - 1.0) * 0.28
+	var h = level.add_hazard(global_position, Vector2.RIGHT.rotated(ang) * 95.0 * sp, {"col": _col(), "radius": 8.0, "life": 3.0})
+	cluster_refs.append(h)
+	AudioManager.sfx("shoot", -10.0, 0.7)
+
+
+func _cluster_tick() -> void:
+	for h in cluster_refs.duplicate():
+		if not is_instance_valid(h):
+			cluster_refs.erase(h)
+		elif h.age >= 1.1:
+			cluster_refs.erase(h)
+			var p: Vector2 = h.position
+			h.queue_free()
+			for i in 7:
+				level.add_hazard(p, Vector2.RIGHT.rotated(TAU * float(i) / 7.0 + 0.3) * 85.0, {"col": _col(), "radius": 4.5, "life": 3.0})
+			AudioManager.sfx("boom", -12.0, 1.5)
+
+
+# Calavera — Espíritus: fantasmas que flotan ondulando; se pueden derribar a tiros.
+func _atk_spirits() -> void:
+	var n := 5 + phase
+	for i in n:
+		tw.tween_callback(_fire_spirit)
+		tw.tween_interval(0.6 / sp)
+	tw.tween_interval(1.4)
+
+
+func _fire_spirit() -> void:
+	var dir := 1.0 if _target().x > global_position.x else -1.0
+	var y := attack_rng.randf_range(60.0, Cfg.FLOOR_Y - 20.0)
+	level.add_hazard(Vector2(global_position.x, y), Vector2(dir * 72.0 * sp, 0), {"col": Color(0.8, 0.95, 0.9), "radius": 9.0, "wave_amp": 26.0, "wave_f": 3.0, "shootable": true, "life": 8.0})
+	AudioManager.sfx("phase", -16.0, 1.3)
 
 
 func _draw() -> void:

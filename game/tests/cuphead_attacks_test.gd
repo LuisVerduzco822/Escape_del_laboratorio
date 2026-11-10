@@ -77,14 +77,14 @@ func _run() -> void:
 				ok = ok and boss_script.ATTACK_WEIGHTS.has(seq[i]) and seq[i] != seq[(i + 1) % seq.size()]
 			check(ok, "Coreografía del jefe %d fase %d es válida" % [k + 1, ph])
 	for k in 5:
-		check(boss_script.SIGNATURE[k].size() >= 3, "El jefe %d tiene al menos 3 ataques propios" % [k + 1])
+		check(boss_script.SIGNATURE[k].size() >= 5, "El jefe %d tiene al menos 5 ataques propios" % [k + 1])
 
 	# --- Sin límite de tiempo por jefe
 	await fresh(0)
 	level.boss_t = 99999.0
 	check(level.boss_left() > 9999.0, "La historia no tiene límite de tiempo por jefe")
 	level.boss_t = 0.0
-	check(cfg.LEVELS[0]["boss_hp"] >= 900.0 and cfg.LEVELS[4]["boss_hp"] >= 1200.0, "Los jefes tienen más vida que antes")
+	check(cfg.LEVELS[0]["boss_hp"] >= 1800.0 and cfg.LEVELS[4]["boss_hp"] >= 2400.0, "Los jefes tienen más vida que antes")
 
 	# --- La historia sigue la coreografía en orden, y reinicia al cambiar de fase
 	var b = level.boss
@@ -176,6 +176,34 @@ func _run() -> void:
 			swept["a1"] = b.laser_ang[0], 3000)
 	check(swept["mode2"] and absf(swept["a1"] - swept["a0"]) > 0.4, "Los láseres barren el piso en lugar de perseguir")
 	check(b.laser_mode == 0 and not b.laser_sweep, "El barrido termina apagado")
+
+	# --- Repertorio ampliado: cada ataque nuevo arranca, dispara algo y termina solo
+	await fresh(2)
+	b = level.boss
+	var shooters := ["rollball", "lob", "rising", "eightarms", "pincer", "bombs", "crescents", "squall", "clusters", "spirits"]
+	for nm in ["geyser", "rollball", "lob", "rising", "eightarms", "pincer", "bombs", "crescents", "squall", "strike", "clusters", "graveyard", "spirits"]:
+		level.player.global_position = Vector2(b.ox + 200.0, 170.0)
+		var pk: int = await run_attack(b, nm, Callable(), 4000)
+		check(not b.busy and (pk >= 1 or not (nm in shooters)), "El ataque %s dispara y termina (%d)" % [nm, pk])
+		level.clear_threats()
+	# La bomba estalla en esquirlas al tocar el piso; el racimo se parte a los 1.1 s
+	level.player.global_position = Vector2(b.ox + 100.0, 170.0)
+	b._drop_bomb()
+	var burst := 0
+	for i in 200:
+		await frames(1)
+		burst = maxi(burst, get_nodes_in_group("hazard").size())
+	check(burst >= 6, "La bomba estalla en esquirlas (%d)" % burst)
+	level.clear_threats()
+	b.cluster_refs.clear()
+	b._fire_cluster(1)
+	var split := 0
+	for i in 160:
+		await frames(1)
+		b._cluster_tick()
+		split = maxi(split, get_nodes_in_group("hazard").size())
+	check(split >= 7, "El racimo se parte en esquirlas (%d)" % split)
+	level.clear_threats()
 
 	# --- Anticipación elástica
 	b.squash = Vector2.ONE

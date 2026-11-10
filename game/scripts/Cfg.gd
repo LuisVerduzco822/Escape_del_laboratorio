@@ -31,7 +31,7 @@ const LEGACY_BOSS_HP := [880.0, 940.0, 920.0, 1000.0, 1100.0]
 # Modo FINALTOP: solo jefes, uno tras otro, con el reloj corriendo. Gana el menor tiempo.
 const FINALTOP := {
 	"name": "FINALTOP",
-	"boss_hp": [1000.0, 1250.0, 1700.0, 2100.0, 5400.0],   # la calavera (último jefe) tiene muchísima vida
+	"boss_hp": [1500.0, 1900.0, 2550.0, 3150.0, 8100.0],   # la calavera (último jefe) tiene muchísima vida
 	"death_penalty": 15.0,               # segundos que suma cada derrota
 	"heart_every": 26.0,                 # un corazón cada tanto si quedan 2 vidas o menos
 	"powerups": {
@@ -59,7 +59,7 @@ const LEVELS := [
 		"collect_time": 300.0,
 		"ing_times": [30.0, 138.0, 241.0],
 		"boss_name": "GELATINA MUTANTE",
-		"boss_hp": 960.0,
+		"boss_hp": 1920.0,
 		"boss_time": 240.0,
 		"boss_powerups": BOSS_POWERUPS,
 		"world_width": 4660.0,
@@ -102,7 +102,7 @@ const LEVELS := [
 		"collect_time": 290.0,
 		"ing_times": [29.0, 138.0, 237.0],
 		"boss_name": "PULPO TOXICO",
-		"boss_hp": 1020.0,
+		"boss_hp": 2040.0,
 		"boss_time": 250.0,
 		"boss_powerups": BOSS_POWERUPS,
 		"world_width": 5220.0,
@@ -147,7 +147,7 @@ const LEVELS := [
 		"collect_time": 290.0,
 		"ing_times": [29.0, 137.0, 234.0],
 		"boss_name": "GARGOLA VIRAL",
-		"boss_hp": 1050.0,
+		"boss_hp": 2100.0,
 		"boss_time": 260.0,
 		"boss_powerups": BOSS_POWERUPS,
 		"world_width": 5840.0,
@@ -192,7 +192,7 @@ const LEVELS := [
 		"collect_time": 290.0,
 		"ing_times": [29.0, 137.0, 234.0],
 		"boss_name": "EL MARCIANO",
-		"boss_hp": 1140.0,
+		"boss_hp": 2280.0,
 		"boss_time": 270.0,
 		"boss_powerups": BOSS_POWERUPS,
 		"world_width": 5840.0,
@@ -237,7 +237,7 @@ const LEVELS := [
 		"collect_time": 320.0,
 		"ing_times": [28.0, 153.0, 264.0],
 		"boss_name": "LA CALAVERA",
-		"boss_hp": 1230.0,
+		"boss_hp": 2460.0,
 		"boss_time": 300.0,
 		"boss_powerups": BOSS_POWERUPS,
 		"world_width": 6200.0,

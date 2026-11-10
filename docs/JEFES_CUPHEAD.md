@@ -20,10 +20,21 @@ En la historia cada jefe sigue una **secuencia fija por fase** (`Boss.SCRIPT`), 
 | Calavera | **Jaula de huesos** (`bonecage`): filas con un hueco que se desplaza | seguir el hueco |
 | Calavera | **Barrido láser** (`lasersweep`): los ojos barren el piso como tijeras | saltar el rayo al pasar |
 
+## Repertorio ampliado (13 ataques más)
+| Jefe | Ataques |
+|---|---|
+| Slime | `geyser` (columnas que avanzan hacia ti), `rollball` (bola enorme que cruza el piso), `lob` (gotas en arco) |
+| Pulpo | `rising` (burbujas desde el piso), `eightarms` (espiral de ocho brazos), `pincer` (disparos desde los dos bordes) |
+| Gárgola | `bombs` (bombas que estallan en esquirlas), `crescents` (cuchillas bajas y altas), `squall` (aguacero de plumas) |
+| Marciano | `strike` (columnas de energía con un hueco), `clusters` (bombas de racimo) |
+| Calavera | `graveyard` (huesos que brotan), `spirits` (fantasmas derribables), `rollball` |
+
+Las secuencias por fase son más largas (10 a 19 ataques), así que cada pelea dura bastante más antes de repetirse.
+
 ## Fluidez
 - Cada ataque empieza con una **anticipación elástica** (el jefe se agacha y se estira).
 - Los saltos y picadas dejan **estela de movimiento**.
 - Los cambios de fase dan un golpe elástico con destello.
-- Más vida: 960 / 1020 / 1050 / 1140 / 1230 en la historia (antes 640 a 820), y 1000 / 1250 / 1700 / 2100 / 5400 en FINALTOP.
+- Mucha más vida: 1920 / 2040 / 2100 / 2280 / 2460 en la historia (al inicio eran 640 a 820), y 1500 / 1900 / 2550 / 3150 / 8100 en FINALTOP.
 
 Pruebas: `game/tests/cuphead_attacks_test.gd`.
