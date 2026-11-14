@@ -103,7 +103,11 @@ func _run() -> void:
 		hit_midpoint()
 		await frames(3)
 		check(hearts().is_empty() and level.boss.pending_hearts == 2, "Phase-two midpoint waits during a real attack")
-		await frames(120)
+		for i in 900:   # la duración del ataque depende de la dificultad del jefe
+			if not level.boss.busy:
+				break
+			await frames(1)
+		await frames(2)
 		check(not level.boss.busy and hearts().size() == 1, "The real attack completion releases the phase-two heart")
 		await collect_heart()
 		check(gm.hp == 2, "Phase-two heart heals the injured player")

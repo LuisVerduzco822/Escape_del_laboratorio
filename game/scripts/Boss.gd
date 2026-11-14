@@ -310,7 +310,7 @@ func _update_wings() -> void:
 
 # Cantidad de proyectiles de un patrón, ajustada por la dificultad de Cfg.BOSS.
 func _n(v: int) -> int:
-	return maxi(2, roundi(v * float(Cfg.BOSS["count"])))
+	return maxi(2, roundi(v * float(Cfg.BOSS["count"]) * float(Cfg.BOSS_CURVE["count"][kind])))
 
 
 func _target() -> Vector2:
@@ -510,7 +510,7 @@ func _die() -> void:
 func _new_tw() -> Tween:
 	tw = create_tween()
 	busy = true
-	sp = (1.0 + 0.12 * kind + 0.15 * (phase - 1)) * float(Cfg.BOSS["speed"])
+	sp = (1.0 + 0.12 * kind + 0.15 * (phase - 1)) * float(Cfg.BOSS["speed"]) * float(Cfg.BOSS_CURVE["speed"][kind])
 	return tw
 
 
@@ -520,7 +520,7 @@ func _done() -> void:
 	contact_on = false
 	warn_x = -1.0
 	warn_y = -1.0
-	rest = maxf(0.4, 1.4 - 0.25 * (phase - 1) - 0.13 * kind) + float(Cfg.BOSS["rest_add"])
+	rest = (maxf(0.4, 1.4 - 0.25 * (phase - 1) - 0.13 * kind) + float(Cfg.BOSS["rest_add"]) + float(Cfg.BOSS_CURVE["rest"][kind])) * float(Cfg.PHASE_REST[phase - 1])
 	_try_drop_hearts()
 
 

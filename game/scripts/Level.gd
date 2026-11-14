@@ -29,6 +29,10 @@ var bg
 var cam: Camera2D
 var collect_t := 0.0
 var boss_t := 0.0
+var hits_at_start := 0       # golpes acumulados al empezar este nivel (para los logros)
+var boss_hits_start := 0     # ... y al empezar la pelea con el jefe
+var support_heart_t := 0.0
+var support_hearts := 0
 var fail_t := 0.0
 var reached_boss := false
 var ing_spawned := [false, false, false]
@@ -115,6 +119,7 @@ func _ready() -> void:
 	hud.level = self
 	layer.add_child(hud)
 	GameManager.start_level()
+	hits_at_start = GameManager.hits_taken
 	GameManager.current_level = index
 	Telemetry.event("level_start", {"name": data["name"], "phase": start_phase})
 	cd = Cfg.START_DELAYS.duplicate()
@@ -439,6 +444,7 @@ func _physics_process(delta: float) -> void:
 			if st_t >= 3.2:
 				st = S.BOSS
 				st_t = 0.0
+				boss_hits_start = GameManager.hits_taken
 				AudioManager.play_music(data["boss_music"])
 				Telemetry.event("boss_start", {"boss": data["boss_name"]})
 		S.BOSS:
@@ -760,11 +766,45 @@ func is_player_frozen() -> bool:
 	return st == S.WARN or (st == S.BOSS and is_instance_valid(boss) and boss.st == Boss.St.ENTER)
 
 
+func level_hits() -> int:
+	return GameManager.hits_taken - hits_at_start
+
+
 func _boss_phase(delta: float) -> void:
 	boss_t += delta
 	_tick_powerups(delta)
+	if not is_finaltop:
+		_tick_support_hearts(delta)
 	if boss_left() <= 0.0 and boss and boss.st != Boss.St.DEAD:
 		_fail("time")
+
+
+# Corazones de apoyo durante el jefe: salen cada cierto tiempo de pelea si falta vida. Los primeros
+# jefes los dan más seguido y en mayor cantidad (Cfg.BOSS_HEARTS); el último, los más escasos.
+func _tick_support_hearts(delta: float) -> void:
+	if not can_use_powerups() or boss.phase < 1:
+		return
+	var cfg: Dictionary = Cfg.BOSS_HEARTS
+	if support_hearts >= int(cfg["max"][index]) or GameManager.hp >= Cfg.MAX_HP:
+		support_heart_t = minf(support_heart_t, float(cfg["every"][index]) * 0.5)
+		return
+	support_heart_t += delta
+	if support_heart_t < float(cfg["every"][index]):
+		return
+	for child in get_children():
+		if child.get_script() == Pickup and child.kind == "boss_heart" and not child.is_queued_for_deletion():
+			return
+	support_heart_t = 0.0
+	support_hearts += 1
+	var spots := [90.0, 330.0, 210.0, 150.0, 270.0]
+	var pk := Pickup.new()
+	pk.kind = "boss_heart"
+	pk.position = Vector2(arena_x + spots[support_hearts % spots.size()], Cfg.FLOOR_Y - 14.0)
+	pk.life = 16.0
+	add_child(pk)
+	Fx.burst(self, pk.position, Color(1.0, 0.35, 0.5), 10, 55.0, 0.5, 2.0)
+	AudioManager.sfx("pickup", -6.0)
+	Telemetry.event("support_heart", {"n": support_hearts})
 
 
 func can_use_powerups() -> bool:
@@ -835,6 +875,8 @@ func _on_boss_defeated() -> void:
 	GameManager.add_score_raw(bonus)
 	GameManager.add_coin(100)
 	Telemetry.count("bosses_defeated")
+	if not is_tutorial:
+		Achievements.boss_defeated(index, boss_t, GameManager.hits_taken - boss_hits_start)
 	Telemetry.event("boss_defeated", {"boss": data["boss_name"], "time": snappedf(boss_t, 0.1), "phase": boss.phase, "bonus": bonus})
 	Telemetry.event("coin", {"value": 100, "name": "bono de jefe"})
 	Fx.popup(self, "+%d" % bonus, Vector2(arena_x + 240.0, 150.0), Color(1.0, 0.9, 0.4))

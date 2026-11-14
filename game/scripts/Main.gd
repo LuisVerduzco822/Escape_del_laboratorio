@@ -49,6 +49,9 @@ var finaltop_btn: Button
 var end_title: Label
 var end_sub: Label
 var credits_layer: CanvasLayer
+var ach_layer: CanvasLayer
+var ach_panel
+var ach_btn: Button
 var credits_btn: Button
 var credits_back: Button
 var credits_scroll: ScrollContainer
@@ -79,6 +82,7 @@ func _ready() -> void:
 	add_child(holder)
 	_build_menu()
 	_build_credits()
+	_build_achievements()
 	_build_how()
 	_build_rank()
 	_build_story()
@@ -192,7 +196,9 @@ func _build_menu() -> void:
 	if Database.offline_mode:
 		rank_btn.tooltip_text = "Conéctate e inicia sesión para ver el ranking"
 	_btn(extras, "CONTROLES", _show_how)
-	credits_btn = _btn(box, "CRÉDITOS", _show_credits)
+	var more := _menu_row(box)
+	credits_btn = _btn(more, "CRÉDITOS", _show_credits)
+	ach_btn = _btn(more, "LOGROS", _show_achievements)
 	update_btn = _btn(box, "", _open_update)
 	update_btn.visible = false
 	update_btn.add_theme_color_override("font_color", Color(1.0, 0.9, 0.35))
@@ -202,7 +208,7 @@ func _build_menu() -> void:
 	var footer := _menu_row(box)
 	_btn(footer, "CONECTARSE" if Database.offline_mode else "CERRAR SESIÓN", _logout)
 	_btn(footer, "SALIR", _quit)
-	for row in [primary, modes, extras, footer]:
+	for row in [primary, modes, extras, more, footer]:
 		for button in row.get_children():
 			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var tw := create_tween().set_loops()
@@ -614,6 +620,7 @@ func _finish_finaltop() -> void:
 	var rank_text := "PUESTO EN FINALTOP #%d" % rank if rank > 0 else "SIN CONEXION: MARCA NO SUBIDA"
 	if Database.offline_mode:
 		rank_text = "MODO OFFLINE: MARCA NO SUBIDA"
+	Achievements.finaltop_completed(GameManager.deaths)
 	var penalty: float = GameManager.deaths * float(Cfg.FINALTOP["death_penalty"])
 	end_title.text = "¡FINALTOP!"
 	end_sub.text = "Los cuatro jefes cayeron."
@@ -744,6 +751,8 @@ func _on_level_finished() -> void:
 	busy = true
 	in_game = false
 	Telemetry.event("level_complete", {"level_time": snappedf(level.age, 0.1), "coins": GameManager.coins})
+	if level.restore_data.is_empty():   # un nivel retomado desde partida guardada no cuenta para «primer intento»
+		Achievements.level_cleared(cur_index, int(GameManager.level_fails.get(cur_index, 0)), level.level_hits(), GameManager.hp)
 	if cur_index < Cfg.LEVELS.size() - 1:
 		Database.save_progress(cur_index + 1, GameManager.ingredients, GameManager.play_time, GameManager.parries, GameManager.deaths, GameManager.coins, GameManager.score)
 	await _fade(1.0, 0.8)
@@ -767,6 +776,7 @@ func _on_crafting_done() -> void:
 	if busy:
 		return
 	busy = true
+	Achievements.game_completed(GameManager.deaths, GameManager.play_time)
 	var newly_unlocked := not Database.finaltop_unlocked()
 	Database.unlock_finaltop()
 	await _fade(1.0, 0.8)
@@ -794,6 +804,8 @@ func _on_crafting_done() -> void:
 
 func _on_level_failed(info: Dictionary) -> void:
 	last_fail = info
+	if mode == "story" and not level.is_tutorial:
+		GameManager.level_fails[int(info["level"])] = int(GameManager.level_fails.get(int(info["level"]), 0)) + 1
 	in_game = false
 	fail_title.text = "TIEMPO AGOTADO" if info["reason"] == "time" else "DERROTADO"
 	if mode == "finaltop":
@@ -825,6 +837,8 @@ func _restart_level() -> void:
 		_start_level(0, "tutorial", false)
 		return
 	GameManager.reset_level_ingredients(cur_index)
+	if mode == "story":
+		GameManager.level_fails[cur_index] = int(GameManager.level_fails.get(cur_index, 0)) + 1
 	Telemetry.event("restart_level", {})
 	_start_level(cur_index, "collect", false)
 
@@ -874,10 +888,13 @@ func _input(e: InputEvent) -> void:
 	if waiting_story:
 		_refresh_story_prompt()
 	# Rebuild from visible/enabled controls before GUI navigation handles this event.
-	for layer in [credits_layer, how_layer, rank_layer, pause_layer, fail_layer, end_layer, menu_layer]:
+	for layer in [ach_layer, credits_layer, how_layer, rank_layer, pause_layer, fail_layer, end_layer, menu_layer]:
 		if layer.visible:
 			UI.wire_focus_rows(layer)
 			break
+	if ach_layer.visible and ach_panel.handle_input(e):
+		get_viewport().set_input_as_handled()
+		return
 	if credits_layer.visible and credits_scroll.handle_input(e):
 		get_viewport().set_input_as_handled()
 		return
@@ -897,6 +914,10 @@ func _input(e: InputEvent) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if ach_layer.visible and (e.is_action_pressed("pause") or (e is InputEventJoypadButton and e.pressed and e.button_index == JOY_BUTTON_B)):
+		_hide_achievements()
+		get_viewport().set_input_as_handled()
+		return
 	if credits_layer.visible and (e.is_action_pressed("pause") or (e is InputEventJoypadButton and e.pressed and e.button_index == JOY_BUTTON_B)):
 		_hide_credits()
 		get_viewport().set_input_as_handled()
@@ -986,6 +1007,28 @@ func _menu_row(box: VBoxContainer) -> HBoxContainer:
 	row.add_theme_constant_override("separation", 8)
 	box.add_child(row)
 	return row
+
+
+func _build_achievements() -> void:
+	ach_layer = _layer(47)
+	_dim(ach_layer, 0.97)
+	var box := _center_box(ach_layer, 8)
+	ach_panel = preload("res://scripts/AchievementsPanel.gd").new()
+	ach_panel.back.connect(_hide_achievements)
+	box.add_child(ach_panel)
+	ach_layer.visible = false
+
+
+func _show_achievements() -> void:
+	ach_panel.page = 0
+	ach_panel.refresh()
+	ach_layer.visible = true
+	ach_panel.back_btn.grab_focus()
+
+
+func _hide_achievements() -> void:
+	ach_layer.visible = false
+	ach_btn.grab_focus()
 
 
 func _build_credits() -> void:

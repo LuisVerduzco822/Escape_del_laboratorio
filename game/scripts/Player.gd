@@ -280,6 +280,7 @@ func _try_parry() -> bool:
 			invuln = maxf(invuln, 0.25)
 			if not GameManager.training:
 				GameManager.parries += 1
+				Achievements.parry()
 			action_performed.emit("parry")
 			var pts := GameManager.add_score(250)
 			Telemetry.event("parry", {"total": GameManager.parries, "points": pts})

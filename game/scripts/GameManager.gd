@@ -22,6 +22,8 @@ var hits_taken := 0
 var survive_acc := 0.0
 var current_level := 0
 var deaths := 0
+# Derrotas (o reinicios) por nivel en la partida actual: sirven para los logros de «al primer intento».
+var level_fails: Dictionary = {}
 var god := false
 var training := false
 
@@ -174,6 +176,7 @@ func reset_run() -> void:
 	play_time = 0.0
 	parries = 0
 	deaths = 0
+	level_fails = {}
 	coins = 0
 	score = 0
 	best_streak = 0.0

@@ -199,7 +199,8 @@ func _run() -> void:
 	var tutorial: Button = top_row.get_child(0)
 	check(main.continue_btn.get_parent() == play.get_parent() and main.continue_btn.get_index() < play.get_index(), "Continue and New game share a row, left to right")
 	check(is_equal_approx(main.continue_btn.size.x, play.size.x), "Primary buttons have equal widths")
-	check(is_equal_approx(play.get_parent().size.x, main.credits_btn.size.x), "Primary row matches full button width")
+	check(is_equal_approx(play.get_parent().size.x, main.credits_btn.get_parent().size.x), "Primary row matches the full width of the credits/achievements row")
+	check(main.ach_btn.get_parent() == main.credits_btn.get_parent(), "Credits and Achievements share a row")
 	for button in main.UI.focus_rows(main.menu_layer):
 		for item in button:
 			check(Rect2(Vector2.ZERO, Vector2(480, 270)).encloses(item.get_global_rect()), "Menu button fits viewport: " + item.text)

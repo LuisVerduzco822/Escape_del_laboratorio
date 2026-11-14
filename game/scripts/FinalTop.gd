@@ -39,7 +39,7 @@ func _boss_phase(delta: float) -> void:
 	if not can_use_powerups():
 		return
 	heart_t += delta
-	if heart_t < float(Cfg.FINALTOP["heart_every"]) or GameManager.hp > 2:
+	if heart_t < float(Cfg.FINALTOP["heart_every"]) or GameManager.hp > 3:
 		return
 	for child in get_children():
 		if child.get_script() == Pickup and child.kind == "boss_heart" and not child.is_queued_for_deletion():

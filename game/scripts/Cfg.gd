@@ -25,6 +25,19 @@ const BOSS := {
 	"rest_add": 0.45,  # segundos extra de descanso entre ataques
 	"count": 0.8,      # multiplica la cantidad de proyectiles de cada patrón
 }
+# Curva de dificultad: el jefe 1 es el más amable y el 5 es muy difícil (se multiplica por lo de arriba).
+const BOSS_CURVE := {
+	"speed": [0.80, 0.90, 1.00, 1.10, 1.22],    # velocidad de proyectiles y de los ataques
+	"rest": [0.70, 0.40, 0.10, -0.10, -0.25],   # segundos que se suman o restan al descanso entre ataques
+	"count": [0.78, 0.9, 1.0, 1.12, 1.28],      # cantidad de proyectiles por patrón
+}
+# En la fase final el jefe lanza los ataques mucho más seguidos (multiplica el descanso entre ataques).
+const PHASE_REST := [1.0, 0.8, 0.52]
+# Corazones de apoyo durante la pelea con el jefe: cada «every» segundos de combate si falta vida (máx. «max» por pelea).
+const BOSS_HEARTS := {
+	"every": [11.0, 13.0, 15.0, 17.0, 19.0],
+	"max": [10, 9, 8, 7, 6],
+}
 # Vida máxima que tenían los jefes antes del reajuste: solo para validar partidas guardadas viejas.
 const LEGACY_BOSS_HP := [880.0, 940.0, 920.0, 1000.0, 1100.0]
 
@@ -33,7 +46,7 @@ const FINALTOP := {
 	"name": "FINALTOP",
 	"boss_hp": [1500.0, 1900.0, 2550.0, 3150.0, 8100.0],   # la calavera (último jefe) tiene muchísima vida
 	"death_penalty": 15.0,               # segundos que suma cada derrota
-	"heart_every": 26.0,                 # un corazón cada tanto si quedan 2 vidas o menos
+	"heart_every": 16.0,                 # un corazón cada tanto si quedan 3 vidas o menos
 	"powerups": {
 		"first_delay": 3.0, "interval": 10.0, "pickup_life": 12.0,
 		"sequence": ["overcharge", "boss_bomb"],

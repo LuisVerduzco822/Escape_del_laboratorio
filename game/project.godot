@@ -31,6 +31,7 @@ GameManager="*res://scripts/GameManager.gd"
 AudioManager="*res://scripts/AudioManager.gd"
 Fx="*res://scripts/Fx.gd"
 SaveGame="*res://scripts/SaveGame.gd"
+Achievements="*res://scripts/Achievements.gd"
 
 [display]
 

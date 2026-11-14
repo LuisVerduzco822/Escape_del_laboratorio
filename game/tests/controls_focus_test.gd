@@ -44,7 +44,9 @@ func _run() -> void:
 	var quit_btn := find_controls(main.menu_layer, "SALIR")
 	menu_controls.grab_focus()
 	await arrow(KEY_DOWN)
-	check(main.credits_btn.has_focus(), "Down from Controls selects Credits")
+	check(main.ach_btn.has_focus(), "Down from Controls selects Achievements")
+	await arrow(KEY_LEFT)
+	check(main.credits_btn.has_focus(), "Left from Achievements selects Credits")
 	await arrow(KEY_DOWN)
 	check(connect_btn.has_focus(), "Down from Credits selects Connect")
 	await arrow(KEY_RIGHT)
@@ -57,9 +59,9 @@ func _run() -> void:
 	check(connect_btn.has_focus(), "Left at the start of the row stays on Connect")
 	await arrow(KEY_RIGHT)
 	await arrow(KEY_UP)
-	check(main.credits_btn.has_focus(), "Up from Exit returns to Credits")
+	check(main.ach_btn.has_focus(), "Up from Exit returns to Achievements")
 	await arrow(KEY_UP)
-	check(menu_controls.has_focus(), "Up from Credits returns to Controls")
+	check(menu_controls.has_focus(), "Up from Achievements returns to Controls")
 	for layer in [main.menu_layer, main.pause_layer]:
 		main.menu_layer.visible = layer == main.menu_layer
 		main.pause_layer.visible = layer == main.pause_layer
