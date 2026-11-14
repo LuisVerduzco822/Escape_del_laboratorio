@@ -79,8 +79,23 @@ const CAPTURE_THRESHOLD := 0.65
 
 
 
+# La física corre al mismo ritmo que la pantalla (60 a 144 Hz) para que el movimiento no se vea a tirones
+# en celulares y monitores de 90/120/144 Hz. Todo el juego usa delta, así que la jugabilidad no cambia.
+func tune_for_display() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED)   # sin vsync el ritmo de imagen se vuelve irregular
+	var hz := DisplayServer.screen_get_refresh_rate()
+	var ticks := 60
+	if hz >= 85.0:
+		ticks = clampi(roundi(hz), 60, 144)
+	Engine.physics_ticks_per_second = ticks
+	Engine.max_physics_steps_per_frame = 8
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	tune_for_display()
 	_setup_inputs()
 	for action in CONTROL_ACTIONS:
 		if not InputMap.has_action(action):

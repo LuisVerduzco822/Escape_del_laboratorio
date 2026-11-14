@@ -32,7 +32,10 @@ const BOSS_CURVE := {
 	"count": [0.78, 0.9, 1.0, 1.12, 1.28],      # cantidad de proyectiles por patrón
 }
 # En la fase final el jefe lanza los ataques mucho más seguidos (multiplica el descanso entre ataques).
-const PHASE_REST := [1.0, 0.8, 0.52]
+const PHASE_REST := [1.0, 0.72, 0.45]
+# Más proyectiles por patrón en cada fase, y probabilidad de encadenar ataques sin pausa (combo).
+const PHASE_COUNT := [1.0, 1.12, 1.25]
+const PHASE_COMBO := [0.0, 0.15, 0.3]
 # Corazones de apoyo durante la pelea con el jefe: cada «every» segundos de combate si falta vida (máx. «max» por pelea).
 const BOSS_HEARTS := {
 	"every": [11.0, 13.0, 15.0, 17.0, 19.0],

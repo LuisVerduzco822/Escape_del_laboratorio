@@ -117,8 +117,9 @@ func flash(color: Color, alpha: float = 0.6, time: float = 0.25) -> void:
 func hitstop(sec: float) -> void:
 	stop_token += 1
 	var mine := stop_token
-	Engine.time_scale = 0.05
-	await get_tree().create_timer(sec, true, false, true).timeout
+	# Frenazo breve y suave (no casi-congelado): evita la sensación de tirón en parrys, golpes y espadazos.
+	Engine.time_scale = 0.3
+	await get_tree().create_timer(minf(sec, 0.12) if sec < 0.3 else sec, true, false, true).timeout
 	if mine == stop_token:
 		Engine.time_scale = 1.0
 
