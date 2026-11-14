@@ -10,6 +10,8 @@ Se guardan por jugador en `user://achievements.cfg` y se ven en **LOGROS** (men�
 | SIN CAIDAS | Pasar el nivel al primer intento, sin ser derrotado |
 | CAZADOR | Derrotar al jefe del nivel |
 
+Cada logro tiene su emoji (PNG en `game/assets/icons/ach/`, generados con `game/tools/make_ach_icons.py` a partir de Noto Color Emoji, SIL OFL 1.1).
+
 Generales: PRIMER PARRY, MAESTRO DEL PARRY (50), INTOCABLE (jefe sin golpes), RELAMPAGO (jefe en menos de 2:30), COLECCIONISTA (150 monedas), PERFECCION (INTACTO en los 5 niveles), ANTIDOTO, SIN DERROTAS, CONTRARRELOJ (menos de 45 min), FINALTOP y FINALTOP LIMPIO.
 
 «Primer intento» significa que en ese nivel no hubo derrotas ni reinicios; un nivel retomado con CONTINUAR no cuenta.

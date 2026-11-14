@@ -63,7 +63,12 @@ func _run() -> void:
 	check(ids.size() == ach.defs.size() and ach.total() == 31, "31 logros con identificadores únicos")
 	var pages_ok := true
 	for p in ach.page_count():
-		pages_ok = pages_ok and ach.page_defs(p).size() >= 4
+		pages_ok = pages_ok and ach.page_defs(p).size() >= 3
+	check(ach.page_count() == 8, "Hay 8 páginas de logros")
+	var icons_ok := true
+	for d in ach.defs:
+		icons_ok = icons_ok and ach.icon(d["id"]) != null
+	check(icons_ok, "Todos los logros tienen su emoji")
 	check(pages_ok, "Cada página de la pantalla de logros tiene contenido")
 
 	# --- Logros de nivel

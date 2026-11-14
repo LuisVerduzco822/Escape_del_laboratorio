@@ -25,8 +25,8 @@ func _ready() -> void:
 	page_label = _lbl("", 8, Color(0.8, 0.9, 1.0))
 	add_child(page_label)
 	list = VBoxContainer.new()
-	list.add_theme_constant_override("separation", 5)
-	list.custom_minimum_size = Vector2(408, 126)
+	list.add_theme_constant_override("separation", 4)
+	list.custom_minimum_size = Vector2(408, 150)
 	add_child(list)
 	var nav := HBoxContainer.new()
 	nav.add_theme_constant_override("separation", 8)
@@ -46,7 +46,7 @@ func _lbl(text: String, size: int, col: Color) -> Label:
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", col)
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-	l.add_theme_constant_override("outline_size", 3)
+	l.add_theme_constant_override("outline_size", 2)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
 
@@ -79,16 +79,27 @@ func refresh() -> void:
 		c.queue_free()
 	for d in Achievements.page_defs(page):
 		var done: bool = Achievements.is_unlocked(d["id"])
-		var row := VBoxContainer.new()
-		row.add_theme_constant_override("separation", 1)
-		var name := _lbl(("[X] " if done else "[ ] ") + str(d["name"]), 8, Color(1.0, 0.85, 0.3) if done else Color(0.55, 0.6, 0.7))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var icon := TextureRect.new()
+		icon.texture = Achievements.icon(d["id"])
+		icon.custom_minimum_size = Vector2(32, 32)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.modulate = Color.WHITE if done else Color(0.28, 0.3, 0.36, 0.75)   # bloqueado: en gris
+		row.add_child(icon)
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 2)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var name := _lbl(str(d["name"]) + ("  OK" if done else ""), 8, Color(1.0, 0.85, 0.3) if done else Color(0.6, 0.65, 0.75))
 		name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		row.add_child(name)
-		var desc := _lbl(str(d["desc"]), 6, Color(0.85, 0.92, 1.0) if done else Color(0.5, 0.55, 0.65))
+		col.add_child(name)
+		var desc := _lbl(str(d["desc"]), 8, Color(0.9, 0.95, 1.0) if done else Color(0.62, 0.67, 0.78))
 		desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc.custom_minimum_size.x = 400
-		row.add_child(desc)
+		desc.custom_minimum_size.x = 340
+		col.add_child(desc)
+		row.add_child(col)
 		list.add_child(row)
 
 

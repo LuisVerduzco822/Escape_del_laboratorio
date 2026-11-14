@@ -17,6 +17,7 @@ var _queue: Array = []
 var _showing := false
 var _toast: Control
 var _toast_title: Label
+var _toast_icon: TextureRect
 var _toast_name: Label
 var _layer: CanvasLayer
 
@@ -41,13 +42,13 @@ func _build_defs() -> void:
 	defs.append({"id": "parry50", "name": "MAESTRO DEL PARRY", "desc": "Haz 50 parrys en total.", "page": 5})
 	defs.append({"id": "untouchable", "name": "INTOCABLE", "desc": "Derrota a un jefe sin recibir un solo golpe.", "page": 5})
 	defs.append({"id": "fastboss", "name": "RELAMPAGO", "desc": "Derrota a un jefe en menos de 2 minutos y medio.", "page": 5})
-	defs.append({"id": "rich", "name": "COLECCIONISTA", "desc": "Llega a 150 monedas en una partida.", "page": 5})
-	defs.append({"id": "allintact", "name": "PERFECCION", "desc": "Consigue INTACTO en los 5 niveles.", "page": 5})
+	defs.append({"id": "rich", "name": "COLECCIONISTA", "desc": "Llega a 150 monedas en una partida.", "page": 6})
+	defs.append({"id": "allintact", "name": "PERFECCION", "desc": "Consigue INTACTO en los 5 niveles.", "page": 6})
 	defs.append({"id": "antidote", "name": "ANTIDOTO", "desc": "Forma el antídoto y termina el juego.", "page": 6})
 	defs.append({"id": "flawless", "name": "SIN DERROTAS", "desc": "Termina el juego sin una sola derrota.", "page": 6})
-	defs.append({"id": "speed", "name": "CONTRARRELOJ", "desc": "Forma el antídoto en menos de 45 minutos.", "page": 6})
-	defs.append({"id": "finaltop", "name": "FINALTOP", "desc": "Termina el modo FINALTOP.", "page": 6})
-	defs.append({"id": "finaltop_clean", "name": "FINALTOP LIMPIO", "desc": "Termina FINALTOP sin ninguna derrota.", "page": 6})
+	defs.append({"id": "speed", "name": "CONTRARRELOJ", "desc": "Forma el antídoto en menos de 45 minutos.", "page": 7})
+	defs.append({"id": "finaltop", "name": "FINALTOP", "desc": "Termina el modo FINALTOP.", "page": 7})
+	defs.append({"id": "finaltop_clean", "name": "FINALTOP LIMPIO", "desc": "Termina FINALTOP sin ninguna derrota.", "page": 7})
 
 
 func total() -> int:
@@ -56,6 +57,12 @@ func total() -> int:
 
 func count() -> int:
 	return got.size()
+
+
+# Icono (emoji) del logro; se generan con game/tools/make_ach_icons.py.
+func icon(id: String) -> Texture2D:
+	var path := "res://assets/icons/ach/%s.png" % id
+	return load(path) if ResourceLoader.exists(path) else null
 
 
 func info(id: String) -> Dictionary:
@@ -71,7 +78,7 @@ func is_unlocked(id: String) -> bool:
 
 
 func page_count() -> int:
-	return 7
+	return 8
 
 
 func page_defs(page: int) -> Array:
@@ -194,12 +201,21 @@ func _build_toast() -> void:
 	style.set_border_width_all(1)
 	style.set_content_margin_all(5)
 	_toast.add_theme_stylebox_override("panel", style)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	_toast.add_child(row)
+	_toast_icon = TextureRect.new()
+	_toast_icon.custom_minimum_size = Vector2(32, 32)
+	_toast_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_toast_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_toast_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_toast_icon)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 1)
-	_toast.add_child(box)
+	box.add_theme_constant_override("separation", 2)
+	row.add_child(box)
 	_toast_title = Label.new()
 	_toast_title.text = "LOGRO DESBLOQUEADO"
-	_toast_title.add_theme_font_size_override("font_size", 6)
+	_toast_title.add_theme_font_size_override("font_size", 8)
 	_toast_title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
 	_toast_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(_toast_title)
@@ -207,8 +223,8 @@ func _build_toast() -> void:
 	_toast_name.add_theme_font_size_override("font_size", 8)
 	_toast_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(_toast_name)
-	_toast.position = Vector2(140, -40)
-	_toast.custom_minimum_size = Vector2(200, 0)
+	_toast.position = Vector2(130, -60)
+	_toast.custom_minimum_size = Vector2(220, 0)
 	_toast.visible = false
 	_layer.add_child(_toast)
 
@@ -219,13 +235,14 @@ func _next_toast() -> void:
 	_showing = true
 	var id: String = _queue.pop_front()
 	_toast_name.text = str(info(id).get("name", id))
+	_toast_icon.texture = icon(id)
 	_toast.visible = true
-	_toast.position = Vector2(140, -40)
+	_toast.position = Vector2(130, -60)
 	AudioManager.sfx("pickup", -4.0, 1.4)
 	var tw := create_tween()
 	tw.tween_property(_toast, "position:y", 6.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(2.6)
-	tw.tween_property(_toast, "position:y", -40.0, 0.3).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_toast, "position:y", -60.0, 0.3).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(func():
 		_toast.visible = false
 		_showing = false
